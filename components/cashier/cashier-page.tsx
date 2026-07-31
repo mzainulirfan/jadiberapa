@@ -1,14 +1,13 @@
 ﻿"use client"
 
 import { useEffect, useState } from "react"
-import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getProducts, getCategories } from "@/lib/actions/products"
 import { useCart } from "@/components/cart/cart-provider"
-import { Search, Filter, Barcode, CartAlt, X, Check } from "@/components/ui/icons"
+import { Search, Filter, Barcode, X, Check } from "@/components/ui/icons"
 import {
   Popover,
   PopoverContent,
@@ -178,15 +177,6 @@ export function CashierPage() {
                   ))}
                 </div>
               </>
-            )}
-
-            {cart.count > 0 && (
-              <Link href="/cart">
-                <Button className="w-full rounded-full gap-2 mt-1">
-                  <CartAlt className="size-4" />
-                  Lihat Keranjang ({cart.count}) - Rp{cart.total.toLocaleString()}
-                </Button>
-              </Link>
             )}
           </div>
         ) : loading ? (
