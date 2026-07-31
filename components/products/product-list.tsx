@@ -511,17 +511,23 @@ export function ProductList() {
               key={p.id}
               className="flex items-center gap-3 rounded-lg bg-canvas p-2.5 border border-hairline"
             >
-              <ProductThumb p={p} className="size-12" />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <p className="text-sm font-medium text-ink truncate">{p.name}</p>
-                  <StockBadge stock={p.stock} />
+              <button
+                type="button"
+                onClick={() => setSelected(p)}
+                className="flex min-w-0 flex-1 items-center gap-3 text-left"
+              >
+                <ProductThumb p={p} className="size-12" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-medium text-ink truncate">{p.name}</p>
+                    <StockBadge stock={p.stock} />
+                  </div>
+                  <p className="text-xs text-ink-faint truncate">
+                    {p.categories?.name ? `${p.categories.name} · ` : ""}
+                    Rp{p.price_sell.toLocaleString()}
+                  </p>
                 </div>
-                <p className="text-xs text-ink-faint truncate">
-                  {p.categories?.name ? `${p.categories.name} · ` : ""}
-                  Rp{p.price_sell.toLocaleString()}
-                </p>
-              </div>
+              </button>
               <div className="flex items-center gap-1">
                 <ProductDialog product={p} onSaved={reload}>
                   <button className="rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft">
