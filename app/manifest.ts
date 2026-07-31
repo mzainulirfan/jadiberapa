@@ -1,0 +1,32 @@
+import type { MetadataRoute } from "next"
+
+export default function manifest(): MetadataRoute.Manifest {
+  return {
+    name: "Saberaha — Kasir Warung",
+    short_name: "Saberaha",
+    description: "Aplikasi kasir untuk warung dan UMKM",
+    start_url: "/",
+    scope: "/",
+    display: "standalone",
+    orientation: "portrait",
+    lang: "id",
+    dir: "ltr",
+    background_color: "#f6f5f4",
+    theme_color: "#ffffff",
+    categories: ["business", "finance", "productivity"],
+    icons: [
+      {
+        src: "/icon.svg",
+        sizes: "any",
+        type: "image/svg+xml",
+        purpose: "any",
+      },
+      {
+        src: "/icon.svg",
+        sizes: "any",
+        type: "image/svg+xml",
+        purpose: "maskable",
+      },
+    ],
+  }
+}
