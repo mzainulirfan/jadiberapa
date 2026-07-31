@@ -4,8 +4,17 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { QRCodeSVG } from "qrcode.react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { createTransaction } from "@/lib/actions/transactions"
 import { getSettings } from "@/lib/actions/settings"
 import { useCart } from "@/components/cart/cart-provider"
@@ -28,6 +37,7 @@ export function CartView() {
   const [paid, setPaid] = useState("")
   const [payConfig, setPayConfig] = useState<Record<string, string>>({})
   const [copied, setCopied] = useState(false)
+  const [confirmClear, setConfirmClear] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -48,6 +58,12 @@ export function CartView() {
     await navigator.clipboard.writeText(danaNumber)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
+  }
+
+  function handleClear() {
+    clearCart()
+    setConfirmClear(false)
+    toast.success("Keranjang dikosongkan")
   }
 
   async function handleCheckout() {
@@ -86,6 +102,16 @@ export function CartView() {
           Keranjang
         </h1>
         <span className="text-ink-faint text-sm">({count})</span>
+        {items.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setConfirmClear(true)}
+            className="ml-auto flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium text-destructive hover:bg-canvas-soft"
+          >
+            <Trash className="size-4" />
+            Hapus Semua
+          </button>
+        )}
       </div>
 
       {items.length === 0 ? (
@@ -262,6 +288,25 @@ export function CartView() {
           </div>
         </>
       )}
+
+      <Dialog open={confirmClear} onOpenChange={(o) => !o && setConfirmClear(false)}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Kosongkan Keranjang?</DialogTitle>
+            <DialogDescription>
+              Semua barang di keranjang akan dihapus dan tidak bisa dikembalikan.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmClear(false)}>
+              Batal
+            </Button>
+            <Button variant="destructive" onClick={handleClear}>
+              Hapus
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
