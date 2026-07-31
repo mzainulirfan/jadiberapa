@@ -9,7 +9,7 @@ export function Header() {
 
   return (
     <header className="flex items-center justify-between px-4 py-2.5 border-b border-hairline bg-canvas">
-      <p className="text-base font-bold tracking-[-0.3px] text-ink">JadiBerapa</p>
+      <p className="text-base font-bold tracking-[-0.3px] text-ink">Saberaha</p>
       <Link
         href="/cart"
         className="relative flex size-11 items-center justify-center rounded-full bg-black/[0.05] text-ink transition-transform duration-150 active:scale-90"

@@ -63,7 +63,7 @@ export function SettingsForm() {
 
       <div className="rounded-xl bg-canvas-soft border border-hairline p-4 text-center">
         <InfoCircle className="size-5 text-ink-faint mx-auto mb-1" />
-        <p className="text-xs text-ink-muted">JadiBerapa v1.0.0</p>
+        <p className="text-xs text-ink-muted">Saberaha v1.0.0</p>
         <p className="text-xs text-ink-faint mt-0.5">Aplikasi kasir untuk warung dan UMKM</p>
       </div>
     </div>
