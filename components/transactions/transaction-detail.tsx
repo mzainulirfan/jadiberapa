@@ -278,16 +278,30 @@ Terima kasih`
           <p className="text-destructive text-sm">{error ?? "Transaksi tidak ditemukan"}</p>
         ) : (
           <div className="space-y-3">
-            <div className="rounded-xl bg-ink text-white p-4">
-              <p className="text-sm font-medium text-white/60">Total Pembayaran</p>
-              <p className="text-[30px] font-bold tracking-tight text-white mt-1">
-                {fmtRp(tx.total)}
-              </p>
-              <div className="mt-3 flex items-center gap-2">
-                <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium capitalize text-white">
-                  {methodLabel[tx.payment_method] ?? tx.payment_method}
-                </span>
-                <span className="text-xs text-white/60">{formatDate(new Date(tx.created_at))}</span>
+            <div className="rounded-xl bg-canvas border border-hairline p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-ink-muted">Total</span>
+                <span className="text-lg font-bold text-ink">{fmtRp(tx.total)}</span>
+              </div>
+              <div className="mt-3 space-y-2 border-t border-hairline pt-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-ink-muted">Pembayaran</span>
+                  <span className="font-medium text-ink capitalize">
+                    {methodLabel[tx.payment_method] ?? tx.payment_method}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-ink-muted">Tanggal</span>
+                  <span className="font-medium text-ink">
+                    {formatDate(new Date(tx.created_at))}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-ink-muted">Nomor Nota</span>
+                  <span className="font-mono text-sm font-medium text-ink">
+                    {tx.id.slice(0, 8).toUpperCase()}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -312,7 +326,9 @@ Terima kasih`
                         <p className="truncate text-sm font-medium text-ink">
                           {item.products?.name ?? "Produk dihapus"}
                         </p>
-                        <p className="text-xs text-ink-muted">{item.qty} × {fmtRp(item.subtotal / item.qty)}</p>
+                        <p className="text-xs text-ink-muted">
+                          {item.qty} × {fmtRp(item.subtotal / item.qty)}
+                        </p>
                       </div>
                       <p className="shrink-0 text-sm font-semibold text-ink">
                         {fmtRp(item.subtotal)}
@@ -324,15 +340,6 @@ Terima kasih`
               <div className="flex items-center justify-between border-t border-hairline px-4 py-3">
                 <span className="text-sm font-medium text-ink-muted">Total</span>
                 <span className="text-lg font-bold text-ink">{fmtRp(tx.total)}</span>
-              </div>
-            </div>
-
-            <div className="rounded-xl bg-canvas border border-hairline p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-ink-muted">Nomor Nota</span>
-                <span className="font-mono text-sm font-medium text-ink">
-                  {tx.id.slice(0, 8).toUpperCase()}
-                </span>
               </div>
             </div>
           </div>
