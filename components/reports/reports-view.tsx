@@ -11,13 +11,12 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { getReports } from "@/lib/actions/reports"
+import { getReports, type BxReports } from "@/lib/db/queries"
 import { ChartLine, ChevronDown, ChevronRight, Share, Wallet } from "@/components/ui/icons"
 import { cn } from "@/lib/utils"
 
-type ReportsData = Awaited<ReturnType<typeof getReports>>
+type ReportsData = BxReports
 type RangeKey = "today" | "week" | "month" | "all"
-type Tx = { id: string; total: number; created_at: string; payment_method: string | null }
 
 const RANGES: { key: RangeKey; label: string }[] = [
   { key: "today", label: "Hari Ini" },
@@ -63,27 +62,16 @@ function PeriodDropdown({ value, onChange }: { value: RangeKey; onChange: (v: Ra
   )
 }
 
-function buildTrend(transactions: Tx[], range: RangeKey) {
-  const buckets = new Map<string, { label: string; value: number; sort: number }>()
-  for (const tx of transactions) {
-    const d = new Date(tx.created_at)
-    let key: string, label: string, sort: number
-    if (range === "today") {
-      const h = d.getHours()
-      key = String(h)
-      label = `${String(h).padStart(2, "0")}.00`
-      sort = h
-    } else {
-      const day = new Date(d.getFullYear(), d.getMonth(), d.getDate())
-      key = day.toISOString()
-      label = day.toLocaleDateString("id-ID", { day: "numeric", month: "short" })
-      sort = day.getTime()
-    }
-    const cur = buckets.get(key) ?? { label, value: 0, sort }
-    cur.value += tx.total
-    buckets.set(key, cur)
-  }
-  return [...buckets.values()].sort((a, b) => a.sort - b.sort).slice(-14)
+// Ubah bucket tren dari RPC menjadi label siap-tampil sesuai periode.
+// Data sudah teragregasi & dibatasi 14 titik terakhir (urut naik) di SQL.
+function trendLabels(trend: { t: string; value: number }[], range: RangeKey) {
+  return trend.map((b) => ({
+    label:
+      range === "today"
+        ? `${b.t.padStart(2, "0")}.00`
+        : new Date(`${b.t}T00:00:00`).toLocaleDateString("id-ID", { day: "numeric", month: "short" }),
+    value: b.value,
+  }))
 }
 
 export function ReportsView() {
@@ -99,7 +87,7 @@ export function ReportsView() {
   useEffect(() => {
     let active = true
     ;(async () => {
-      const result = await getReports(fromForRange(range), undefined)
+      const result = await getReports(fromForRange(range), range === "today" ? "hour" : "day")
       if (active) {
         setData(result)
         setLoading(false)
@@ -181,18 +169,15 @@ function Content({
   marginPct: string
 }) {
   const avg = data.count > 0 ? Math.round(data.totalRevenue / data.count) : 0
-  const trend = buildTrend(data.transactions as Tx[], range)
+  const trend = trendLabels(data.trend, range)
   const trendMax = Math.max(1, ...trend.map((t) => t.value))
   const peak = trend.reduce((m, t) => (t.value > m ? t.value : m), 0)
 
-  const byMethod: Record<string, number> = {}
-  for (const tx of data.transactions as Tx[]) {
-    const m = tx.payment_method ?? "cash"
-    byMethod[m] = (byMethod[m] ?? 0) + tx.total
-  }
-  const payment = Object.entries(byMethod)
-    .map(([key, value]) => ({ key, label: PAYMENT_LABEL[key] ?? key, value }))
-    .sort((a, b) => b.value - a.value)
+  const payment = data.payment.map((p) => ({
+    key: p.key,
+    label: PAYMENT_LABEL[p.key] ?? p.key,
+    value: p.value,
+  }))
 
   const top = data.topProducts.slice(0, 8)
   const maxQty = Math.max(1, ...top.map((p) => p.qty))

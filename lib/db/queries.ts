@@ -358,3 +358,58 @@ export async function getDashboardSummary(
     lowStock: r.lowStock ?? [],
   }
 }
+
+export type BxReports = {
+  totalRevenue: number
+  totalCost: number
+  profit: number
+  count: number
+  totalItems: number
+  payment: { key: string; value: number }[]
+  topProducts: { name: string; qty: number; total: number }[]
+  trend: { t: string; value: number }[]
+}
+
+/** Bentuk mentah JSON yang dikembalikan RPC get_reports_summary. */
+type RpcReports = {
+  totalRevenue: number
+  totalCost: number
+  count: number
+  totalItems: number
+  payment: { key: string; value: number }[]
+  topProducts: { name: string; qty: number; total: number }[]
+  trend: { t: string; value: number }[]
+}
+
+// Semua agregasi laporan dilakukan di Postgres (lihat migration 00013) — satu round-trip,
+// payload kecil, tanpa mengirim transaksi mentah. `bucket` menentukan granularitas tren
+// (per jam utk "Hari Ini", per hari utk lainnya); batas periode dihitung di zona lokal.
+export async function getReports(
+  from: string | undefined,
+  bucket: "hour" | "day"
+): Promise<BxReports> {
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Jakarta"
+  const { data } = await supabase.rpc("get_reports_summary", {
+    p_from: from ?? null,
+    p_to: null,
+    p_bucket: bucket,
+    p_tz: tz,
+  })
+  const r = (data ?? {}) as Partial<RpcReports>
+  const totalRevenue = Number(r.totalRevenue) || 0
+  const totalCost = Number(r.totalCost) || 0
+  return {
+    totalRevenue,
+    totalCost,
+    profit: totalRevenue - totalCost,
+    count: Number(r.count) || 0,
+    totalItems: Number(r.totalItems) || 0,
+    payment: (r.payment ?? []).map((p) => ({ key: p.key, value: Number(p.value) || 0 })),
+    topProducts: (r.topProducts ?? []).map((p) => ({
+      name: p.name,
+      qty: Number(p.qty) || 0,
+      total: Number(p.total) || 0,
+    })),
+    trend: (r.trend ?? []).map((t) => ({ t: t.t, value: Number(t.value) || 0 })),
+  }
+}
