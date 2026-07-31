@@ -11,8 +11,7 @@ import {
   DrawerTitle,
   DrawerClose,
 } from "@/components/ui/drawer"
-import { getTransaction } from "@/lib/actions/transactions"
-import { getSettings } from "@/lib/db/queries"
+import { getTransaction, getSettings } from "@/lib/db/queries"
 import { Printer, Share, X, Receipt } from "@/components/ui/icons"
 import { Barcode, barcodeSvgString } from "@/components/ui/barcode"
 

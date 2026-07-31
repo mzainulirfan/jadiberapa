@@ -67,14 +67,3 @@ export async function getTransactions() {
   return { error: null, transactions: data ?? [] }
 }
 
-export async function getTransaction(id: string) {
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from("transactions")
-    .select("*, transaction_items(*, products(name)), customers(name)")
-    .eq("id", id)
-    .single()
-
-  if (error) return { error: error.message, transaction: null }
-  return { error: null, transaction: data }
-}

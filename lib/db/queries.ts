@@ -183,6 +183,19 @@ export async function getTransactionsSummary(params: {
   return { count: Number(row.count) || 0, total: Number(row.total) || 0 }
 }
 
+// Detail 1 transaksi: query Supabase langsung dari client (bukan server action)
+// agar hilang overhead round-trip + antrean server action. Ambil di primary key.
+export async function getTransaction(id: string) {
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("*, transaction_items(*, products(name)), customers(name)")
+    .eq("id", id)
+    .single()
+
+  if (error) return { error: error.message, transaction: null }
+  return { error: null, transaction: data }
+}
+
 export async function getProducts(params: {
   search?: string
   categoryIds?: string[]
