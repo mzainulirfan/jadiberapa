@@ -15,13 +15,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerClose,
-} from "@/components/ui/drawer"
 import { createTransaction } from "@/lib/actions/transactions"
 import { getSettings } from "@/lib/actions/settings"
 import { getProducts } from "@/lib/db/queries"
@@ -38,7 +31,6 @@ import {
   Wallet,
   Check,
   Copy,
-  X,
   Package,
 } from "@/components/ui/icons"
 import { cn } from "@/lib/utils"
@@ -388,19 +380,16 @@ export function CartView() {
         </>
       )}
 
-      <Drawer open={paySheetOpen} onOpenChange={setPaySheetOpen} showSwipeHandle>
-        <DrawerContent className="rounded-t-xl">
-          <DrawerHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
-            <DrawerTitle className="text-lg font-bold">
+      <Dialog open={paySheetOpen} onOpenChange={setPaySheetOpen}>
+        <DialogContent showCloseButton className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-center text-lg font-bold">
               {method === "qris" ? "QRIS" : "DANA"}
-            </DrawerTitle>
-            <DrawerClose className="rounded-full p-1.5 -mr-1.5 text-ink-muted active:bg-canvas-soft">
-              <X className="size-4" />
-            </DrawerClose>
-          </DrawerHeader>
-          <div className="flex-1 overflow-y-auto px-4 py-4">
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
             {method === "qris" ? (
-              <div className="flex flex-col items-center gap-3 py-2">
+              <div className="flex flex-col items-center gap-3">
                 <div className="rounded-2xl bg-white p-4">
                   <QRCodeSVG value={qrisPayload} size={220} marginSize={0} />
                 </div>
@@ -421,8 +410,17 @@ export function CartView() {
               </div>
             )}
           </div>
-        </DrawerContent>
-      </Drawer>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              className="w-full rounded-full"
+              onClick={() => setPaySheetOpen(false)}
+            >
+              Tutup
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={confirmClear} onOpenChange={(o) => !o && setConfirmClear(false)}>
         <DialogContent showCloseButton={false}>
