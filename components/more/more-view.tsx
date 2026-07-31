@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { getSettings } from "@/lib/actions/settings"
+import { getStoreProfile, type BxStoreProfile } from "@/lib/db/queries"
 import { useAuth } from "@/lib/hooks/use-auth"
 import {
   User as UserIcon,
@@ -47,14 +47,14 @@ const groups: {
 
 export function MoreView() {
   const { user, logout } = useAuth()
-  const [settings, setSettings] = useState<Record<string, string> | null>(null)
+  const [profile, setProfile] = useState<BxStoreProfile | null>(null)
   const [confirmLogout, setConfirmLogout] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
 
   useEffect(() => {
     let active = true
-    getSettings().then((s) => {
-      if (active) setSettings(s)
+    getStoreProfile().then((p) => {
+      if (active) setProfile(p)
     })
     return () => {
       active = false
@@ -66,14 +66,14 @@ export function MoreView() {
     await logout()
   }
 
-  const storeName = settings?.store_name?.trim() || "Toko Saya"
+  const storeName = profile?.store_name?.trim() || "Toko Saya"
   const username = user?.email?.split("@")[0]
-  const phone = settings?.store_phone?.trim()
+  const phone = profile?.store_phone?.trim()
   const subtitle = [phone, username && `@${username}`].filter(Boolean).join(" · ") || "Akun kasir"
 
   return (
     <div className="space-y-5 p-4">
-      {settings === null ? (
+      {profile === null ? (
         <Skeleton className="h-[76px] rounded-xl" />
       ) : (
         <Link

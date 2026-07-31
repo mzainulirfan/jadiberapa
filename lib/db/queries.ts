@@ -36,6 +36,50 @@ export function invalidateCategories() {
   categoriesFetchedAt = 0
 }
 
+export type BxStoreProfile = { store_name: string; store_phone: string }
+
+const STORE_PROFILE_TTL_MS = 60_000
+let storeProfileCache: BxStoreProfile | null = null
+let storeProfileFetchedAt = 0
+let storeProfilePromise: Promise<BxStoreProfile> | null = null
+
+// Profil ringkas untuk kartu di halaman More: query Supabase langsung (tanpa server
+// action) + cache TTL, hanya ambil field yang dipakai (bukan select("*")).
+export function getStoreProfile(): Promise<BxStoreProfile> {
+  const now = Date.now()
+  if (storeProfileCache && now - storeProfileFetchedAt < STORE_PROFILE_TTL_MS) {
+    return Promise.resolve(storeProfileCache)
+  }
+  if (!storeProfilePromise) {
+    storeProfilePromise = (async () => {
+      try {
+        const { data } = await supabase
+          .from("settings")
+          .select("key, value")
+          .in("key", ["store_name", "store_phone"])
+        const map: Record<string, string> = {}
+        for (const row of (data ?? []) as { key: string; value: string }[]) {
+          map[row.key] = row.value
+        }
+        storeProfileCache = {
+          store_name: map.store_name ?? "",
+          store_phone: map.store_phone ?? "",
+        }
+        storeProfileFetchedAt = Date.now()
+        return storeProfileCache
+      } finally {
+        storeProfilePromise = null
+      }
+    })()
+  }
+  return storeProfilePromise
+}
+
+export function invalidateStoreProfile() {
+  storeProfileCache = null
+  storeProfileFetchedAt = 0
+}
+
 export async function getCategoryProductCounts(): Promise<Record<string, number>> {
   const { data } = await supabase.from("products").select("category_id")
   const counts: Record<string, number> = {}
