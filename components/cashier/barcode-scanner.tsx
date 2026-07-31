@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import type { IScannerControls } from "@zxing/browser"
 import { X, Zap } from "@/components/ui/icons"
 import { cn } from "@/lib/utils"
@@ -197,11 +198,13 @@ export function BarcodeScanner({ open, onOpenChange, onDetect, continuous = fals
     }
   }
 
-  if (!open) return null
+  if (!open || typeof document === "undefined") return null
 
-  return (
+  // Diportal ke <body> dgn z-index di atas Drawer/Dialog (z-50) agar kamera
+  // tidak tertutup form yang tetap terbuka di belakangnya.
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex flex-col bg-black"
+      className="fixed inset-0 z-[70] flex flex-col bg-black"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
@@ -295,6 +298,7 @@ export function BarcodeScanner({ open, onOpenChange, onDetect, continuous = fals
           Selesai
         </button>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

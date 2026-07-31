@@ -11,13 +11,26 @@ import {
 } from "@/components/ui/drawer"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { createProduct, updateProduct, uploadProductImage } from "@/lib/actions/products"
 import { getCategories } from "@/lib/db/queries"
 import type { BxCategory, BxProduct } from "./types"
 import { Trash, X, Camera } from "@/components/ui/icons"
+import { toast } from "sonner"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
 import { BarcodeScanner } from "@/components/cashier/barcode-scanner"
+import { PhotoCapture } from "./photo-capture"
 import { cn } from "@/lib/utils"
+
+const formatThousands = (raw: string) => (raw ? Number(raw).toLocaleString("id-ID") : "")
+const onlyDigits = (s: string) => s.replace(/\D/g, "")
 
 type Props = {
   product?: BxProduct | null
@@ -48,12 +61,16 @@ export function ProductDialog({
   )
   const [barcode, setBarcode] = useState(product?.barcode ?? "")
   const [scanOpen, setScanOpen] = useState(false)
+  const [photoOpen, setPhotoOpen] = useState(false)
   const [categories, setCategories] = useState<BxCategory[]>([])
   const [categoryId, setCategoryId] = useState(product?.category_id ?? "")
   const [imageUrl, setImageUrl] = useState("")
   const [uploading, setUploading] = useState(false)
   const [priceBuy, setPriceBuy] = useState(product?.price_buy ? String(product.price_buy) : "")
   const [priceSell, setPriceSell] = useState(product?.price_sell ? String(product.price_sell) : "")
+  const [dirty, setDirty] = useState(false)
+  const [discardOpen, setDiscardOpen] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<{ name?: string; price_sell?: string }>({})
   const action = product ? updateProduct.bind(null, product.id) : createProduct
   const submittedRef = useRef(false)
   const onSavedRef = useRef(onSaved)
@@ -63,6 +80,14 @@ export function ProductDialog({
 
   const [state, formAction, pending] = useActionState(
     async (_prev: unknown, formData: FormData) => {
+      // Validasi sendiri (form pakai noValidate) agar pesan seragam dgn UI app.
+      const name = String(formData.get("name") ?? "").trim()
+      const priceSellRaw = String(formData.get("price_sell") ?? "").trim()
+      const errs: { name?: string; price_sell?: string } = {}
+      if (!name) errs.name = "Nama barang wajib diisi."
+      if (!priceSellRaw || Number(priceSellRaw) <= 0) errs.price_sell = "Harga jual harus lebih dari 0."
+      setFieldErrors(errs)
+      if (errs.name || errs.price_sell) return { error: null }
       submittedRef.current = true
       return action(formData)
     },
@@ -89,16 +114,58 @@ export function ProductDialog({
     }
   }, [state, pending, setOpen])
 
+  async function processImage(file: File): Promise<File> {
+    // Kecilkan sisi terpanjang ke maks 1280px & kompres JPEG agar hemat storage/bandwidth.
+    const MAX_DIM = 1280
+    try {
+      const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" } as ImageBitmapOptions)
+      const scale = Math.min(1, MAX_DIM / Math.max(bitmap.width, bitmap.height))
+      const w = Math.round(bitmap.width * scale)
+      const h = Math.round(bitmap.height * scale)
+      const canvas = document.createElement("canvas")
+      canvas.width = w
+      canvas.height = h
+      const ctx = canvas.getContext("2d")
+      if (!ctx) return file
+      ctx.drawImage(bitmap, 0, 0, w, h)
+      bitmap.close?.()
+      const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/jpeg", 0.82))
+      if (!blob) return file
+      return new File([blob], "photo.jpg", { type: "image/jpeg" })
+    } catch {
+      return file
+    }
+  }
+
+  async function uploadFile(file: File) {
+    if (!file.type.startsWith("image/")) {
+      toast.error("File harus berupa gambar.")
+      return
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("Ukuran gambar maksimal 8MB.")
+      return
+    }
+    setUploading(true)
+    try {
+      const processed = await processImage(file)
+      const fd = new FormData()
+      fd.append("file", processed)
+      const { url, error } = await uploadProductImage(fd)
+      if (error) toast.error(error)
+      else if (url) {
+        setImageUrl(url)
+        setDirty(true)
+      }
+    } finally {
+      setUploading(false)
+    }
+  }
+
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (!file) return
-    setUploading(true)
-    const fd = new FormData()
-    fd.append("file", file)
-    const { url } = await uploadProductImage(fd)
-    setUploading(false)
     e.target.value = ""
-    if (url) setImageUrl(url)
+    if (file) await uploadFile(file)
   }
 
   const buy = Number(priceBuy) || 0
@@ -110,14 +177,24 @@ export function ProductDialog({
     <>
     <Drawer
       open={open}
+      modal={!scanOpen && !photoOpen}
       onOpenChange={(v) => {
-        setOpen(v)
         if (v) {
+          setOpen(true)
           setImageUrl(product?.image_url ?? "")
           setCategoryId(product?.category_id ?? "")
           setPriceBuy(product?.price_buy ? String(product.price_buy) : "")
           setPriceSell(product?.price_sell ? String(product.price_sell) : "")
+          setDirty(false)
+          setFieldErrors({})
+          return
         }
+        // Menutup: konfirmasi dulu bila ada perubahan belum disimpan.
+        if (dirty) {
+          setDiscardOpen(true)
+          return
+        }
+        setOpen(false)
       }}
       showSwipeHandle
     >
@@ -132,7 +209,15 @@ export function ProductDialog({
           </DrawerClose>
         </DrawerHeader>
 
-        <form action={formAction} className="flex min-h-0 flex-1 flex-col">
+        <form
+          action={formAction}
+          noValidate
+          onChange={() => {
+            setDirty(true)
+            setFieldErrors((e) => (e.name || e.price_sell ? {} : e))
+          }}
+          className="flex min-h-0 flex-1 flex-col"
+        >
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
             <input type="hidden" name="image_url" value={imageUrl} />
             <div className="rounded-xl bg-canvas-soft p-3 space-y-3">
@@ -149,16 +234,27 @@ export function ProductDialog({
                   )}
                 </div>
                 <div className="space-y-1.5">
-                  <label className="flex w-fit cursor-pointer items-center gap-1.5 rounded-full border border-hairline bg-canvas px-3 py-1.5 text-xs font-medium text-ink active:bg-canvas-soft">
-                    {uploading ? "Mengunggah..." : "Unggah Gambar"}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleImageUpload}
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setPhotoOpen(true)}
                       disabled={uploading}
-                    />
-                  </label>
+                      className="flex w-fit items-center gap-1.5 rounded-full border border-hairline bg-canvas px-3 py-1.5 text-xs font-medium text-ink active:bg-canvas-soft disabled:opacity-50"
+                    >
+                      <Camera className="size-3.5" /> Ambil Foto
+                    </button>
+                    <label className="flex w-fit cursor-pointer items-center gap-1.5 rounded-full border border-hairline bg-canvas px-3 py-1.5 text-xs font-medium text-ink active:bg-canvas-soft">
+                      Unggah Gambar
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleImageUpload}
+                        disabled={uploading}
+                      />
+                    </label>
+                  </div>
+                  {uploading && <p className="text-xs text-ink-muted">Mengunggah...</p>}
                   {imageUrl && (
                     <button
                       type="button"
@@ -168,6 +264,7 @@ export function ProductDialog({
                       <Trash className="size-3.5" /> Hapus
                     </button>
                   )}
+                  <p className="text-xs text-ink-faint">Maks 8MB · otomatis dikecilkan ke 1280px</p>
                 </div>
               </div>
             </div>
@@ -176,7 +273,8 @@ export function ProductDialog({
               <p className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Informasi Barang</p>
               <div>
                 <label htmlFor="name" className="text-xs text-ink-muted mb-1 block">Nama Barang</label>
-                <Input id="name" name="name" placeholder="Contoh: Indomie Goreng" defaultValue={product?.name} required />
+                <Input id="name" name="name" placeholder="Contoh: Indomie Goreng" defaultValue={product?.name} aria-invalid={!!fieldErrors.name} />
+                {fieldErrors.name && <p className="mt-1 text-xs text-destructive">{fieldErrors.name}</p>}
               </div>
               <div>
                 <label htmlFor="category_id" className="text-xs text-ink-muted mb-1 block">Kategori</label>
@@ -204,15 +302,14 @@ export function ProductDialog({
                     <InputGroupAddon>Rp</InputGroupAddon>
                     <InputGroupInput
                       id="price_buy"
-                      name="price_buy"
-                      type="number"
+                      type="text"
                       inputMode="numeric"
-                      min="0"
                       placeholder="0"
-                      value={priceBuy}
-                      onChange={(e) => setPriceBuy(e.target.value)}
+                      value={formatThousands(priceBuy)}
+                      onChange={(e) => setPriceBuy(onlyDigits(e.target.value))}
                     />
                   </InputGroup>
+                  <input type="hidden" name="price_buy" value={priceBuy} />
                 </div>
                 <div>
                   <label htmlFor="price_sell" className="text-xs text-ink-muted mb-1 block">Harga Jual</label>
@@ -220,16 +317,16 @@ export function ProductDialog({
                     <InputGroupAddon>Rp</InputGroupAddon>
                     <InputGroupInput
                       id="price_sell"
-                      name="price_sell"
-                      type="number"
+                      type="text"
                       inputMode="numeric"
-                      min="0"
                       placeholder="0"
-                      value={priceSell}
-                      onChange={(e) => setPriceSell(e.target.value)}
-                      required
+                      value={formatThousands(priceSell)}
+                      onChange={(e) => setPriceSell(onlyDigits(e.target.value))}
+                      aria-invalid={!!fieldErrors.price_sell}
                     />
                   </InputGroup>
+                  <input type="hidden" name="price_sell" value={priceSell} />
+                  {fieldErrors.price_sell && <p className="mt-1 text-xs text-destructive">{fieldErrors.price_sell}</p>}
                 </div>
               </div>
               {priceSell !== "" && (
@@ -296,9 +393,40 @@ export function ProductDialog({
       onOpenChange={setScanOpen}
       onDetect={(code) => {
         setBarcode(code)
+        setDirty(true)
         setScanOpen(false)
       }}
     />
+    <PhotoCapture
+      open={photoOpen}
+      onOpenChange={setPhotoOpen}
+      onCapture={(file) => uploadFile(file)}
+    />
+    <Dialog open={discardOpen} onOpenChange={setDiscardOpen}>
+      <DialogContent showCloseButton={false}>
+        <DialogHeader>
+          <DialogTitle>Buang perubahan?</DialogTitle>
+          <DialogDescription>
+            Ada data yang belum disimpan. Jika keluar sekarang, perubahan akan hilang.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setDiscardOpen(false)}>
+            Lanjut Isi
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => {
+              setDiscardOpen(false)
+              setDirty(false)
+              setOpen(false)
+            }}
+          >
+            Buang
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     </>
   )
 }
