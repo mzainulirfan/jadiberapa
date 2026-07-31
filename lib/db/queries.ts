@@ -489,6 +489,8 @@ export type BxReports = {
   totalRevenue: number
   totalCost: number
   profit: number
+  totalExpenses: number
+  netProfit: number
   count: number
   totalItems: number
   payment: { key: string; value: number }[]
@@ -500,6 +502,7 @@ export type BxReports = {
 type RpcReports = {
   totalRevenue: number
   totalCost: number
+  totalExpenses: number
   count: number
   totalItems: number
   payment: { key: string; value: number }[]
@@ -524,10 +527,14 @@ export async function getReports(
   const r = (data ?? {}) as Partial<RpcReports>
   const totalRevenue = Number(r.totalRevenue) || 0
   const totalCost = Number(r.totalCost) || 0
+  const totalExpenses = Number(r.totalExpenses) || 0
+  const profit = totalRevenue - totalCost
   return {
     totalRevenue,
     totalCost,
-    profit: totalRevenue - totalCost,
+    profit,
+    totalExpenses,
+    netProfit: profit - totalExpenses,
     count: Number(r.count) || 0,
     totalItems: Number(r.totalItems) || 0,
     payment: (r.payment ?? []).map((p) => ({ key: p.key, value: Number(p.value) || 0 })),
@@ -538,4 +545,24 @@ export async function getReports(
     })),
     trend: (r.trend ?? []).map((t) => ({ t: t.t, value: Number(t.value) || 0 })),
   }
+}
+
+export type BxExpense = {
+  id: string
+  amount: number
+  category: string
+  note: string | null
+  created_at: string
+}
+
+export async function getExpenses(from?: string, to?: string): Promise<BxExpense[]> {
+  let query = supabase
+    .from("expenses")
+    .select("id, amount, category, note, created_at")
+    .order("created_at", { ascending: false })
+    .limit(200)
+  if (from) query = query.gte("created_at", from)
+  if (to) query = query.lte("created_at", to)
+  const { data } = await query
+  return (data ?? []) as unknown as BxExpense[]
 }

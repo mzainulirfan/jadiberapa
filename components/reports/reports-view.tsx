@@ -106,7 +106,9 @@ export function ReportsView() {
     const lines = [
       `📊 Laporan ${periodLabel}`,
       `Omzet: ${fmtRp(data.totalRevenue)}`,
-      `Laba: ${fmtRp(data.profit)} (${marginPct})`,
+      `Laba kotor: ${fmtRp(data.profit)} (${marginPct})`,
+      `Pengeluaran: ${fmtRp(data.totalExpenses)}`,
+      `Laba bersih: ${fmtRp(data.netProfit)}`,
       `Transaksi: ${data.count}`,
       `Barang terjual: ${data.totalItems}`,
     ]
@@ -151,7 +153,7 @@ export function ReportsView() {
           <Skeleton className="h-40 rounded-xl" />
         </div>
       ) : data ? (
-        <Content data={data} range={range} periodLabel={periodLabel} marginPct={marginPct} />
+        <Content data={data} range={range} periodLabel={periodLabel} />
       ) : null}
     </div>
   )
@@ -161,12 +163,10 @@ function Content({
   data,
   range,
   periodLabel,
-  marginPct,
 }: {
   data: ReportsData
   range: RangeKey
   periodLabel: string
-  marginPct: string
 }) {
   const avg = data.count > 0 ? Math.round(data.totalRevenue / data.count) : 0
   const trend = trendLabels(data.trend, range)
@@ -195,14 +195,20 @@ function Content({
         <p className="mt-3 text-[30px] font-bold leading-none tracking-tight text-ink">
           {fmtRp(data.totalRevenue)}
         </p>
-        <div className="mt-3 flex items-center gap-6 border-t border-hairline pt-3">
+        <div className="mt-3 grid grid-cols-3 gap-3 border-t border-hairline pt-3">
           <div>
-            <p className="text-[11px] text-ink-faint">Laba</p>
-            <p className="mt-0.5 text-sm font-bold text-accent-green">{fmtRp(data.profit)}</p>
+            <p className="text-[11px] text-ink-faint">Laba Kotor</p>
+            <p className="mt-0.5 truncate text-sm font-bold text-accent-green">{fmtRp(data.profit)}</p>
           </div>
           <div>
-            <p className="text-[11px] text-ink-faint">Margin</p>
-            <p className="mt-0.5 text-sm font-bold text-ink">{marginPct}</p>
+            <p className="text-[11px] text-ink-faint">Pengeluaran</p>
+            <p className="mt-0.5 truncate text-sm font-bold text-destructive">{fmtRp(data.totalExpenses)}</p>
+          </div>
+          <div>
+            <p className="text-[11px] text-ink-faint">Laba Bersih</p>
+            <p className={cn("mt-0.5 truncate text-sm font-bold", data.netProfit < 0 ? "text-destructive" : "text-ink")}>
+              {fmtRp(data.netProfit)}
+            </p>
           </div>
         </div>
       </div>

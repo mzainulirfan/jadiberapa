@@ -22,6 +22,7 @@ import {
   ChevronRight,
   LogOut,
   Wallet,
+  Dollar,
 } from "@/components/ui/icons"
 
 const APP_VERSION = "Saberaha v1.0.0"
@@ -35,6 +36,7 @@ const groups: {
     items: [
       { href: "/customers", label: "Pembeli", desc: "Daftar & kelola pembeli", icon: UserIcon },
       { href: "/debts", label: "Utang", desc: "Kasbon & pelunasan pembeli", icon: Wallet },
+      { href: "/expenses", label: "Pengeluaran", desc: "Biaya operasional & laba bersih", icon: Dollar },
       { href: "/categories", label: "Kategori", desc: "Kelola kategori barang", icon: Tag },
       { href: "/reports", label: "Laporan", desc: "Laporan penjualan", icon: BarChart },
     ],
