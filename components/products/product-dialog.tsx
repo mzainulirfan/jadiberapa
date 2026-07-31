@@ -343,10 +343,17 @@ export function ProductDialog({
                   </span>
                 </div>
               )}
-              <div>
-                <label htmlFor="stock" className="text-xs text-ink-muted mb-1 block">Stok</label>
-                <Input id="stock" name="stock" type="number" inputMode="numeric" min="0" placeholder="0" defaultValue={product?.stock ?? ""} />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="stock" className="text-xs text-ink-muted mb-1 block">Stok</label>
+                  <Input id="stock" name="stock" type="number" inputMode="numeric" min="0" placeholder="0" defaultValue={product?.stock ?? ""} />
+                </div>
+                <div>
+                  <label htmlFor="min_stock" className="text-xs text-ink-muted mb-1 block">Stok Minimum</label>
+                  <Input id="min_stock" name="min_stock" type="number" inputMode="numeric" min="0" placeholder="5" defaultValue={product?.min_stock ?? 5} />
+                </div>
               </div>
+              <p className="text-[11px] text-ink-faint">Peringatan “stok menipis” muncul saat stok ≤ stok minimum.</p>
             </div>
 
             <div className="rounded-xl bg-canvas-soft p-3 space-y-3">

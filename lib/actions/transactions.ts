@@ -71,6 +71,16 @@ export async function createTransaction(
     await supabase.rpc("decrement_stock", { pid: item.product_id, qty: item.qty })
   }
 
+  // Jejak audit stok keluar akibat penjualan (qty negatif = berkurang).
+  await supabase.from("stock_movements").insert(
+    items.map((i) => ({
+      product_id: i.product_id,
+      type: "out" as const,
+      qty: -i.qty,
+      note: "Penjualan",
+    }))
+  )
+
   revalidatePath("/cashier")
   revalidatePath("/dashboard")
   revalidatePath("/reports")

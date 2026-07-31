@@ -269,14 +269,14 @@ export async function getProducts(params: {
   let query = supabase
     .from("products")
     .select(
-      "id, name, category_id, price_buy, price_sell, stock, sku, barcode, image_url, created_at, updated_at, categories(name)",
+      "id, name, category_id, price_buy, price_sell, stock, min_stock, sku, barcode, image_url, created_at, updated_at, categories(name)",
       withCount ? { count: "exact" } : undefined
     )
 
   const s = search?.trim()
   if (s) query = query.or(`name.ilike.%${s}%,sku.ilike.%${s}%,barcode.ilike.%${s}%`)
   if (categoryIds && categoryIds.length > 0) query = query.in("category_id", categoryIds)
-  if (lowStock) query = query.lte("stock", 5)
+  if (lowStock) query = query.eq("is_low_stock", true)
 
   switch (sort) {
     case "price-asc":
@@ -318,6 +318,27 @@ export async function getInventorySummary(): Promise<{
     stockValue: Number(row.stock_value) || 0,
     lowStock: Number(row.low_stock) || 0,
   }
+}
+
+export type BxStockMovement = {
+  id: string
+  type: "in" | "out" | "adjust"
+  qty: number
+  note: string | null
+  created_at: string
+}
+
+export async function getStockMovements(
+  productId: string,
+  limit = 20
+): Promise<BxStockMovement[]> {
+  const { data } = await supabase
+    .from("stock_movements")
+    .select("id, type, qty, note, created_at")
+    .eq("product_id", productId)
+    .order("created_at", { ascending: false })
+    .limit(limit)
+  return (data ?? []) as unknown as BxStockMovement[]
 }
 
 export type BxRecentTx = {

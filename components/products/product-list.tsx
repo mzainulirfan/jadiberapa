@@ -24,6 +24,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { ProductDialog } from "./product-dialog"
+import { StockAdjustDialog } from "./stock-adjust-dialog"
 import {
   getProducts,
   getCategories,
@@ -106,9 +107,9 @@ function printProductLabel(p: BxProduct) {
   setTimeout(() => iframe.remove(), 1000)
 }
 
-function StockBadge({ stock }: { stock: number }) {
+function StockBadge({ stock, min = 5 }: { stock: number; min?: number }) {
   if (stock <= 0) return <Badge variant="destructive">Habis</Badge>
-  if (stock <= 5)
+  if (stock <= min)
     return (
       <Badge variant="outline" className="border-accent-orange/30 bg-accent-orange/10 text-accent-orange">
         Stok {stock}
@@ -148,6 +149,7 @@ export function ProductList() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<BxProduct | null>(null)
   const [selected, setSelected] = useState<BxProduct | null>(null)
+  const [stockTarget, setStockTarget] = useState<BxProduct | null>(null)
   const [catOpen, setCatOpen] = useState(false)
   const [sortOpen, setSortOpen] = useState(false)
   const [lowStock, setLowStock] = useState(false)
@@ -485,7 +487,7 @@ export function ProductList() {
                 <div className="flex flex-col gap-1 px-2.5 pb-1">
                   <p className="text-sm font-medium text-ink line-clamp-2 min-h-10">{p.name}</p>
                   <div className="flex items-center gap-1 flex-wrap">
-                    <StockBadge stock={p.stock} />
+                    <StockBadge stock={p.stock} min={p.min_stock} />
                     {p.categories?.name && (
                       <span className="text-[11px] text-ink-faint truncate">{p.categories.name}</span>
                     )}
@@ -532,7 +534,7 @@ export function ProductList() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <p className="text-sm font-medium text-ink truncate">{p.name}</p>
-                    <StockBadge stock={p.stock} />
+                    <StockBadge stock={p.stock} min={p.min_stock} />
                   </div>
                   <p className="text-xs text-ink-faint truncate">
                     {p.categories?.name ? `${p.categories.name} · ` : ""}
@@ -601,7 +603,7 @@ export function ProductList() {
                 <div>
                   <h2 className="text-lg font-bold text-ink leading-snug">{selected.name}</h2>
                   <div className="flex items-center gap-1.5 mt-1.5">
-                    <StockBadge stock={selected.stock} />
+                    <StockBadge stock={selected.stock} min={selected.min_stock} />
                     {selected.categories?.name && (
                       <Badge variant="outline" className="rounded-full">
                         {selected.categories.name}
@@ -667,24 +669,37 @@ export function ProductList() {
                 )}
               </div>
 
-              <div className="flex shrink-0 gap-2 border-t border-hairline p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-                <ProductDialog product={selected} onSaved={reload}>
-                  <Button variant="outline" className="flex-1 rounded-full gap-1.5">
-                    <Pencil className="size-4" />
-                    Edit
-                  </Button>
-                </ProductDialog>
+              <div className="flex shrink-0 flex-col gap-2 border-t border-hairline p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
                 <Button
-                  variant="destructive"
-                  className="flex-1 rounded-full gap-1.5"
+                  variant="outline"
+                  className="w-full rounded-full gap-1.5"
                   onClick={() => {
-                    setDeleteTarget(selected)
+                    setStockTarget(selected)
                     setSelected(null)
                   }}
                 >
-                  <Trash className="size-4" />
-                  Hapus
+                  <Package className="size-4" />
+                  Kelola Stok
                 </Button>
+                <div className="flex gap-2">
+                  <ProductDialog product={selected} onSaved={reload}>
+                    <Button variant="outline" className="flex-1 rounded-full gap-1.5">
+                      <Pencil className="size-4" />
+                      Edit
+                    </Button>
+                  </ProductDialog>
+                  <Button
+                    variant="destructive"
+                    className="flex-1 rounded-full gap-1.5"
+                    onClick={() => {
+                      setDeleteTarget(selected)
+                      setSelected(null)
+                    }}
+                  >
+                    <Trash className="size-4" />
+                    Hapus
+                  </Button>
+                </div>
               </div>
             </div>
           )}
@@ -717,6 +732,14 @@ export function ProductList() {
         open={scanOpen}
         onOpenChange={setScanOpen}
         onDetect={handleScan}
+      />
+      <StockAdjustDialog
+        product={stockTarget}
+        open={stockTarget !== null}
+        onOpenChange={(v) => {
+          if (!v) setStockTarget(null)
+        }}
+        onSaved={reload}
       />
       <ProductDialog
         open={addBarcode !== null}

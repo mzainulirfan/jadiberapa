@@ -96,6 +96,7 @@ export async function createProduct(formData: FormData) {
     price_buy: Number(raw.price_buy) || 0,
     price_sell: Number(raw.price_sell) || 0,
     stock: Number(raw.stock) || 0,
+    min_stock: Number(raw.min_stock) || 0,
     sku: raw.sku || null,
     barcode: raw.barcode || null,
     image_url: raw.image_url || null,
@@ -116,6 +117,7 @@ export async function updateProduct(id: string, formData: FormData) {
     price_buy: Number(raw.price_buy) || 0,
     price_sell: Number(raw.price_sell) || 0,
     stock: Number(raw.stock) || 0,
+    min_stock: Number(raw.min_stock) || 0,
     sku: raw.sku || null,
     barcode: raw.barcode || null,
     image_url: raw.image_url || null,
@@ -132,6 +134,71 @@ export async function deleteProduct(id: string) {
   const { error } = await supabase.from("products").delete().eq("id", id)
   if (error) return { error: error.message }
   revalidatePath("/products")
+  return { error: null }
+}
+
+// Stok masuk (restock/pembelian): tambah stok, opsional perbarui harga beli
+// (harga beli terakhir), lalu catat jejak audit pergerakan stok.
+export async function addStock(
+  productId: string,
+  qty: number,
+  priceBuy?: number,
+  note?: string
+) {
+  const supabase = await createClient()
+  const q = Math.round(qty)
+  if (!Number.isFinite(q) || q <= 0) return { error: "Jumlah stok masuk tidak valid" }
+
+  const { error: incErr } = await supabase.rpc("increment_stock", { pid: productId, qty: q })
+  if (incErr) return { error: incErr.message }
+
+  if (priceBuy != null && Number.isFinite(priceBuy) && priceBuy >= 0) {
+    await supabase
+      .from("products")
+      .update({ price_buy: Math.round(priceBuy), updated_at: new Date().toISOString() })
+      .eq("id", productId)
+  }
+
+  await supabase
+    .from("stock_movements")
+    .insert({ product_id: productId, type: "in", qty: q, note: note || null })
+
+  revalidatePath("/products")
+  revalidatePath("/dashboard")
+  return { error: null }
+}
+
+// Stok opname: setel stok ke nilai hasil hitung ulang. Jejak audit menyimpan
+// selisih (delta) terhadap stok lama beserta alasan.
+export async function adjustStock(productId: string, newStock: number, note?: string) {
+  const supabase = await createClient()
+  const target = Math.round(newStock)
+  if (!Number.isFinite(target) || target < 0) return { error: "Stok hasil opname tidak valid" }
+
+  const { data: prod, error: readErr } = await supabase
+    .from("products")
+    .select("stock")
+    .eq("id", productId)
+    .single()
+  if (readErr) return { error: readErr.message }
+  if (!prod) return { error: "Barang tidak ditemukan" }
+
+  const prev = (prod.stock as number) ?? 0
+  const delta = target - prev
+  if (delta === 0) return { error: null }
+
+  const { error: updErr } = await supabase
+    .from("products")
+    .update({ stock: target, updated_at: new Date().toISOString() })
+    .eq("id", productId)
+  if (updErr) return { error: updErr.message }
+
+  await supabase
+    .from("stock_movements")
+    .insert({ product_id: productId, type: "adjust", qty: delta, note: note || null })
+
+  revalidatePath("/products")
+  revalidatePath("/dashboard")
   return { error: null }
 }
 
