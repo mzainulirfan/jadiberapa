@@ -27,12 +27,19 @@ function cartSig(items: CartItem[]) {
   return items.map((i) => `${i.product.id}:${i.qty}`).join("|")
 }
 
+// timestamptz bisa diserialkan beda format (offset/precision) antara yang kita
+// kirim & echo realtime, jadi bandingkan sebagai epoch ms, bukan string.
+function tsMs(s: string | null | undefined) {
+  const n = s ? Date.parse(s) : NaN
+  return Number.isNaN(n) ? 0 : n
+}
+
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = React.useState<CartItem[]>([])
   const hydratedRef = React.useRef(false)
-  // Signatur tulisan kita sendiri yang menunggu echo dari realtime, agar
-  // echo tulisan sendiri tidak menimpa state lokal yang lebih baru (qty "muter2").
-  const selfWritesRef = React.useRef<Set<string>>(new Set())
+  // updated_at (epoch ms) terakhir yang sudah kita terapkan/tulis. Echo realtime
+  // yang tidak lebih baru dari ini diabaikan agar qty tidak "muter2".
+  const lastTsRef = React.useRef(0)
 
   React.useEffect(() => {
     let mounted = true
@@ -41,16 +48,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     async function init() {
       const stored = await getCart()
       if (!mounted) return
-      if (stored) setItems(stored)
+      if (stored) {
+        setItems(stored.items)
+        lastTsRef.current = tsMs(stored.updatedAt)
+      }
       hydratedRef.current = true
-      unsubscribe = await watchCart((remote) => {
-        const sig = cartSig(remote)
-        // Abaikan echo dari tulisan kita sendiri (mencegah qty memantul).
-        if (selfWritesRef.current.has(sig)) {
-          selfWritesRef.current.delete(sig)
-          return
-        }
-        setItems((prev) => (cartSig(prev) === sig ? prev : remote))
+      unsubscribe = await watchCart((remoteItems, updatedAt) => {
+        const ts = tsMs(updatedAt)
+        // Abaikan echo yang tidak lebih baru dari state yang sudah kita
+        // terapkan/tulis (termasuk echo tulisan sendiri & echo lama/redeliver).
+        if (ts && ts <= lastTsRef.current) return
+        if (ts) lastTsRef.current = ts
+        const sig = cartSig(remoteItems)
+        setItems((prev) => (cartSig(prev) === sig ? prev : remoteItems))
       })
     }
 
@@ -60,7 +70,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (document.visibilityState !== "visible") return
       const stored = await getCart()
       if (!mounted || !stored) return
-      setItems((prev) => (cartSig(prev) === cartSig(stored) ? prev : stored))
+      const ts = tsMs(stored.updatedAt)
+      if (ts && ts <= lastTsRef.current) return
+      if (ts) lastTsRef.current = ts
+      setItems((prev) => (cartSig(prev) === cartSig(stored.items) ? prev : stored.items))
     }
     window.addEventListener("focus", refetch)
     document.addEventListener("visibilitychange", refetch)
@@ -76,8 +89,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     if (!hydratedRef.current) return
     const t = setTimeout(() => {
-      selfWritesRef.current.add(cartSig(items))
-      saveCart(items)
+      saveCart(items).then((ts) => {
+        const ms = tsMs(ts)
+        if (ms > lastTsRef.current) lastTsRef.current = ms
+      })
     }, 400)
     return () => clearTimeout(t)
   }, [items])
