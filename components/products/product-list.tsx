@@ -388,30 +388,14 @@ export function ProductList() {
           </PopoverContent>
         </Popover>
 
-        <div className="flex shrink-0 items-center gap-0.5 rounded-lg border border-hairline bg-canvas-soft p-0.5">
-          <button
-            type="button"
-            onClick={() => setView("grid")}
-            aria-label="Tampilan grid"
-            className={cn(
-              "rounded-md p-1.5 transition-colors",
-              view === "grid" ? "bg-canvas text-ink shadow-sm" : "text-ink-muted"
-            )}
-          >
-            <Grid className="size-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setView("list")}
-            aria-label="Tampilan list"
-            className={cn(
-              "rounded-md p-1.5 transition-colors",
-              view === "list" ? "bg-canvas text-ink shadow-sm" : "text-ink-muted"
-            )}
-          >
-            <List className="size-4" />
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setView((v) => (v === "grid" ? "list" : "grid"))}
+          aria-label={view === "grid" ? "Tampilan daftar" : "Tampilan grid"}
+          className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-hairline bg-canvas-soft text-ink-muted transition-colors active:bg-canvas"
+        >
+          {view === "grid" ? <List className="size-4" /> : <Grid className="size-4" />}
+        </button>
       </div>
 
       {(catIds.length > 0 || lowStock) && (

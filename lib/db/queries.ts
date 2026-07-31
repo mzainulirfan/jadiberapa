@@ -202,15 +202,17 @@ export async function getInventorySummary(): Promise<{
   stockValue: number
   lowStock: number
 }> {
-  const { data } = await supabase.from("products").select("stock, price_buy")
-  const rows = (data ?? []) as { stock: number; price_buy: number }[]
-  let stockValue = 0
-  let lowStock = 0
-  for (const r of rows) {
-    stockValue += (r.price_buy ?? 0) * (r.stock ?? 0)
-    if ((r.stock ?? 0) <= 5) lowStock += 1
+  const { data } = await supabase.rpc("get_inventory_summary")
+  const row = (data?.[0] ?? { count: 0, stock_value: 0, low_stock: 0 }) as {
+    count: number
+    stock_value: number
+    low_stock: number
   }
-  return { count: rows.length, stockValue, lowStock }
+  return {
+    count: Number(row.count) || 0,
+    stockValue: Number(row.stock_value) || 0,
+    lowStock: Number(row.low_stock) || 0,
+  }
 }
 
 export type BxRecentTx = {
