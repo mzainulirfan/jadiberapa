@@ -16,7 +16,8 @@ import {
 } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Search, Pencil, Trash, Plus, User, Phone, LocationPin, Whatsapp } from "@/components/ui/icons"
-import { getCustomers, createCustomer, updateCustomer, deleteCustomer } from "@/lib/actions/customers"
+import { createCustomer, updateCustomer, deleteCustomer } from "@/lib/actions/customers"
+import { getCustomers } from "@/lib/db/queries"
 
 type Customer = { id: string; name: string; phone: string | null; address: string | null }
 
@@ -94,13 +95,14 @@ export function CustomerList() {
 
   useEffect(() => {
     let active = true
+    // Tanpa jeda saat pertama buka (search kosong); beri debounce hanya saat mengetik.
     const t = setTimeout(async () => {
       const list = await getCustomers(search || undefined)
       if (active) {
         setCustomers(list)
         setLoading(false)
       }
-    }, 300)
+    }, search.trim() ? 250 : 0)
     return () => {
       active = false
       clearTimeout(t)
@@ -144,6 +146,7 @@ export function CustomerList() {
               <DialogTitle>{edit ? "Edit Pembeli" : "Tambah Pembeli"}</DialogTitle>
             </DialogHeader>
             <CustomerForm
+              key={edit?.id ?? "new"}
               customer={edit}
               onDone={() => {
                 setOpen(false)

@@ -3,14 +3,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 
-export async function getCustomers(search?: string) {
-  const supabase = await createClient()
-  let query = supabase.from("customers").select("*").order("name")
-  if (search) query = query.ilike("name", `%${search}%`)
-  const { data } = await query
-  return data ?? []
-}
-
 export async function createCustomer(formData: FormData) {
   const supabase = await createClient()
   const raw = Object.fromEntries(formData)
