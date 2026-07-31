@@ -33,13 +33,14 @@ import {
   deleteProduct,
   type ProductSort,
 } from "@/lib/actions/products"
-import { Search, Plus, Pencil, Trash, Check, ChevronDown, Grid, List, X, Package, Printer } from "@/components/ui/icons"
+import { Search, Plus, Pencil, Trash, Check, ChevronDown, Grid, List, X, Package, Printer, Barcode as BarcodeIcon } from "@/components/ui/icons"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { id as localeId } from "date-fns/locale"
 import type { BxProduct, BxCategory } from "./types"
 import { Barcode, barcodeSvgString } from "@/components/ui/barcode"
+import { BarcodeScanner } from "@/components/cashier/barcode-scanner"
 
 const PAGE_SIZE = 20
 
@@ -150,6 +151,8 @@ export function ProductList() {
   const [catOpen, setCatOpen] = useState(false)
   const [sortOpen, setSortOpen] = useState(false)
   const [lowStock, setLowStock] = useState(false)
+  const [scanOpen, setScanOpen] = useState(false)
+  const [addBarcode, setAddBarcode] = useState<string | null>(null)
   const [summary, setSummary] = useState<{ count: number; stockValue: number; lowStock: number } | null>(null)
 
   function toggleCat(id: string) {
@@ -243,6 +246,24 @@ export function ProductList() {
     toast.success("Barang dihapus")
   }
 
+  async function resolveCode(term: string): Promise<BxProduct | null> {
+    const { data } = await getProducts({ search: term, pageSize: PAGE_SIZE })
+    return (
+      data.find((p) => p.barcode === term || p.sku === term) ??
+      (data.length === 1 ? data[0] : null)
+    )
+  }
+
+  async function handleScan(code: string) {
+    const p = await resolveCode(code)
+    if (p) {
+      setSelected(p)
+    } else {
+      setAddBarcode(code)
+      toast.info("Barcode belum terdaftar")
+    }
+  }
+
   const hasMore = products.length < total
   const activeCats = categories.filter((c) => catIds.includes(c.id))
   const sortLabel = sortOptions.find((s) => s.id === sort)?.label ?? "Nama (A-Z)"
@@ -282,8 +303,16 @@ export function ProductList() {
             placeholder="Cari nama, SKU, atau barcode..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-8"
+            className="pl-8 pr-11"
           />
+          <button
+            type="button"
+            onClick={() => setScanOpen(true)}
+            title="Pindai barcode dengan kamera"
+            className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-ink-muted active:bg-canvas-soft"
+          >
+            <BarcodeIcon className="size-4" />
+          </button>
         </div>
         <ProductDialog product={null} onSaved={reload}>
           <Button className="rounded-full size-9 p-0">
@@ -679,6 +708,23 @@ export function ProductList() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <BarcodeScanner
+        open={scanOpen}
+        onOpenChange={setScanOpen}
+        onDetect={handleScan}
+      />
+      <ProductDialog
+        open={addBarcode !== null}
+        onOpenChange={(v) => {
+          if (!v) setAddBarcode(null)
+        }}
+        initialBarcode={addBarcode ?? undefined}
+        onSaved={() => {
+          setAddBarcode(null)
+          reload()
+        }}
+      />
     </div>
   )
 }

@@ -21,13 +21,18 @@ type CartContextValue = {
 
 const CartContext = React.createContext<CartContextValue | null>(null)
 
-function sameItems(a: CartItem[], b: CartItem[]) {
-  return JSON.stringify(a) === JSON.stringify(b)
+// Signatur kanonik keranjang: hanya id produk + qty, urutan-independen.
+// jsonb menyusun ulang urutan key, jadi JSON.stringify tidak andal untuk pembandingan.
+function cartSig(items: CartItem[]) {
+  return items.map((i) => `${i.product.id}:${i.qty}`).join("|")
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = React.useState<CartItem[]>([])
   const hydratedRef = React.useRef(false)
+  // Signatur tulisan kita sendiri yang menunggu echo dari realtime, agar
+  // echo tulisan sendiri tidak menimpa state lokal yang lebih baru (qty "muter2").
+  const selfWritesRef = React.useRef<Set<string>>(new Set())
 
   React.useEffect(() => {
     let mounted = true
@@ -39,7 +44,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (stored) setItems(stored)
       hydratedRef.current = true
       unsubscribe = await watchCart((remote) => {
-        setItems((prev) => (sameItems(prev, remote) ? prev : remote))
+        const sig = cartSig(remote)
+        // Abaikan echo dari tulisan kita sendiri (mencegah qty memantul).
+        if (selfWritesRef.current.has(sig)) {
+          selfWritesRef.current.delete(sig)
+          return
+        }
+        setItems((prev) => (cartSig(prev) === sig ? prev : remote))
       })
     }
 
@@ -49,7 +60,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (document.visibilityState !== "visible") return
       const stored = await getCart()
       if (!mounted || !stored) return
-      setItems((prev) => (sameItems(prev, stored) ? prev : stored))
+      setItems((prev) => (cartSig(prev) === cartSig(stored) ? prev : stored))
     }
     window.addEventListener("focus", refetch)
     document.addEventListener("visibilitychange", refetch)
@@ -64,7 +75,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     if (!hydratedRef.current) return
-    const t = setTimeout(() => saveCart(items), 400)
+    const t = setTimeout(() => {
+      selfWritesRef.current.add(cartSig(items))
+      saveCart(items)
+    }, 400)
     return () => clearTimeout(t)
   }, [items])
 
