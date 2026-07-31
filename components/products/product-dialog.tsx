@@ -11,10 +11,10 @@ import {
 } from "@/components/ui/drawer"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { createProduct, updateProduct, createCategory, uploadProductImage } from "@/lib/actions/products"
-import { getCategories, invalidateCategories } from "@/lib/db/queries"
+import { createProduct, updateProduct, uploadProductImage } from "@/lib/actions/products"
+import { getCategories } from "@/lib/db/queries"
 import type { BxCategory, BxProduct } from "./types"
-import { Trash, X, Plus, Camera } from "@/components/ui/icons"
+import { Trash, X, Camera } from "@/components/ui/icons"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
 import { BarcodeScanner } from "@/components/cashier/barcode-scanner"
 import { cn } from "@/lib/utils"
@@ -49,10 +49,9 @@ export function ProductDialog({
   const [barcode, setBarcode] = useState(product?.barcode ?? "")
   const [scanOpen, setScanOpen] = useState(false)
   const [categories, setCategories] = useState<BxCategory[]>([])
-  const [newCategory, setNewCategory] = useState("")
+  const [categoryId, setCategoryId] = useState(product?.category_id ?? "")
   const [imageUrl, setImageUrl] = useState("")
   const [uploading, setUploading] = useState(false)
-  const [addingCategory, setAddingCategory] = useState(false)
   const [priceBuy, setPriceBuy] = useState(product?.price_buy ? String(product.price_buy) : "")
   const [priceSell, setPriceSell] = useState(product?.price_sell ? String(product.price_sell) : "")
   const action = product ? updateProduct.bind(null, product.id) : createProduct
@@ -65,15 +64,6 @@ export function ProductDialog({
   const [state, formAction, pending] = useActionState(
     async (_prev: unknown, formData: FormData) => {
       submittedRef.current = true
-      if (newCategory) {
-        const { data, error } = await createCategory(newCategory)
-        if (data) {
-          formData.set("category_id", data.id)
-          invalidateCategories()
-          getCategories().then(setCategories)
-        }
-        if (error) return { error }
-      }
       return action(formData)
     },
     { error: null }
@@ -124,8 +114,7 @@ export function ProductDialog({
         setOpen(v)
         if (v) {
           setImageUrl(product?.image_url ?? "")
-          setAddingCategory(false)
-          setNewCategory("")
+          setCategoryId(product?.category_id ?? "")
           setPriceBuy(product?.price_buy ? String(product.price_buy) : "")
           setPriceSell(product?.price_sell ? String(product.price_sell) : "")
         }
@@ -191,49 +180,18 @@ export function ProductDialog({
               </div>
               <div>
                 <label htmlFor="category_id" className="text-xs text-ink-muted mb-1 block">Kategori</label>
-                {addingCategory ? (
-                  <div className="flex gap-2">
-                    <Input
-                      autoFocus
-                      placeholder="Nama kategori baru"
-                      value={newCategory}
-                      onChange={(e) => setNewCategory(e.target.value)}
-                      className="flex-1"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAddingCategory(false)
-                        setNewCategory("")
-                      }}
-                      className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-hairline text-ink-muted active:bg-canvas"
-                      aria-label="Batal kategori baru"
-                    >
-                      <X className="size-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex gap-2">
-                    <select
-                      id="category_id"
-                      name="category_id"
-                      defaultValue={product?.category_id ?? ""}
-                      className="h-8 flex-1 rounded-lg border border-hairline bg-canvas px-2.5 text-sm text-ink outline-none focus:border-primary"
-                    >
-                      <option value="">Tanpa kategori</option>
-                      {categories.map((c) => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={() => setAddingCategory(true)}
-                      className="flex h-8 shrink-0 items-center gap-1 rounded-lg border border-hairline px-3 text-xs font-medium text-ink active:bg-canvas"
-                    >
-                      <Plus className="size-3.5" /> Baru
-                    </button>
-                  </div>
-                )}
+                <select
+                  id="category_id"
+                  name="category_id"
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
+                  className="h-8 w-full rounded-lg border border-hairline bg-canvas px-2.5 text-sm text-ink outline-none focus:border-primary"
+                >
+                  <option value="">Tanpa kategori</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
