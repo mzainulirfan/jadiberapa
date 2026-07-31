@@ -80,6 +80,42 @@ export function invalidateStoreProfile() {
   storeProfileFetchedAt = 0
 }
 
+const SETTINGS_TTL_MS = 60_000
+let settingsCache: Record<string, string> | null = null
+let settingsFetchedAt = 0
+let settingsPromise: Promise<Record<string, string>> | null = null
+
+// Seluruh settings (key/value) untuk form pengaturan, checkout, & detail transaksi:
+// query Supabase langsung (tanpa server action) + cache TTL karena nyaris statis.
+export function getSettings(): Promise<Record<string, string>> {
+  const now = Date.now()
+  if (settingsCache && now - settingsFetchedAt < SETTINGS_TTL_MS) {
+    return Promise.resolve(settingsCache)
+  }
+  if (!settingsPromise) {
+    settingsPromise = (async () => {
+      try {
+        const { data } = await supabase.from("settings").select("key, value")
+        const map: Record<string, string> = {}
+        for (const row of (data ?? []) as { key: string; value: string }[]) {
+          map[row.key] = row.value
+        }
+        settingsCache = map
+        settingsFetchedAt = Date.now()
+        return settingsCache
+      } finally {
+        settingsPromise = null
+      }
+    })()
+  }
+  return settingsPromise
+}
+
+export function invalidateSettings() {
+  settingsCache = null
+  settingsFetchedAt = 0
+}
+
 export async function getCategoryProductCounts(): Promise<Record<string, number>> {
   const { data } = await supabase.from("products").select("category_id")
   const counts: Record<string, number> = {}

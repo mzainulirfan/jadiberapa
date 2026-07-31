@@ -6,8 +6,8 @@ import { QRCodeSVG } from "qrcode.react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
-import { getSettings, updateSetting } from "@/lib/actions/settings"
-import { invalidateStoreProfile } from "@/lib/db/queries"
+import { updateSetting } from "@/lib/actions/settings"
+import { getSettings, invalidateSettings, invalidateStoreProfile } from "@/lib/db/queries"
 import { Store, LocationPin, Phone, Qr, Wallet } from "@/components/ui/icons"
 
 type FieldDef = {
@@ -54,7 +54,8 @@ export function SettingsForm() {
     }
     savedRef.current = { ...savedRef.current, [key]: value }
     setSettings((prev) => ({ ...prev, [key]: value }))
-    // Segarkan cache profil toko agar kartu di halaman More ikut ter-update.
+    // Segarkan cache settings (& profil toko) agar pembacaan berikutnya tidak basi.
+    invalidateSettings()
     if (key === "store_name" || key === "store_phone") invalidateStoreProfile()
     toast.success("Perubahan tersimpan")
   }

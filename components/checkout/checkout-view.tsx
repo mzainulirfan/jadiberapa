@@ -14,9 +14,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { createTransaction } from "@/lib/actions/transactions"
-import { getSettings } from "@/lib/actions/settings"
 import { createCustomer } from "@/lib/actions/customers"
-import { getCustomers, type BxCustomer } from "@/lib/db/queries"
+import { getCustomers, getSettings, type BxCustomer } from "@/lib/db/queries"
 import { useCart } from "@/components/cart/cart-provider"
 import {
   ChevronRight,
