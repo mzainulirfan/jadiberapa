@@ -27,6 +27,8 @@ import {
 } from "@/lib/actions/products"
 import { Search, Plus, Pencil, Trash, Check, ChevronDown, Grid, List, X, Package } from "@/components/ui/icons"
 import { cn } from "@/lib/utils"
+import { format } from "date-fns"
+import { id as localeId } from "date-fns/locale"
 import type { BxProduct, BxCategory } from "./types"
 
 const PAGE_SIZE = 20
@@ -80,6 +82,7 @@ export function ProductList() {
   const [total, setTotal] = useState(0)
   const [loadingMore, setLoadingMore] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<BxProduct | null>(null)
+  const [selected, setSelected] = useState<BxProduct | null>(null)
   const [catOpen, setCatOpen] = useState(false)
   const [sortOpen, setSortOpen] = useState(false)
 
@@ -289,42 +292,48 @@ export function ProductList() {
           <p className="text-xs mt-1">Tambah barang pertama</p>
         </div>
       ) : view === "grid" ? (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           {products.map((p) => (
             <div
               key={p.id}
               className="flex flex-col overflow-hidden rounded-xl border border-hairline bg-canvas"
             >
-              <ProductThumb p={p} className="aspect-[4/3] w-full rounded-none" />
-              <div className="flex flex-col gap-1 p-2.5">
-                <p className="text-sm font-medium text-ink truncate">{p.name}</p>
-                <div className="flex items-center gap-1 flex-wrap">
-                  <StockBadge stock={p.stock} />
-                  {p.categories?.name && (
-                    <span className="text-[11px] text-ink-faint truncate">{p.categories.name}</span>
+              <button
+                type="button"
+                onClick={() => setSelected(p)}
+                className="flex flex-col gap-1 text-left"
+              >
+                <ProductThumb p={p} className="aspect-[4/3] w-full rounded-none" />
+                <div className="flex flex-col gap-1 px-2.5 pb-1">
+                  <p className="text-sm font-medium text-ink line-clamp-2 min-h-10">{p.name}</p>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <StockBadge stock={p.stock} />
+                    {p.categories?.name && (
+                      <span className="text-[11px] text-ink-faint truncate">{p.categories.name}</span>
+                    )}
+                  </div>
+                  <p className="text-sm font-semibold text-primary">
+                    Rp{p.price_sell.toLocaleString()}
+                  </p>
+                  {p.price_buy > 0 && (
+                    <p className="text-[11px] text-ink-faint">
+                      Margin: Rp{(p.price_sell - p.price_buy).toLocaleString()}
+                    </p>
                   )}
                 </div>
-                <p className="text-sm font-semibold text-primary">
-                  Rp{p.price_sell.toLocaleString()}
-                </p>
-                {p.price_buy > 0 && (
-                  <p className="text-[11px] text-ink-faint">
-                    Margin: Rp{(p.price_sell - p.price_buy).toLocaleString()}
-                  </p>
-                )}
-                <div className="flex items-center justify-end gap-1 mt-0.5">
-                  <ProductDialog product={p}>
-                    <button className="rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft">
-                      <Pencil className="size-4" />
-                    </button>
-                  </ProductDialog>
-                  <button
-                    onClick={() => setDeleteTarget(p)}
-                    className="rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft"
-                  >
-                    <Trash className="size-4" />
+              </button>
+              <div className="flex items-center justify-end gap-1 px-2.5 pb-2">
+                <ProductDialog product={p}>
+                  <button className="rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft">
+                    <Pencil className="size-4" />
                   </button>
-                </div>
+                </ProductDialog>
+                <button
+                  onClick={() => setDeleteTarget(p)}
+                  className="rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft"
+                >
+                  <Trash className="size-4" />
+                </button>
               </div>
             </div>
           ))}
@@ -375,6 +384,100 @@ export function ProductList() {
           {loadingMore ? "Memuat..." : `Muat lebih (${total - products.length})`}
         </Button>
       )}
+
+      <Dialog
+        open={selected !== null}
+        onOpenChange={(o) => !o && setSelected(null)}
+      >
+        <DialogContent className="p-0 overflow-hidden" showCloseButton={true}>
+          {selected && (
+            <>
+              <div className="aspect-[16/9] w-full overflow-hidden bg-canvas-soft">
+                {selected.image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={selected.image_url}
+                    alt={selected.name}
+                    className="size-full object-cover"
+                  />
+                ) : (
+                  <div className="flex size-full items-center justify-center">
+                    <Package className="size-12 text-ink-faint" />
+                  </div>
+                )}
+              </div>
+              <div className="px-4 pb-4 space-y-3">
+                <div>
+                  <h2 className="text-lg font-bold text-ink leading-snug">{selected.name}</h2>
+                  <div className="flex items-center gap-1.5 mt-1.5">
+                    <StockBadge stock={selected.stock} />
+                    {selected.categories?.name && (
+                      <Badge variant="outline" className="rounded-full">
+                        {selected.categories.name}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                <p className="text-2xl font-bold text-primary">
+                  Rp{selected.price_sell.toLocaleString()}
+                </p>
+
+                <div className="rounded-xl bg-canvas-soft p-3 space-y-1.5 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-ink-muted">SKU</span>
+                    <span className="text-ink">{selected.sku || "-"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-ink-muted">Barcode</span>
+                    <span className="text-ink">{selected.barcode || "-"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-ink-muted">Harga Beli</span>
+                    <span className="text-ink">
+                      Rp{selected.price_buy.toLocaleString()}
+                    </span>
+                  </div>
+                  {selected.price_buy > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-ink-muted">Margin</span>
+                      <span className="text-ink">
+                        Rp{(selected.price_sell - selected.price_buy).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-ink-muted">Ditambahkan</span>
+                    <span className="text-ink">
+                      {format(new Date(selected.created_at), "dd MMM yyyy", { locale: localeId })}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <ProductDialog product={selected}>
+                    <Button variant="outline" className="flex-1 rounded-full gap-1.5">
+                      <Pencil className="size-4" />
+                      Edit
+                    </Button>
+                  </ProductDialog>
+                  <Button
+                    variant="destructive"
+                    className="flex-1 rounded-full gap-1.5"
+                    onClick={() => {
+                      setDeleteTarget(selected)
+                      setSelected(null)
+                    }}
+                  >
+                    <Trash className="size-4" />
+                    Hapus
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={deleteTarget !== null}
