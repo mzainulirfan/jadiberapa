@@ -188,6 +188,7 @@ export function ProductList() {
         lowStock,
         page: 0,
         pageSize: PAGE_SIZE,
+        withCount: true,
       })
       if (!cancelled) {
         setProducts(data)
@@ -220,7 +221,7 @@ export function ProductList() {
   async function reload() {
     setLoading(true)
     const [{ data, total: count }, cats] = await Promise.all([
-      getProducts({ search, categoryIds: catIds, sort, lowStock, page: 0, pageSize: PAGE_SIZE }),
+      getProducts({ search, categoryIds: catIds, sort, lowStock, page: 0, pageSize: PAGE_SIZE, withCount: true }),
       getCategories(),
     ])
     setProducts(data)

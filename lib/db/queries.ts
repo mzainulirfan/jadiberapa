@@ -155,14 +155,17 @@ export async function getProducts(params: {
   page?: number
   pageSize?: number
   lowStock?: boolean
+  withCount?: boolean
 }): Promise<{ data: BxProduct[]; total: number }> {
-  const { search, categoryIds, limit, sort = "name-asc", page = 0, pageSize = 20, lowStock } = params
+  const { search, categoryIds, limit, sort = "name-asc", page = 0, pageSize = 20, lowStock, withCount = false } = params
 
+  // count: "exact" memaksa Postgres menghitung seluruh baris yang cocok tiap query.
+  // Hanya diminta bila pemanggil butuh total (paginasi halaman Produk); kasir/cart tidak.
   let query = supabase
     .from("products")
     .select(
       "id, name, category_id, price_buy, price_sell, stock, sku, barcode, image_url, created_at, updated_at, categories(name)",
-      { count: "exact" }
+      withCount ? { count: "exact" } : undefined
     )
 
   const s = search?.trim()
