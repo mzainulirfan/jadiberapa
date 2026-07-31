@@ -30,6 +30,10 @@ const methodLabel: Record<string, string> = {
   dana: "DANA",
 }
 
+function buyerName(tx: Transaction) {
+  return (tx as Transaction & { customers?: { name?: string } | null }).customers?.name
+}
+
 const fmtRp = (n: number) => `Rp${n.toLocaleString("id-ID")}`
 
 function formatDate(d: Date) {
@@ -71,6 +75,7 @@ function buildStrukHtml(tx: Transaction, settings: Record<string, string>) {
   lines.push(sep)
   lines.push(`No  : ${tx.id.slice(0, 8).toUpperCase()}`)
   lines.push(`Tgl : ${dateStr} ${timeStr}`)
+  if (buyerName(tx)) lines.push(`Pembeli: ${buyerName(tx)}`)
   lines.push(sep)
   for (const item of tx.transaction_items as TxItem[]) {
     lines.push(`${item.qty} x ${item.products?.name ?? "Produk dihapus"}`)
@@ -136,6 +141,7 @@ function StrukSheet({
 
               <p className="text-xs text-ink-muted">{formatDate(new Date(tx.created_at))}</p>
               <p className="text-xs text-ink-muted mb-1">No. {tx.id.slice(0, 8).toUpperCase()}</p>
+              {buyerName(tx) && <p className="text-xs text-ink-muted">Pembeli: {buyerName(tx)}</p>}
 
               <div className="my-3 border-t border-dashed border-hairline" />
 
@@ -230,7 +236,7 @@ ${settings.store_address || ""}${settings.store_phone ? `\n${settings.store_phon
 NOTA PENJUALAN
 ${formatDate(new Date(tx.created_at))}
 No. ${tx.id.slice(0, 8).toUpperCase()}
-----------------
+${buyerName(tx) ? `Pembeli: ${buyerName(tx)}\n` : ""}----------------
 ${(tx.transaction_items as TxItem[])
   .map((item) => `${item.qty} x ${item.products?.name ?? "Produk dihapus"} = ${fmtRp(item.subtotal)}`)
   .join("\n")}
@@ -302,6 +308,12 @@ Terima kasih`
                     {tx.id.slice(0, 8).toUpperCase()}
                   </span>
                 </div>
+                {buyerName(tx) && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-ink-muted">Pembeli</span>
+                    <span className="font-medium text-ink">{buyerName(tx)}</span>
+                  </div>
+                )}
               </div>
             </div>
 

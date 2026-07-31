@@ -36,6 +36,21 @@ export function invalidateCategories() {
   categoriesFetchedAt = 0
 }
 
+export type BxCustomer = {
+  id: string
+  name: string
+  phone: string | null
+  address: string | null
+}
+
+export async function getCustomers(search?: string): Promise<BxCustomer[]> {
+  let query = supabase.from("customers").select("id, name, phone, address").order("name")
+  const s = search?.trim()
+  if (s) query = query.ilike("name", `%${s}%`)
+  const { data } = await query
+  return (data ?? []) as unknown as BxCustomer[]
+}
+
 export async function getProducts(params: {
   search?: string
   categoryIds?: string[]

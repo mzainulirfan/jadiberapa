@@ -5,14 +5,15 @@ import { revalidatePath } from "next/cache"
 
 export async function createTransaction(
   items: { product_id: string; qty: number; price_sell: number; subtotal: number }[],
-  payment_method: string = "cash"
+  payment_method: string = "cash",
+  customer_id?: string | null
 ) {
   const supabase = await createClient()
   const total = items.reduce((sum, i) => sum + i.subtotal, 0)
 
   const { data: transaction, error: txError } = await supabase
     .from("transactions")
-    .insert({ total, payment_method })
+    .insert({ total, payment_method, customer_id: customer_id || null })
     .select()
     .single()
 
@@ -50,7 +51,7 @@ export async function getTransaction(id: string) {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from("transactions")
-    .select("*, transaction_items(*, products(name))")
+    .select("*, transaction_items(*, products(name)), customers(name)")
     .eq("id", id)
     .single()
 
