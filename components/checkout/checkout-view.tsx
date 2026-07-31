@@ -10,17 +10,9 @@ import { Input } from "@/components/ui/input"
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerClose,
-} from "@/components/ui/drawer"
 import { createTransaction } from "@/lib/actions/transactions"
 import { getSettings } from "@/lib/actions/settings"
 import { createCustomer } from "@/lib/actions/customers"
@@ -34,7 +26,6 @@ import {
   Wallet,
   Check,
   Copy,
-  X,
   User,
   Search,
   Plus,
@@ -49,6 +40,8 @@ const methods: { id: PaymentMethod; label: string; icon: typeof Dollar }[] = [
   { id: "dana", label: "DANA", icon: Wallet },
 ]
 
+const quickAmounts = [10000, 20000, 50000, 100000, 200000]
+
 export function CheckoutView() {
   const { items, clearCart, total, count } = useCart()
   const router = useRouter()
@@ -59,10 +52,9 @@ export function CheckoutView() {
   const [paid, setPaid] = useState("")
   const [payConfig, setPayConfig] = useState<Record<string, string>>({})
   const [copied, setCopied] = useState(false)
-  const [payModalOpen, setPayModalOpen] = useState(false)
 
   const [customer, setCustomer] = useState<{ id: string | null; name: string } | null>(null)
-  const [custSheetOpen, setCustSheetOpen] = useState(false)
+  const [custOpen, setCustOpen] = useState(false)
   const [custSearch, setCustSearch] = useState("")
   const [customers, setCustomers] = useState<BxCustomer[]>([])
   const [newName, setNewName] = useState("")
@@ -74,13 +66,22 @@ export function CheckoutView() {
   }, [])
 
   useEffect(() => {
-    if (custSheetOpen) getCustomers().then(setCustomers)
-  }, [custSheetOpen])
+    if (custOpen) getCustomers().then(setCustomers)
+  }, [custOpen])
 
   const paidAmount = Number(paid.replace(/[^\d]/g, "")) || 0
   const change = paidAmount - total
   const qrisPayload = payConfig.qris_payload ?? ""
   const danaNumber = payConfig.dana_number ?? ""
+
+  const quickOptions = useMemo(
+    () =>
+      [total, ...quickAmounts]
+        .filter((n, i, arr) => arr.indexOf(n) === i)
+        .filter((n) => n >= total)
+        .slice(0, 4),
+    [total]
+  )
 
   const filteredCustomers = useMemo(() => {
     const s = custSearch.trim().toLowerCase()
@@ -114,7 +115,7 @@ export function CheckoutView() {
     setCustomer({ id, name: newName.trim() })
     setNewName("")
     setNewPhone("")
-    setCustSheetOpen(false)
+    setCustOpen(false)
     getCustomers().then(setCustomers)
   }
 
@@ -185,7 +186,7 @@ export function CheckoutView() {
           <div className="p-3 pt-0">
             <button
               type="button"
-              onClick={() => setCustSheetOpen(true)}
+              onClick={() => setCustOpen(true)}
               className="flex w-full items-center gap-3 rounded-xl border border-hairline bg-canvas-soft p-3 text-left"
             >
               <span className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -242,6 +243,7 @@ export function CheckoutView() {
                       value={paid}
                       onChange={(e) => handlePaidChange(e.target.value)}
                       className="text-base font-semibold"
+                      autoFocus
                     />
                   </div>
                   <Button
@@ -251,6 +253,23 @@ export function CheckoutView() {
                   >
                     Uang Pas
                   </Button>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {quickOptions.map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setPaid(n.toLocaleString("id-ID"))}
+                      className={cn(
+                        "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                        paidAmount === n
+                          ? "border-primary bg-primary/10 text-ink"
+                          : "border-hairline bg-canvas-soft text-ink-muted"
+                      )}
+                    >
+                      {n === total ? "Uang Pas" : `Rp${n.toLocaleString("id-ID")}`}
+                    </button>
+                  ))}
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-ink-muted">{change < 0 ? "Kurang" : "Kembalian"}</span>
@@ -268,22 +287,14 @@ export function CheckoutView() {
 
             {method === "qris" &&
               (qrisPayload ? (
-                <button
-                  type="button"
-                  onClick={() => setPayModalOpen(true)}
-                  className="flex w-full items-center justify-between rounded-xl border border-hairline bg-canvas-soft p-3 text-left"
-                >
-                  <span className="flex items-center gap-2">
-                    <Qr className="size-4 text-primary" />
-                    <span>
-                      <span className="block text-sm font-medium text-ink">QRIS</span>
-                      <span className="block text-xs text-ink-muted">
-                        Ketuk untuk menampilkan kode QR
-                      </span>
-                    </span>
-                  </span>
-                  <ChevronRight className="size-4 text-ink-faint" />
-                </button>
+                <div className="flex flex-col items-center gap-3 rounded-xl border border-hairline bg-canvas-soft p-4">
+                  <div className="rounded-2xl bg-white p-3">
+                    <QRCodeSVG value={qrisPayload} size={200} marginSize={0} />
+                  </div>
+                  <p className="text-xs text-ink-muted text-center">
+                    Minta pelanggan scan QRIS ini untuk membayar
+                  </p>
+                </div>
               ) : (
                 <p className="text-sm text-ink-muted bg-canvas-soft border border-hairline rounded-xl p-3 text-center">
                   Kode QRIS belum diatur. Tambahkan di{" "}
@@ -296,20 +307,16 @@ export function CheckoutView() {
 
             {method === "dana" &&
               (danaNumber ? (
-                <button
-                  type="button"
-                  onClick={() => setPayModalOpen(true)}
-                  className="flex w-full items-center justify-between rounded-xl border border-hairline bg-canvas-soft p-3 text-left"
-                >
-                  <span className="flex items-center gap-2">
-                    <Wallet className="size-4 text-primary" />
-                    <span>
-                      <span className="block text-sm font-medium text-ink">DANA</span>
-                      <span className="block text-xs text-ink-muted">{danaNumber}</span>
-                    </span>
-                  </span>
-                  <ChevronRight className="size-4 text-ink-faint" />
-                </button>
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-hairline bg-canvas-soft p-4">
+                  <div>
+                    <p className="text-xs text-ink-muted mb-0.5">Nomor DANA</p>
+                    <p className="text-lg font-semibold text-ink">{danaNumber}</p>
+                  </div>
+                  <Button variant="outline" className="rounded-full gap-1.5" onClick={handleCopy}>
+                    {copied ? <Check className="size-4 text-primary" /> : <Copy className="size-4" />}
+                    {copied ? "Tersalin" : "Salin"}
+                  </Button>
+                </div>
               ) : (
                 <p className="text-sm text-ink-muted bg-canvas-soft border border-hairline rounded-xl p-3 text-center">
                   Nomor DANA belum diatur. Tambahkan di{" "}
@@ -340,15 +347,12 @@ export function CheckoutView() {
         </Button>
       </div>
 
-      <Drawer open={custSheetOpen} onOpenChange={setCustSheetOpen} showSwipeHandle>
-        <DrawerContent className="rounded-t-xl">
-          <DrawerHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
-            <DrawerTitle className="text-lg font-bold">Pilih Pembeli</DrawerTitle>
-            <DrawerClose className="rounded-full p-1.5 -mr-1.5 text-ink-muted active:bg-canvas-soft">
-              <X className="size-4" />
-            </DrawerClose>
-          </DrawerHeader>
-          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+      <Dialog open={custOpen} onOpenChange={setCustOpen}>
+        <DialogContent showCloseButton className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold">Pilih Pembeli</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[55dvh] space-y-2 overflow-y-auto pr-1">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-ink-faint" />
               <Input
@@ -363,7 +367,7 @@ export function CheckoutView() {
               type="button"
               onClick={() => {
                 setCustomer(null)
-                setCustSheetOpen(false)
+                setCustOpen(false)
               }}
               className={cn(
                 "flex w-full items-center gap-2 rounded-xl border p-3 text-left",
@@ -381,7 +385,7 @@ export function CheckoutView() {
                 type="button"
                 onClick={() => {
                   setCustomer({ id: c.id, name: c.name })
-                  setCustSheetOpen(false)
+                  setCustOpen(false)
                 }}
                 className={cn(
                   "flex w-full items-center gap-2 rounded-xl border p-3 text-left",
@@ -428,48 +432,6 @@ export function CheckoutView() {
               </Button>
             </div>
           </div>
-        </DrawerContent>
-      </Drawer>
-
-      <Dialog open={payModalOpen} onOpenChange={setPayModalOpen}>
-        <DialogContent showCloseButton className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-center text-lg font-bold">
-              {method === "qris" ? "QRIS" : "DANA"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-2">
-            {method === "qris" ? (
-              <div className="flex flex-col items-center gap-3">
-                <div className="rounded-2xl bg-white p-4">
-                  <QRCodeSVG value={qrisPayload} size={220} marginSize={0} />
-                </div>
-                <p className="text-xs text-ink-muted text-center">
-                  Minta pelanggan scan QRIS ini untuk membayar
-                </p>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-hairline bg-canvas-soft p-4">
-                <div>
-                  <p className="text-xs text-ink-muted mb-0.5">Nomor DANA</p>
-                  <p className="text-lg font-semibold text-ink">{danaNumber}</p>
-                </div>
-                <Button variant="outline" className="rounded-full gap-1.5" onClick={handleCopy}>
-                  {copied ? <Check className="size-4 text-primary" /> : <Copy className="size-4" />}
-                  {copied ? "Tersalin" : "Salin"}
-                </Button>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              className="w-full rounded-full"
-              onClick={() => setPayModalOpen(false)}
-            >
-              Tutup
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
