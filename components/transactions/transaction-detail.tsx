@@ -34,6 +34,10 @@ function buyerName(tx: Transaction) {
   return (tx as Transaction & { customers?: { name?: string } | null }).customers?.name
 }
 
+function notaNo(tx: Transaction) {
+  return (tx as Transaction & { number?: string | null }).number ?? tx.id.slice(0, 8).toUpperCase()
+}
+
 const fmtRp = (n: number) => `Rp${n.toLocaleString("id-ID")}`
 
 function formatDate(d: Date) {
@@ -73,7 +77,7 @@ function buildStrukHtml(tx: Transaction, settings: Record<string, string>) {
   lines.push(sep)
   lines.push(center("NOTA PENJUALAN"))
   lines.push(sep)
-  lines.push(`No  : ${tx.id.slice(0, 8).toUpperCase()}`)
+  lines.push(`No  : ${notaNo(tx)}`)
   lines.push(`Tgl : ${dateStr} ${timeStr}`)
   if (buyerName(tx)) lines.push(`Pembeli: ${buyerName(tx)}`)
   lines.push(sep)
@@ -140,7 +144,7 @@ function StrukSheet({
               <div className="my-3 border-t border-dashed border-hairline" />
 
               <p className="text-xs text-ink-muted">{formatDate(new Date(tx.created_at))}</p>
-              <p className="text-xs text-ink-muted mb-1">No. {tx.id.slice(0, 8).toUpperCase()}</p>
+              <p className="text-xs text-ink-muted mb-1">No. {notaNo(tx)}</p>
               {buyerName(tx) && <p className="text-xs text-ink-muted">Pembeli: {buyerName(tx)}</p>}
 
               <div className="my-3 border-t border-dashed border-hairline" />
@@ -235,7 +239,7 @@ ${settings.store_address || ""}${settings.store_phone ? `\n${settings.store_phon
 ================
 NOTA PENJUALAN
 ${formatDate(new Date(tx.created_at))}
-No. ${tx.id.slice(0, 8).toUpperCase()}
+No. ${notaNo(tx)}
 ${buyerName(tx) ? `Pembeli: ${buyerName(tx)}\n` : ""}----------------
 ${(tx.transaction_items as TxItem[])
   .map((item) => `${item.qty} x ${item.products?.name ?? "Produk dihapus"} = ${fmtRp(item.subtotal)}`)
@@ -305,7 +309,7 @@ Terima kasih`
                 <div className="flex items-center justify-between">
                   <span className="text-ink-muted">Nomor Nota</span>
                   <span className="font-mono text-sm font-medium text-ink">
-                    {tx.id.slice(0, 8).toUpperCase()}
+                    {notaNo(tx)}
                   </span>
                 </div>
                 {buyerName(tx) && (

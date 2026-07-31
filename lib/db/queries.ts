@@ -51,6 +51,55 @@ export async function getCustomers(search?: string): Promise<BxCustomer[]> {
   return (data ?? []) as unknown as BxCustomer[]
 }
 
+export type BxTransaction = {
+  id: string
+  number: string | null
+  total: number
+  payment_method: string
+  customer_id: string | null
+  created_at: string
+  transaction_items: { id: string; qty: number }[]
+  customers: { name: string } | null
+}
+
+export async function getTransactions(params: {
+  search?: string
+  dateFrom?: string | null
+  page?: number
+  pageSize?: number
+}): Promise<{ data: BxTransaction[]; total: number }> {
+  const { search, dateFrom, page = 0, pageSize = 20 } = params
+  let query = supabase
+    .from("transactions")
+    .select(
+      "id, number, total, payment_method, customer_id, created_at, transaction_items(id, qty), customers(name)",
+      { count: "exact" }
+    )
+    .order("created_at", { ascending: false })
+
+  const s = search?.trim()
+  if (s) query = query.or(`number.ilike.%${s}%,customers.name.ilike.%${s}%`)
+  if (dateFrom) query = query.gte("created_at", dateFrom)
+
+  query = query.range(page * pageSize, page * pageSize + pageSize - 1)
+  const { data, count } = await query
+  return { data: (data ?? []) as unknown as BxTransaction[], total: count ?? 0 }
+}
+
+export async function getTransactionsSummary(params: {
+  search?: string
+  dateFrom?: string | null
+}): Promise<{ count: number; total: number }> {
+  const { search, dateFrom } = params
+  let query = supabase.from("transactions").select("total")
+  const s = search?.trim()
+  if (s) query = query.or(`number.ilike.%${s}%,customers.name.ilike.%${s}%`)
+  if (dateFrom) query = query.gte("created_at", dateFrom)
+  const { data } = await query
+  const rows = (data ?? []) as { total: number }[]
+  return { count: rows.length, total: rows.reduce((sum, r) => sum + (r.total ?? 0), 0) }
+}
+
 export async function getProducts(params: {
   search?: string
   categoryIds?: string[]

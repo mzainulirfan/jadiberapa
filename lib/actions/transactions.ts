@@ -20,6 +20,11 @@ export async function createTransaction(
   if (txError) return { error: txError.message }
   if (!transaction) return { error: "Gagal membuat transaksi" }
 
+  await supabase
+    .from("transactions")
+    .update({ number: transaction.id.slice(0, 8).toUpperCase() })
+    .eq("id", transaction.id)
+
   const txItems = items.map((i) => ({ ...i, transaction_id: transaction.id }))
   const { error: itemError } = await supabase.from("transaction_items").insert(txItems)
 
