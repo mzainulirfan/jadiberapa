@@ -27,15 +27,17 @@ import {
   User,
   Search,
   Plus,
+  Receipt,
 } from "@/components/ui/icons"
 import { cn } from "@/lib/utils"
 
-type PaymentMethod = "cash" | "qris" | "dana"
+type PaymentMethod = "cash" | "qris" | "dana" | "utang"
 
 const methods: { id: PaymentMethod; label: string; icon: typeof Dollar }[] = [
   { id: "cash", label: "Tunai", icon: Dollar },
   { id: "qris", label: "QRIS", icon: Qr },
   { id: "dana", label: "DANA", icon: Wallet },
+  { id: "utang", label: "Utang", icon: Receipt },
 ]
 
 const quickAmounts = [10000, 20000, 50000, 100000, 200000]
@@ -126,7 +128,13 @@ export function CheckoutView() {
       price_sell: i.product.price_sell,
       subtotal: i.product.price_sell * i.qty,
     }))
-    const { error: err, id } = await createTransaction(payload, method, customer?.id ?? null)
+    const dp = method === "utang" ? Math.min(paidAmount, total) : undefined
+    const { error: err, id } = await createTransaction(
+      payload,
+      method,
+      customer?.id ?? null,
+      dp
+    )
     setLoading(false)
     if (err) {
       setError(err)
@@ -141,7 +149,9 @@ export function CheckoutView() {
       ? paidAmount >= total && paidAmount > 0
       : method === "qris"
         ? !!qrisPayload
-        : !!danaNumber
+        : method === "dana"
+          ? !!danaNumber
+          : !!customer?.id
 
   if (items.length === 0) {
     return (
@@ -306,6 +316,41 @@ export function CheckoutView() {
                   .
                 </p>
               ))}
+
+            {method === "utang" &&
+              (!customer?.id ? (
+                <p className="text-sm text-ink-muted bg-canvas-soft border border-hairline rounded-xl p-3 text-center">
+                  Pilih pembeli dulu di atas untuk mencatat utang.
+                </p>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="DP / uang muka (opsional)"
+                        value={paid}
+                        onChange={(e) => handlePaidChange(e.target.value)}
+                        className="text-base font-semibold"
+                      />
+                    </div>
+                    <Button
+                      variant="outline"
+                      className="rounded-full"
+                      onClick={() => setPaid("")}
+                    >
+                      Tanpa DP
+                    </Button>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-ink-muted">Sisa utang</span>
+                    <span className="font-semibold text-destructive">
+                      Rp{Math.max(0, total - paidAmount).toLocaleString("id-ID")}
+                    </span>
+                  </div>
+                </>
+              ))}
           </div>
         </div>
       </div>
@@ -323,7 +368,7 @@ export function CheckoutView() {
           disabled={loading || !canCheckout}
           className="w-full rounded-full h-12 text-base"
         >
-          {loading ? "Memproses..." : "Bayar"}
+          {loading ? "Memproses..." : method === "utang" ? "Simpan Utang" : "Bayar"}
         </Button>
       </div>
 

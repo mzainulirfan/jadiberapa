@@ -196,6 +196,62 @@ export async function getTransaction(id: string) {
   return { error: null, transaction: data }
 }
 
+export type BxDebt = {
+  id: string
+  number: string | null
+  total: number
+  paid_amount: number
+  created_at: string
+  customer_id: string | null
+  customer_name: string | null
+}
+
+// Daftar transaksi yang masih berutang (status = 'utang'), tertua dulu.
+export async function getDebts(): Promise<BxDebt[]> {
+  const { data } = await supabase
+    .from("transactions")
+    .select("id, number, total, paid_amount, created_at, customer_id, customers(name)")
+    .eq("status", "utang")
+    .order("created_at", { ascending: true })
+
+  type Row = {
+    id: string
+    number: string | null
+    total: number
+    paid_amount: number
+    created_at: string
+    customer_id: string | null
+    customers: { name: string } | null
+  }
+  return ((data ?? []) as unknown as Row[]).map((r) => ({
+    id: r.id,
+    number: r.number,
+    total: r.total,
+    paid_amount: r.paid_amount ?? 0,
+    created_at: r.created_at,
+    customer_id: r.customer_id,
+    customer_name: r.customers?.name ?? null,
+  }))
+}
+
+export type BxPayment = {
+  id: string
+  amount: number
+  method: string
+  note: string | null
+  created_at: string
+}
+
+// Riwayat pembayaran (DP + cicilan) sebuah transaksi.
+export async function getPayments(transactionId: string): Promise<BxPayment[]> {
+  const { data } = await supabase
+    .from("payments")
+    .select("id, amount, method, note, created_at")
+    .eq("transaction_id", transactionId)
+    .order("created_at", { ascending: true })
+  return (data ?? []) as unknown as BxPayment[]
+}
+
 export async function getProducts(params: {
   search?: string
   categoryIds?: string[]

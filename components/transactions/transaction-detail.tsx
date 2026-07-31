@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Drawer,
@@ -11,7 +12,19 @@ import {
   DrawerTitle,
   DrawerClose,
 } from "@/components/ui/drawer"
-import { getTransaction, getSettings } from "@/lib/db/queries"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  getTransaction,
+  getSettings,
+  getPayments,
+  type BxPayment,
+} from "@/lib/db/queries"
+import { recordPayment } from "@/lib/actions/transactions"
 import { Printer, Share, X, Receipt } from "@/components/ui/icons"
 import { Barcode, barcodeSvgString } from "@/components/ui/barcode"
 
@@ -27,10 +40,19 @@ const methodLabel: Record<string, string> = {
   cash: "Tunai",
   qris: "QRIS",
   dana: "DANA",
+  utang: "Utang",
 }
 
 function buyerName(tx: Transaction) {
   return (tx as Transaction & { customers?: { name?: string } | null }).customers?.name
+}
+
+function paidOf(tx: Transaction) {
+  return (tx as Transaction & { paid_amount?: number }).paid_amount ?? tx.total
+}
+
+function statusOf(tx: Transaction) {
+  return (tx as Transaction & { status?: string }).status ?? "lunas"
 }
 
 function notaNo(tx: Transaction) {
@@ -87,6 +109,10 @@ function buildStrukHtml(tx: Transaction, settings: Record<string, string>, barco
   lines.push(sep)
   lines.push(`Total${right(fmtRp(tx.total))}`)
   lines.push(`Bayar: ${methodLabel[tx.payment_method] ?? tx.payment_method}`)
+  if (statusOf(tx) === "utang") {
+    lines.push(`Dibayar${right(fmtRp(paidOf(tx)))}`)
+    lines.push(`Sisa${right(fmtRp(Math.max(0, tx.total - paidOf(tx))))}`)
+  }
   lines.push(sep)
 
   return `<!doctype html>
@@ -201,9 +227,14 @@ function StrukSheet({
 export function TransactionDetail({ id }: { id: string }) {
   const [tx, setTx] = useState<Transaction | null>(null)
   const [settings, setSettings] = useState<Record<string, string>>({})
+  const [payments, setPayments] = useState<BxPayment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showStruk, setShowStruk] = useState(false)
+
+  const [showPay, setShowPay] = useState(false)
+  const [payInput, setPayInput] = useState("")
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     getSettings().then(setSettings)
@@ -212,7 +243,33 @@ export function TransactionDetail({ id }: { id: string }) {
       setError(error)
       setLoading(false)
     })
+    getPayments(id).then(setPayments)
   }, [id])
+
+  const remaining = tx ? Math.max(0, tx.total - paidOf(tx)) : 0
+  const payAmount = Number(payInput.replace(/[^\d]/g, "")) || 0
+
+  function handlePayChange(value: string) {
+    const digits = value.replace(/[^\d]/g, "")
+    setPayInput(digits ? Number(digits).toLocaleString("id-ID") : "")
+  }
+
+  async function handleRecordPayment() {
+    if (!tx || payAmount <= 0) return
+    setSaving(true)
+    const { error: err } = await recordPayment(tx.id, Math.min(payAmount, remaining))
+    setSaving(false)
+    if (err) {
+      toast.error(err)
+      return
+    }
+    toast.success("Pembayaran tercatat")
+    setShowPay(false)
+    setPayInput("")
+    // Muat ulang data terkini.
+    getTransaction(id).then(({ transaction }) => setTx(transaction))
+    getPayments(id).then(setPayments)
+  }
 
   function doPrint() {
     if (!tx) return
@@ -299,6 +356,30 @@ Terima kasih`
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
+                  <span className="text-ink-muted">Status</span>
+                  <span
+                    className={
+                      statusOf(tx) === "utang"
+                        ? "rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700"
+                        : "rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700"
+                    }
+                  >
+                    {statusOf(tx) === "utang" ? "Belum Lunas" : "Lunas"}
+                  </span>
+                </div>
+                {statusOf(tx) === "utang" && (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="text-ink-muted">Sudah Dibayar</span>
+                      <span className="font-medium text-ink">{fmtRp(paidOf(tx))}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-ink-muted">Sisa Utang</span>
+                      <span className="font-semibold text-destructive">{fmtRp(remaining)}</span>
+                    </div>
+                  </>
+                )}
+                <div className="flex items-center justify-between">
                   <span className="text-ink-muted">Tanggal</span>
                   <span className="font-medium text-ink">
                     {formatDate(new Date(tx.created_at))}
@@ -356,26 +437,113 @@ Terima kasih`
                 <span className="text-lg font-bold text-ink">{fmtRp(tx.total)}</span>
               </div>
             </div>
+
+            {payments.length > 0 && (
+              <div className="rounded-xl bg-canvas border border-hairline">
+                <div className="px-4 pt-3.5 pb-2">
+                  <h2 className="text-sm font-semibold text-ink">Riwayat Pembayaran</h2>
+                </div>
+                {payments.map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex items-center justify-between border-t border-hairline px-4 py-3"
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-ink">
+                        {p.note || methodLabel[p.method] || p.method}
+                      </p>
+                      <p className="text-xs text-ink-faint">{formatDate(new Date(p.created_at))}</p>
+                    </div>
+                    <span className="text-sm font-semibold text-ink">{fmtRp(p.amount)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
 
       {tx && (
         <div className="flex gap-2 border-t border-hairline bg-canvas p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-          <Button
-            variant="outline"
-            className="flex-1 rounded-full gap-1.5"
-            onClick={() => setShowStruk(true)}
-          >
-            <Share className="size-4" />
-            Bagikan Struk
-          </Button>
-          <Button className="flex-1 rounded-full gap-1.5" onClick={() => setShowStruk(true)}>
-            <Printer className="size-4" />
-            Cetak Struk
-          </Button>
+          {remaining > 0 ? (
+            <>
+              <Button
+                variant="outline"
+                className="flex-1 rounded-full gap-1.5"
+                onClick={() => setShowStruk(true)}
+              >
+                <Receipt className="size-4" />
+                Struk
+              </Button>
+              <Button
+                className="flex-1 rounded-full gap-1.5"
+                onClick={() => {
+                  setPayInput("")
+                  setShowPay(true)
+                }}
+              >
+                Catat Pembayaran
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="outline"
+                className="flex-1 rounded-full gap-1.5"
+                onClick={() => setShowStruk(true)}
+              >
+                <Share className="size-4" />
+                Bagikan Struk
+              </Button>
+              <Button className="flex-1 rounded-full gap-1.5" onClick={() => setShowStruk(true)}>
+                <Printer className="size-4" />
+                Cetak Struk
+              </Button>
+            </>
+          )}
         </div>
       )}
+
+      <Dialog open={showPay} onOpenChange={(o) => !saving && setShowPay(o)}>
+        <DialogContent showCloseButton className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold">Catat Pembayaran</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between rounded-xl border border-hairline bg-canvas-soft p-3 text-sm">
+              <span className="text-ink-muted">Sisa utang</span>
+              <span className="font-semibold text-destructive">{fmtRp(remaining)}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Nominal bayar"
+                  value={payInput}
+                  onChange={(e) => handlePayChange(e.target.value)}
+                  className="text-base font-semibold"
+                  autoFocus
+                />
+              </div>
+              <Button
+                variant="outline"
+                className="rounded-full"
+                onClick={() => setPayInput(remaining.toLocaleString("id-ID"))}
+              >
+                Lunasi
+              </Button>
+            </div>
+            <Button
+              className="w-full rounded-full h-11"
+              disabled={saving || payAmount <= 0}
+              onClick={handleRecordPayment}
+            >
+              {saving ? "Menyimpan..." : "Simpan Pembayaran"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Drawer open={showStruk} onOpenChange={(o) => !o && setShowStruk(false)} showSwipeHandle>
         {tx && (
