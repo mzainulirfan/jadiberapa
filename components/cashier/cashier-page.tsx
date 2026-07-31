@@ -158,7 +158,7 @@ export function CashierPage() {
         ))
 
   return (
-    <div className="flex flex-col flex-1">
+    <div className="relative flex h-full flex-col">
       <div className="p-4 pb-3">
         <h1 className="text-[26px] font-bold leading-[1.23] tracking-[-0.625px] text-ink mb-1">
           Kasir
@@ -242,7 +242,7 @@ export function CashierPage() {
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 pt-2">
+      <div className={cn("flex-1 overflow-y-auto p-4 pt-2", count > 0 && "pb-28")}>
         {isIdle ? (
           <div className="space-y-3">
             {loading ? (
@@ -274,11 +274,11 @@ export function CashierPage() {
       </div>
 
       {count > 0 && (
-        <div className="shrink-0 border-t border-hairline bg-canvas px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+        <div className="absolute inset-x-0 bottom-0 z-10 rounded-t-2xl border-t border-hairline bg-canvas px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-6px_24px_rgba(0,0,0,0.08)]">
           <button
             type="button"
             onClick={() => router.push("/cart")}
-            className="flex w-full items-center justify-between rounded-full bg-ink px-5 py-3.5 text-white shadow-lg"
+            className="flex w-full items-center justify-between rounded-full bg-ink px-5 py-3.5 text-white"
           >
             <span className="flex items-center gap-2 text-sm font-medium">
               <CartAlt className="size-4" />
