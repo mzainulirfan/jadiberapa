@@ -4,6 +4,25 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@theme {
+  --animate-cart-pop: cart-pop 0.6s ease-out forwards;
+
+  @keyframes cart-pop {
+    0% {
+      opacity: 0;
+      transform: scale(1.6) translateY(-6px);
+    }
+    25% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-18px);
+    }
+  }
+}
+
 @theme inline {
   --font-sans: var(--font-sans);
 
