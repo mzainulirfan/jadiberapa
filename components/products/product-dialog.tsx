@@ -1,6 +1,6 @@
 "use client"
 
-import { useActionState, useEffect, useRef, useState } from "react"
+import { useActionState, useCallback, useEffect, useRef, useState } from "react"
 import {
   Drawer,
   DrawerContent,
@@ -14,18 +14,40 @@ import { Input } from "@/components/ui/input"
 import { createProduct, updateProduct, createCategory, uploadProductImage } from "@/lib/actions/products"
 import { getCategories, invalidateCategories } from "@/lib/db/queries"
 import type { BxCategory, BxProduct } from "./types"
-import { Trash, X, Plus } from "@/components/ui/icons"
+import { Trash, X, Plus, Camera } from "@/components/ui/icons"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
+import { BarcodeScanner } from "@/components/cashier/barcode-scanner"
 import { cn } from "@/lib/utils"
 
 type Props = {
   product?: BxProduct | null
-  children: React.ReactNode
+  children?: React.ReactNode
   onSaved?: () => void
+  open?: boolean
+  onOpenChange?: (v: boolean) => void
+  initialBarcode?: string
 }
 
-export function ProductDialog({ product, children, onSaved }: Props) {
-  const [open, setOpen] = useState(false)
+export function ProductDialog({
+  product,
+  children,
+  onSaved,
+  open: openProp,
+  onOpenChange: onOpenChangeProp,
+  initialBarcode,
+}: Props) {
+  const [openState, setOpenState] = useState(false)
+  const isControlled = openProp !== undefined
+  const open = isControlled ? openProp : openState
+  const setOpen = useCallback(
+    (v: boolean) => {
+      if (!isControlled) setOpenState(v)
+      onOpenChangeProp?.(v)
+    },
+    [isControlled, onOpenChangeProp]
+  )
+  const [barcode, setBarcode] = useState(product?.barcode ?? "")
+  const [scanOpen, setScanOpen] = useState(false)
   const [categories, setCategories] = useState<BxCategory[]>([])
   const [newCategory, setNewCategory] = useState("")
   const [imageUrl, setImageUrl] = useState("")
@@ -64,12 +86,18 @@ export function ProductDialog({ product, children, onSaved }: Props) {
   }, [open])
 
   useEffect(() => {
+    if (!open) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sinkron nilai awal barcode saat drawer dibuka
+    setBarcode(initialBarcode ?? product?.barcode ?? "")
+  }, [open, initialBarcode, product])
+
+  useEffect(() => {
     if (state?.error === null && !pending && submittedRef.current) {
       submittedRef.current = false
       setOpen(false)
       onSavedRef.current?.()
     }
-  }, [state, pending])
+  }, [state, pending, setOpen])
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -89,6 +117,7 @@ export function ProductDialog({ product, children, onSaved }: Props) {
   const marginPct = buy > 0 ? (marginRp / buy) * 100 : null
 
   return (
+    <>
     <Drawer
       open={open}
       onOpenChange={(v) => {
@@ -103,7 +132,7 @@ export function ProductDialog({ product, children, onSaved }: Props) {
       }}
       showSwipeHandle
     >
-      <DrawerTrigger render={children as React.ReactElement} />
+      {children ? <DrawerTrigger render={children as React.ReactElement} /> : null}
       <DrawerContent className="rounded-t-xl">
         <DrawerHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
           <DrawerTitle className="text-lg font-bold">
@@ -273,7 +302,24 @@ export function ProductDialog({ product, children, onSaved }: Props) {
               </div>
               <div>
                 <label htmlFor="barcode" className="text-xs text-ink-muted mb-1 block">Barcode</label>
-                <Input id="barcode" name="barcode" placeholder="Opsional" defaultValue={product?.barcode ?? ""} />
+                <div className="flex gap-2">
+                  <Input
+                    id="barcode"
+                    name="barcode"
+                    placeholder="Opsional"
+                    value={barcode}
+                    onChange={(e) => setBarcode(e.target.value)}
+                    className="flex-1"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setScanOpen(true)}
+                    className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-hairline text-ink-muted active:bg-canvas"
+                    aria-label="Pindai barcode"
+                  >
+                    <Camera className="size-4" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -287,6 +333,15 @@ export function ProductDialog({ product, children, onSaved }: Props) {
         </form>
       </DrawerContent>
     </Drawer>
+    <BarcodeScanner
+      open={scanOpen}
+      onOpenChange={setScanOpen}
+      onDetect={(code) => {
+        setBarcode(code)
+        setScanOpen(false)
+      }}
+    />
+    </>
   )
 }
 

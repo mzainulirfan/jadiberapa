@@ -8,6 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { getProducts, getCategories } from "@/lib/db/queries"
 import { useCart } from "@/components/cart/cart-provider"
 import { ProductCard, ProductRow } from "./product-card"
+import { BarcodeScanner } from "./barcode-scanner"
+import { ProductDialog } from "@/components/products/product-dialog"
 import { toast } from "sonner"
 import { Search, Filter, Barcode, X, Check, CartAlt, Grid, List } from "@/components/ui/icons"
 import {
@@ -26,6 +28,9 @@ export function CashierPage() {
   const [catIds, setCatIds] = useState<string[]>([])
   const [catOpen, setCatOpen] = useState(false)
   const [view, setView] = useState<"grid" | "list">("grid")
+  const [scanOpen, setScanOpen] = useState(false)
+  const [unknownCode, setUnknownCode] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
   const [pop, setPop] = useState<{ id: string; key: number } | null>(null)
   const popKeyRef = useRef(0)
   const { items, addItem, count, total } = useCart()
@@ -48,16 +53,33 @@ export function CashierPage() {
     setPop({ id: p.id, key: popKeyRef.current })
   }
 
+  async function resolveCode(term: string): Promise<BxProduct | null> {
+    const { data } = await getProducts({ search: term })
+    return (
+      data.find((p) => p.barcode === term || p.sku === term) ??
+      (data.length === 1 ? data[0] : null)
+    )
+  }
+
   async function handleBarcodeEnter() {
     const term = search.trim()
     if (!term) return
-    const { data } = await getProducts({ search: term })
-    const exact =
-      data.find((p) => p.barcode === term || p.sku === term) ??
-      (data.length === 1 ? data[0] : null)
+    const exact = await resolveCode(term)
     if (exact) {
       addToCart(exact)
       setSearch("")
+    }
+  }
+
+  async function handleScan(code: string) {
+    const p = await resolveCode(code)
+    if (p) {
+      addToCart(p)
+      toast.success(`+ ${p.name}`)
+    } else {
+      setScanOpen(false)
+      setUnknownCode(code)
+      toast.info("Barcode belum terdaftar")
     }
   }
 
@@ -102,7 +124,7 @@ export function CashierPage() {
       cancelled = true
       clearTimeout(t)
     }
-  }, [search, catIds])
+  }, [search, catIds, reloadKey])
 
   const activeCats = categories.filter((c) => catIds.includes(c.id))
 
@@ -160,8 +182,8 @@ export function CashierPage() {
             />
             <button
               type="button"
-              onClick={() => document.getElementById("cashier-search")?.focus()}
-              title="Masukkan atau scan barcode"
+              onClick={() => setScanOpen(true)}
+              title="Pindai barcode dengan kamera"
               className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-ink-muted active:bg-canvas-soft"
             >
               <Barcode className="size-4" />
@@ -273,6 +295,24 @@ export function CashierPage() {
           </button>
         </div>
       )}
+
+      <BarcodeScanner
+        open={scanOpen}
+        onOpenChange={setScanOpen}
+        onDetect={handleScan}
+        continuous
+      />
+      <ProductDialog
+        open={unknownCode !== null}
+        onOpenChange={(v) => {
+          if (!v) setUnknownCode(null)
+        }}
+        initialBarcode={unknownCode ?? undefined}
+        onSaved={() => {
+          setUnknownCode(null)
+          setReloadKey((k) => k + 1)
+        }}
+      />
     </div>
   )
 }

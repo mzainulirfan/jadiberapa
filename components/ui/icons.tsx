@@ -671,6 +671,38 @@ const Whatsapp = forwardRef<SVGSVGElement, React.SVGProps<SVGSVGElement>>(
 )
 Whatsapp.displayName = "Whatsapp"
 
+const Camera = forwardRef<SVGSVGElement, React.SVGProps<SVGSVGElement>>(
+  ({ className, ...props }, ref) => (
+    <svg
+      ref={ref}
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+      {...props}
+      dangerouslySetInnerHTML={{ __html: "<path d=\"M20 5h-3.17l-1.24-1.35A2 2 0 0 0 14.12 3H9.88a2 2 0 0 0-1.47.65L7.17 5H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 14H4V7h4.05l1.83-2h4.24l1.83 2H20zM12 8a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9zm0 7a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z\"/>" }}
+    />
+  )
+)
+Camera.displayName = "Camera"
+
+const Zap = forwardRef<SVGSVGElement, React.SVGProps<SVGSVGElement>>(
+  ({ className, ...props }, ref) => (
+    <svg
+      ref={ref}
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+      {...props}
+      dangerouslySetInnerHTML={{ __html: "<path d=\"M13 2 3 14h7l-1 8 10-12h-7z\"/>" }}
+    />
+  )
+)
+Zap.displayName = "Zap"
+
 export {
   Dashboard,
   CartAlt,
@@ -713,5 +745,7 @@ export {
   Share,
   LogOut,
   Whatsapp,
+  Camera,
+  Zap,
 }
 
