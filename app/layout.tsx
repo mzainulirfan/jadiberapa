@@ -26,7 +26,11 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-canvas-soft text-ink" suppressHydrationWarning>
         <AuthProvider>{children}</AuthProvider>
-        <Toaster position="top-right" offset={80} />
+        <Toaster
+          position="top-right"
+          offset={{ top: 80, right: 16, bottom: 16, left: 16 }}
+          mobileOffset={{ top: 80, right: 16, bottom: 16, left: 16 }}
+        />
       </body>
     </html>
   );

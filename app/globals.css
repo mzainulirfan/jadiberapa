@@ -102,3 +102,12 @@
     @apply font-sans;
   }
 }
+
+@media (max-width: 600px) {
+  [data-sonner-toaster] {
+    align-items: flex-end;
+  }
+  [data-sonner-toaster] [data-sonner-toast] {
+    width: calc(100% - 2rem);
+  }
+}
