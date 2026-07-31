@@ -108,6 +108,7 @@
     align-items: flex-end;
   }
   [data-sonner-toaster] [data-sonner-toast] {
-    width: calc(100% - 2rem);
+    width: fit-content;
+    max-width: calc(100% - 2rem);
   }
 }
