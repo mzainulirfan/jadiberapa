@@ -104,11 +104,10 @@
 }
 
 @media (max-width: 600px) {
-  [data-sonner-toaster] {
-    align-items: flex-end;
-  }
   [data-sonner-toaster] [data-sonner-toast] {
+    left: auto !important;
+    right: 0 !important;
     width: fit-content !important;
-    max-width: calc(100% - 2rem) !important;
+    max-width: 100% !important;
   }
 }
