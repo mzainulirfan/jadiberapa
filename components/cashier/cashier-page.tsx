@@ -184,7 +184,8 @@ export function CashierPage() {
               type="button"
               onClick={() => setScanOpen(true)}
               title="Pindai barcode dengan kamera"
-              className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-ink-muted active:bg-canvas-soft"
+              aria-label="Pindai barcode dengan kamera"
+              className="absolute inset-y-0 right-0 flex items-center rounded-r-lg pl-4 pr-2.5 text-ink-muted active:text-ink"
             >
               <Barcode className="size-4" />
             </button>
