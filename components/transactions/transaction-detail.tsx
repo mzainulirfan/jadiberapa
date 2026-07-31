@@ -14,6 +14,7 @@ import {
 import { getTransaction } from "@/lib/actions/transactions"
 import { getSettings } from "@/lib/actions/settings"
 import { Printer, Share, X, Receipt } from "@/components/ui/icons"
+import { Barcode, barcodeSvgString } from "@/components/ui/barcode"
 
 type Transaction = NonNullable<Awaited<ReturnType<typeof getTransaction>>["transaction"]>
 type TxItem = {
@@ -49,7 +50,7 @@ function formatDate(d: Date) {
   return `${date} · ${time}`
 }
 
-function buildStrukHtml(tx: Transaction, settings: Record<string, string>) {
+function buildStrukHtml(tx: Transaction, settings: Record<string, string>, barcodeSvg: string) {
   const storeName = settings.store_name || "Toko Saya"
   const storeAddress = settings.store_address || ""
   const storePhone = settings.store_phone || ""
@@ -88,8 +89,6 @@ function buildStrukHtml(tx: Transaction, settings: Record<string, string>) {
   lines.push(`Total${right(fmtRp(tx.total))}`)
   lines.push(`Bayar: ${methodLabel[tx.payment_method] ?? tx.payment_method}`)
   lines.push(sep)
-  lines.push(center("Terima kasih"))
-  lines.push(center("Sampai jumpa kembali"))
 
   return `<!doctype html>
 <html>
@@ -99,11 +98,16 @@ function buildStrukHtml(tx: Transaction, settings: Record<string, string>) {
 <style>
   @page { margin: 8mm; }
   body { font-family: 'Courier New', 'Nimbus Mono PS', monospace; width: 80mm; margin: 0 auto; color: #000; font-size: 12px; }
-  pre { white-space: pre-wrap; }
+  pre { white-space: pre-wrap; margin: 0; }
+  .barcode { text-align: center; margin: 6px 0; }
+  .barcode svg { max-width: 100%; }
+  .footer { text-align: center; font-size: 12px; margin-top: 6px; }
 </style>
 </head>
 <body>
 <pre>${lines.join("\n")}</pre>
+<div class="barcode">${barcodeSvg}</div>
+<div class="footer">Terima kasih<br/>Sampai jumpa kembali</div>
 </body>
 </html>`
 }
@@ -171,6 +175,10 @@ function StrukSheet({
               </div>
 
               <div className="my-3 border-t border-dashed border-hairline" />
+              <div className="flex justify-center">
+                <Barcode value={notaNo(tx)} format="CODE128" height={40} fontSize={10} />
+              </div>
+              <div className="my-3 border-t border-dashed border-hairline" />
               <p className="text-xs text-ink-muted">Terima kasih</p>
             </div>
           </div>
@@ -223,8 +231,9 @@ export function TransactionDetail({ id }: { id: string }) {
       iframe.remove()
       return
     }
+    const barcodeSvg = barcodeSvgString(notaNo(tx), "CODE128", { height: 40, fontSize: 10 })
     doc.open()
-    doc.write(buildStrukHtml(tx, settings))
+    doc.write(buildStrukHtml(tx, settings, barcodeSvg))
     doc.close()
     iframe.contentWindow?.focus()
     iframe.contentWindow?.print()

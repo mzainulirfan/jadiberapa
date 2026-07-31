@@ -33,12 +33,13 @@ import {
   deleteProduct,
   type ProductSort,
 } from "@/lib/actions/products"
-import { Search, Plus, Pencil, Trash, Check, ChevronDown, Grid, List, X, Package } from "@/components/ui/icons"
+import { Search, Plus, Pencil, Trash, Check, ChevronDown, Grid, List, X, Package, Printer } from "@/components/ui/icons"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { id as localeId } from "date-fns/locale"
 import type { BxProduct, BxCategory } from "./types"
+import { Barcode, barcodeSvgString } from "@/components/ui/barcode"
 
 const PAGE_SIZE = 20
 
@@ -49,6 +50,60 @@ const sortOptions: { id: ProductSort; label: string }[] = [
   { id: "stock-asc", label: "Stok Terkecil" },
   { id: "stock-desc", label: "Stok Terbesar" },
 ]
+
+function escapeHtml(s: string) {
+  return s.replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c
+  )
+}
+
+function printProductLabel(p: BxProduct) {
+  if (!p.barcode) return
+  const svg = barcodeSvgString(p.barcode, "EAN13", { height: 50, fontSize: 14 })
+  const html = `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Label</title>
+<style>
+  @page { size: 50mm 30mm; margin: 2mm; }
+  body { font-family: system-ui, -apple-system, sans-serif; margin: 0; color: #000; }
+  .label { width: 46mm; text-align: center; }
+  .name { font-size: 10px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .price { font-size: 12px; font-weight: 700; margin: 1px 0 2px; }
+  svg { max-width: 100%; }
+</style>
+</head>
+<body>
+  <div class="label">
+    <div class="name">${escapeHtml(p.name)}</div>
+    <div class="price">Rp${p.price_sell.toLocaleString("id-ID")}</div>
+    ${svg}
+  </div>
+</body>
+</html>`
+
+  const iframe = document.createElement("iframe")
+  iframe.style.position = "fixed"
+  iframe.style.right = "0"
+  iframe.style.bottom = "0"
+  iframe.style.width = "0"
+  iframe.style.height = "0"
+  iframe.style.border = "0"
+  iframe.setAttribute("aria-hidden", "true")
+  document.body.appendChild(iframe)
+  const doc = iframe.contentDocument
+  if (!doc) {
+    iframe.remove()
+    return
+  }
+  doc.open()
+  doc.write(html)
+  doc.close()
+  iframe.contentWindow?.focus()
+  iframe.contentWindow?.print()
+  setTimeout(() => iframe.remove(), 1000)
+}
 
 function StockBadge({ stock }: { stock: number }) {
   if (stock <= 0) return <Badge variant="destructive">Habis</Badge>
@@ -536,10 +591,6 @@ export function ProductList() {
                     <span className="text-ink">{selected.sku || "-"}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-ink-muted">Barcode</span>
-                    <span className="text-ink">{selected.barcode || "-"}</span>
-                  </div>
-                  <div className="flex justify-between">
                     <span className="text-ink-muted">Harga Beli</span>
                     <span className="text-ink">
                       Rp{selected.price_buy.toLocaleString()}
@@ -562,6 +613,25 @@ export function ProductList() {
                     </span>
                   </div>
                 </div>
+
+                {selected.barcode && (
+                  <div className="flex flex-col items-center gap-2 rounded-xl border border-hairline bg-canvas p-3">
+                    <Barcode
+                      value={selected.barcode}
+                      format="auto"
+                      height={44}
+                      className="max-w-[240px]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => printProductLabel(selected)}
+                      className="flex items-center gap-1.5 rounded-full border border-hairline px-3 py-1.5 text-xs font-medium text-ink active:bg-canvas-soft"
+                    >
+                      <Printer className="size-3.5" />
+                      Cetak Label
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="flex shrink-0 gap-2 border-t border-hairline p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
