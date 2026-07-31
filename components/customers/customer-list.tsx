@@ -15,7 +15,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Search, Pencil, Trash, Plus, User, Phone, LocationPin, Whatsapp } from "@/components/ui/icons"
+import { Search, Pencil, Trash, Plus, User, Phone, LocationPin, Whatsapp, X } from "@/components/ui/icons"
 import { createCustomer, updateCustomer, deleteCustomer } from "@/lib/actions/customers"
 import { getCustomers } from "@/lib/db/queries"
 
@@ -125,8 +125,18 @@ export function CustomerList() {
             placeholder="Cari pembeli..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-8"
+            className={`pl-8 ${search ? "pr-9" : ""}`}
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              aria-label="Hapus pencarian"
+              className="absolute inset-y-0 right-0 flex items-center rounded-r-lg pl-2 pr-2.5 text-ink-muted active:text-ink"
+            >
+              <X className="size-4" />
+            </button>
+          )}
         </div>
         <Dialog
           open={open}

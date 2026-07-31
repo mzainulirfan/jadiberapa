@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getTransactions, getTransactionsSummary, type BxTransaction } from "@/lib/db/queries"
-import { Search, Receipt, ChevronRight, ChevronDown, Wallet } from "@/components/ui/icons"
+import { Search, Receipt, ChevronRight, ChevronDown, Wallet, X } from "@/components/ui/icons"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -199,8 +199,18 @@ export function TransactionsView() {
             placeholder="Cari no. nota atau pembeli..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-8"
+            className={`pl-8 ${search ? "pr-9" : ""}`}
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              aria-label="Hapus pencarian"
+              className="absolute inset-y-0 right-0 flex items-center rounded-r-lg pl-2 pr-2.5 text-ink-muted active:text-ink"
+            >
+              <X className="size-4" />
+            </button>
+          )}
         </div>
         <PeriodDropdown value={range} onChange={setRange} />
       </div>

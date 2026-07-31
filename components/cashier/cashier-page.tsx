@@ -178,17 +178,29 @@ export function CashierPage() {
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleBarcodeEnter()
               }}
-              className="pl-8 pr-11"
+              className={`pl-8 ${search ? "pr-[4.5rem]" : "pr-10"}`}
             />
-            <button
-              type="button"
-              onClick={() => setScanOpen(true)}
-              title="Pindai barcode dengan kamera"
-              aria-label="Pindai barcode dengan kamera"
-              className="absolute inset-y-0 right-0 flex items-center rounded-r-lg pl-4 pr-2.5 text-ink-muted active:text-ink"
-            >
-              <Barcode className="size-4" />
-            </button>
+            <div className="absolute inset-y-0 right-1 flex items-center gap-0.5">
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  aria-label="Hapus pencarian"
+                  className="flex size-8 items-center justify-center rounded-full text-ink-muted active:bg-canvas-soft active:text-ink"
+                >
+                  <X className="size-4" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setScanOpen(true)}
+                title="Pindai barcode dengan kamera"
+                aria-label="Pindai barcode dengan kamera"
+                className="flex size-8 items-center justify-center rounded-full text-ink-muted active:bg-canvas-soft active:text-ink"
+              >
+                <Barcode className="size-4" />
+              </button>
+            </div>
           </div>
           <button
             type="button"
