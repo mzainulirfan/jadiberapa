@@ -50,6 +50,8 @@ export function CheckoutView() {
   const [error, setError] = useState<string | null>(null)
   const [method, setMethod] = useState<PaymentMethod>("cash")
   const [paid, setPaid] = useState("")
+  const [discountInput, setDiscountInput] = useState("")
+  const [discountType, setDiscountType] = useState<"rp" | "pct">("rp")
   const [payConfig, setPayConfig] = useState<Record<string, string>>({})
   const [copied, setCopied] = useState(false)
 
@@ -70,17 +72,23 @@ export function CheckoutView() {
   }, [custOpen])
 
   const paidAmount = Number(paid.replace(/[^\d]/g, "")) || 0
-  const change = paidAmount - total
+  const discountRaw = Number(discountInput.replace(/[^\d]/g, "")) || 0
+  const discountAmount =
+    discountType === "pct"
+      ? Math.round((total * Math.min(discountRaw, 100)) / 100)
+      : Math.min(discountRaw, total)
+  const netTotal = Math.max(0, total - discountAmount)
+  const change = paidAmount - netTotal
   const qrisPayload = payConfig.qris_payload ?? ""
   const danaNumber = payConfig.dana_number ?? ""
 
   const quickOptions = useMemo(
     () =>
-      [total, ...quickAmounts]
+      [netTotal, ...quickAmounts]
         .filter((n, i, arr) => arr.indexOf(n) === i)
-        .filter((n) => n >= total)
+        .filter((n) => n >= netTotal)
         .slice(0, 4),
-    [total]
+    [netTotal]
   )
 
   const filteredCustomers = useMemo(() => {
@@ -128,12 +136,13 @@ export function CheckoutView() {
       price_sell: i.product.price_sell,
       subtotal: i.product.price_sell * i.qty,
     }))
-    const dp = method === "utang" ? Math.min(paidAmount, total) : undefined
+    const dp = method === "utang" ? Math.min(paidAmount, netTotal) : undefined
     const { error: err, id } = await createTransaction(
       payload,
       method,
       customer?.id ?? null,
-      dp
+      dp,
+      discountAmount
     )
     setLoading(false)
     if (err) {
@@ -146,7 +155,7 @@ export function CheckoutView() {
 
   const canCheckout =
     method === "cash"
-      ? paidAmount >= total && paidAmount > 0
+      ? paidAmount >= netTotal && paidAmount > 0
       : method === "qris"
         ? !!qrisPayload
         : method === "dana"
@@ -239,7 +248,7 @@ export function CheckoutView() {
                   <Button
                     variant="outline"
                     className="rounded-full"
-                    onClick={() => setPaid(total ? total.toLocaleString("id-ID") : "")}
+                    onClick={() => setPaid(netTotal ? netTotal.toLocaleString("id-ID") : "")}
                   >
                     Uang Pas
                   </Button>
@@ -257,7 +266,7 @@ export function CheckoutView() {
                           : "border-hairline bg-canvas-soft text-ink-muted"
                       )}
                     >
-                      {n === total ? "Uang Pas" : `Rp${n.toLocaleString("id-ID")}`}
+                      {n === netTotal ? "Uang Pas" : `Rp${n.toLocaleString("id-ID")}`}
                     </button>
                   ))}
                 </div>
@@ -346,11 +355,61 @@ export function CheckoutView() {
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-ink-muted">Sisa utang</span>
                     <span className="font-semibold text-destructive">
-                      Rp{Math.max(0, total - paidAmount).toLocaleString("id-ID")}
+                      Rp{Math.max(0, netTotal - paidAmount).toLocaleString("id-ID")}
                     </span>
                   </div>
                 </>
               ))}
+          </div>
+        </div>
+
+        <div className="rounded-xl bg-canvas border border-hairline">
+          <p className="px-3 pt-3 pb-2 text-xs font-semibold text-ink-muted uppercase tracking-wider">
+            Diskon
+          </p>
+          <div className="p-3 pt-0 space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="flex overflow-hidden rounded-full border border-hairline">
+                {(["rp", "pct"] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setDiscountType(t)}
+                    className={cn(
+                      "px-3.5 py-2 text-sm font-medium transition-colors",
+                      discountType === t
+                        ? "bg-primary/10 text-primary"
+                        : "bg-canvas-soft text-ink-muted"
+                    )}
+                  >
+                    {t === "rp" ? "Rp" : "%"}
+                  </button>
+                ))}
+              </div>
+              <div className="flex-1">
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder={discountType === "pct" ? "0%" : "Potongan (Rp)"}
+                  value={discountInput}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/[^\d]/g, "")
+                    setDiscountInput(
+                      digits ? Number(digits).toLocaleString("id-ID") : ""
+                    )
+                  }}
+                  className="text-base font-semibold"
+                />
+              </div>
+            </div>
+            {discountAmount > 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-ink-muted">Potongan</span>
+                <span className="font-semibold text-accent-green">
+                  -Rp{discountAmount.toLocaleString("id-ID")}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -358,8 +417,15 @@ export function CheckoutView() {
       <div className="shrink-0 border-t border-hairline bg-canvas p-4 space-y-3">
         <div className="flex items-end justify-between">
           <span className="text-ink-muted text-sm pb-1">Total Bayar</span>
-          <span className="text-2xl font-bold tracking-tight text-ink">
-            Rp{total.toLocaleString()}
+          <span className="flex flex-col items-end">
+            {discountAmount > 0 && (
+              <span className="text-sm text-ink-faint line-through">
+                Rp{total.toLocaleString("id-ID")}
+              </span>
+            )}
+            <span className="text-2xl font-bold tracking-tight text-ink">
+              Rp{netTotal.toLocaleString("id-ID")}
+            </span>
           </span>
         </div>
         {error && <p className="text-destructive text-sm">{error}</p>}

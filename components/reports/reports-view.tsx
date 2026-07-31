@@ -7,12 +7,13 @@ import { Skeleton } from "@/components/ui/skeleton"
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { getReports, type BxReports } from "@/lib/db/queries"
-import { ChartLine, ChevronDown, ChevronRight, Share, Wallet } from "@/components/ui/icons"
+import { ChartLine, ChevronDown, ChevronRight, Printer, Share, Wallet } from "@/components/ui/icons"
 import { cn } from "@/lib/utils"
 
 type ReportsData = BxReports
@@ -28,6 +29,105 @@ const RANGES: { key: RangeKey; label: string }[] = [
 const PAYMENT_LABEL: Record<string, string> = { cash: "Tunai", qris: "QRIS", dana: "DANA" }
 
 const fmtRp = (n: number) => `Rp${n.toLocaleString("id-ID")}`
+
+// Ekspor CSV — pemisah titik-koma + BOM UTF-8 agar Excel Indonesia mengenali kolom.
+function exportCsv(data: BxReports, periodLabel: string) {
+  const esc = (v: string | number) => {
+    const s = String(v)
+    return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+  }
+  const rows: (string | number)[][] = [
+    ["Laporan", periodLabel],
+    [],
+    ["Ringkasan", "Nilai (Rp)"],
+    ["Omzet", data.totalRevenue],
+    ["Laba Kotor", data.profit],
+    ["Pengeluaran", data.totalExpenses],
+    ["Laba Bersih", data.netProfit],
+    ["Jumlah Transaksi", data.count],
+    ["Barang Terjual", data.totalItems],
+    [],
+    ["Metode Pembayaran", "Nilai (Rp)"],
+    ...data.payment.map((p) => [PAYMENT_LABEL[p.key] ?? p.key, p.value]),
+    [],
+    ["Produk Terlaris", "Qty", "Total (Rp)"],
+    ...data.topProducts.map((p) => [p.name, p.qty, p.total]),
+  ]
+  const csv = rows.map((r) => r.map(esc).join(";")).join("\r\n")
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = `laporan-${periodLabel.toLowerCase().replace(/\s+/g, "-")}.csv`
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+// Ekspor PDF — render HTML lalu picu print (dialog cetak browser bisa "Simpan PDF").
+function exportPdf(data: BxReports, periodLabel: string, marginPct: string) {
+  const paymentRows = data.payment
+    .map(
+      (p) =>
+        `<tr><td>${PAYMENT_LABEL[p.key] ?? p.key}</td><td class="num">${fmtRp(p.value)}</td></tr>`
+    )
+    .join("")
+  const topRows = data.topProducts
+    .slice(0, 15)
+    .map(
+      (p, i) =>
+        `<tr><td>${i + 1}. ${p.name}</td><td class="num">${p.qty}</td><td class="num">${fmtRp(p.total)}</td></tr>`
+    )
+    .join("")
+  const html = `<!doctype html>
+<html><head><meta charset="utf-8" /><title>Laporan ${periodLabel}</title>
+<style>
+  @page { margin: 14mm; }
+  body { font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; color: #1a1a1a; font-size: 13px; }
+  h1 { font-size: 18px; margin: 0 0 2px; }
+  .muted { color: #6b6b6b; font-size: 12px; margin: 0 0 16px; }
+  h2 { font-size: 14px; margin: 18px 0 6px; border-bottom: 1px solid #e5e5e5; padding-bottom: 4px; }
+  table { width: 100%; border-collapse: collapse; }
+  td, th { padding: 5px 2px; text-align: left; border-bottom: 1px solid #f0f0f0; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .big { font-size: 22px; font-weight: 700; margin: 4px 0 0; }
+</style></head>
+<body>
+  <h1>Laporan Penjualan</h1>
+  <p class="muted">Periode: ${periodLabel}</p>
+  <p class="muted">Omzet</p>
+  <p class="big">${fmtRp(data.totalRevenue)}</p>
+  <h2>Ringkasan</h2>
+  <table>
+    <tr><td>Laba Kotor</td><td class="num">${fmtRp(data.profit)} (${marginPct})</td></tr>
+    <tr><td>Pengeluaran</td><td class="num">${fmtRp(data.totalExpenses)}</td></tr>
+    <tr><td>Laba Bersih</td><td class="num">${fmtRp(data.netProfit)}</td></tr>
+    <tr><td>Jumlah Transaksi</td><td class="num">${data.count}</td></tr>
+    <tr><td>Barang Terjual</td><td class="num">${data.totalItems}</td></tr>
+  </table>
+  ${paymentRows ? `<h2>Metode Pembayaran</h2><table>${paymentRows}</table>` : ""}
+  ${topRows ? `<h2>Produk Terlaris</h2><table>${topRows}</table>` : ""}
+</body></html>`
+  const iframe = document.createElement("iframe")
+  iframe.style.position = "fixed"
+  iframe.style.right = "0"
+  iframe.style.bottom = "0"
+  iframe.style.width = "0"
+  iframe.style.height = "0"
+  iframe.style.border = "0"
+  iframe.setAttribute("aria-hidden", "true")
+  document.body.appendChild(iframe)
+  const doc = iframe.contentDocument
+  if (!doc) {
+    iframe.remove()
+    return
+  }
+  doc.open()
+  doc.write(html)
+  doc.close()
+  iframe.contentWindow?.focus()
+  iframe.contentWindow?.print()
+  setTimeout(() => iframe.remove(), 1000)
+}
 
 function fromForRange(range: RangeKey): string | undefined {
   const now = new Date()
@@ -133,13 +233,32 @@ export function ReportsView() {
     <div className="space-y-4 p-4">
       <div className="flex items-center justify-between gap-2">
         <PeriodDropdown value={range} onChange={changeRange} />
-        <button
-          onClick={share}
-          disabled={loading || !data || data.count === 0}
-          className="flex h-8 items-center gap-1.5 rounded-full border border-hairline bg-canvas px-3 text-xs font-semibold text-ink transition-colors active:bg-canvas-soft disabled:opacity-50"
-        >
-          <Share className="size-3.5" /> Bagikan
-        </button>
+        <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              disabled={loading || !data || data.count === 0}
+              className="flex h-8 items-center gap-1.5 rounded-full border border-hairline bg-canvas px-3 text-xs font-semibold text-ink transition-colors outline-none active:bg-canvas-soft data-[popup-open]:bg-canvas-soft disabled:opacity-50"
+            >
+              <Printer className="size-3.5" /> Ekspor
+              <ChevronDown className="size-3.5 text-ink-muted" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-[160px]">
+              <DropdownMenuItem onClick={() => data && exportCsv(data, periodLabel)}>
+                Unduh CSV (Excel)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => data && exportPdf(data, periodLabel, marginPct)}>
+                Cetak / PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <button
+            onClick={share}
+            disabled={loading || !data || data.count === 0}
+            className="flex h-8 items-center gap-1.5 rounded-full border border-hairline bg-canvas px-3 text-xs font-semibold text-ink transition-colors active:bg-canvas-soft disabled:opacity-50"
+          >
+            <Share className="size-3.5" /> Bagikan
+          </button>
+        </div>
       </div>
 
       {loading ? (

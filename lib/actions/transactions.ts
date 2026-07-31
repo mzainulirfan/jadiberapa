@@ -9,10 +9,14 @@ export async function createTransaction(
   customer_id?: string | null,
   // Jumlah yang benar-benar dibayar saat checkout. Untuk metode "utang" ini bisa
   // 0 (murni utang) atau sebagian (DP). Undefined = dianggap lunas penuh.
-  paid_amount?: number
+  paid_amount?: number,
+  // Diskon per nota (nominal rupiah). total disimpan sebagai nilai neto (setelah diskon).
+  discount?: number
 ) {
   const supabase = await createClient()
-  const total = items.reduce((sum, i) => sum + i.subtotal, 0)
+  const gross = items.reduce((sum, i) => sum + i.subtotal, 0)
+  const disc = Math.max(0, Math.min(gross, Math.round(discount ?? 0)))
+  const total = gross - disc
 
   const isUtang = payment_method === "utang"
   const paid = isUtang
@@ -24,6 +28,7 @@ export async function createTransaction(
     .from("transactions")
     .insert({
       total,
+      discount: disc,
       payment_method,
       customer_id: customer_id || null,
       paid_amount: paid,

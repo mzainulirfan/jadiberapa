@@ -59,6 +59,10 @@ function notaNo(tx: Transaction) {
   return (tx as Transaction & { number?: string | null }).number ?? tx.id.slice(0, 8).toUpperCase()
 }
 
+function discountOf(tx: Transaction) {
+  return (tx as Transaction & { discount?: number }).discount ?? 0
+}
+
 const fmtRp = (n: number) => `Rp${n.toLocaleString("id-ID")}`
 
 function formatDate(d: Date) {
@@ -107,6 +111,11 @@ function buildStrukHtml(tx: Transaction, settings: Record<string, string>, barco
     lines.push(right(fmtRp(item.subtotal)))
   }
   lines.push(sep)
+  const disc = discountOf(tx)
+  if (disc > 0) {
+    lines.push(`Subtotal${right(fmtRp(tx.total + disc))}`)
+    lines.push(`Diskon${right("-" + fmtRp(disc))}`)
+  }
   lines.push(`Total${right(fmtRp(tx.total))}`)
   lines.push(`Bayar: ${methodLabel[tx.payment_method] ?? tx.payment_method}`)
   if (statusOf(tx) === "utang") {
@@ -190,6 +199,18 @@ function StrukSheet({
 
               <div className="my-3 border-t border-dashed border-hairline" />
 
+              {discountOf(tx) > 0 && (
+                <>
+                  <div className="flex items-center justify-between text-xs text-ink-muted">
+                    <span>Subtotal</span>
+                    <span>{fmtRp(tx.total + discountOf(tx))}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-ink-muted">
+                    <span>Diskon</span>
+                    <span>-{fmtRp(discountOf(tx))}</span>
+                  </div>
+                </>
+              )}
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold">Total</span>
                 <span className="text-sm font-bold">{fmtRp(tx.total)}</span>
@@ -309,7 +330,7 @@ ${(tx.transaction_items as TxItem[])
   .map((item) => `${item.qty} x ${item.products?.name ?? "Produk dihapus"} = ${fmtRp(item.subtotal)}`)
   .join("\n")}
 ----------------
-Total: ${fmtRp(tx.total)}
+${discountOf(tx) > 0 ? `Subtotal: ${fmtRp(tx.total + discountOf(tx))}\nDiskon: -${fmtRp(discountOf(tx))}\n` : ""}Total: ${fmtRp(tx.total)}
 Bayar: ${methodLabel[tx.payment_method] ?? tx.payment_method}
 ================
 Terima kasih`
@@ -349,6 +370,18 @@ Terima kasih`
                 <span className="text-lg font-bold text-ink">{fmtRp(tx.total)}</span>
               </div>
               <div className="mt-3 space-y-2 border-t border-hairline pt-3 text-sm">
+                {discountOf(tx) > 0 && (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="text-ink-muted">Subtotal</span>
+                      <span className="font-medium text-ink">{fmtRp(tx.total + discountOf(tx))}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-ink-muted">Diskon</span>
+                      <span className="font-medium text-accent-green">-{fmtRp(discountOf(tx))}</span>
+                    </div>
+                  </>
+                )}
                 <div className="flex items-center justify-between">
                   <span className="text-ink-muted">Pembayaran</span>
                   <span className="font-medium text-ink capitalize">
