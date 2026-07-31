@@ -21,6 +21,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
 
   useEffect(() => {
+    if ("scrollRestoration" in history) {
+      history.scrollRestoration = "manual"
+    }
     supabase.auth.getUser().then(({ data }) => {
       setUser(data.user ?? null)
       setLoading(false)

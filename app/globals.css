@@ -97,9 +97,15 @@
   }
   body {
     @apply bg-canvas-soft text-ink;
+    height: 100%;
+    height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
   }
   html {
     @apply font-sans;
+    height: 100%;
+    overflow: hidden;
   }
 }
 
