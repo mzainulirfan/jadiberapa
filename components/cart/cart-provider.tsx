@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import type { BxProduct } from "@/components/products/types"
+import { getCart, saveCart, watchCart } from "@/lib/db/cart"
 
 export type CartItem = {
   product: BxProduct
@@ -20,8 +21,52 @@ type CartContextValue = {
 
 const CartContext = React.createContext<CartContextValue | null>(null)
 
+function sameItems(a: CartItem[], b: CartItem[]) {
+  return JSON.stringify(a) === JSON.stringify(b)
+}
+
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = React.useState<CartItem[]>([])
+  const hydratedRef = React.useRef(false)
+
+  React.useEffect(() => {
+    let mounted = true
+    let unsubscribe: (() => void) | null = null
+
+    async function init() {
+      const stored = await getCart()
+      if (!mounted) return
+      if (stored) setItems(stored)
+      hydratedRef.current = true
+      unsubscribe = await watchCart((remote) => {
+        setItems((prev) => (sameItems(prev, remote) ? prev : remote))
+      })
+    }
+
+    init()
+
+    async function refetch() {
+      if (document.visibilityState !== "visible") return
+      const stored = await getCart()
+      if (!mounted || !stored) return
+      setItems((prev) => (sameItems(prev, stored) ? prev : stored))
+    }
+    window.addEventListener("focus", refetch)
+    document.addEventListener("visibilitychange", refetch)
+
+    return () => {
+      mounted = false
+      unsubscribe?.()
+      window.removeEventListener("focus", refetch)
+      document.removeEventListener("visibilitychange", refetch)
+    }
+  }, [])
+
+  React.useEffect(() => {
+    if (!hydratedRef.current) return
+    const t = setTimeout(() => saveCart(items), 400)
+    return () => clearTimeout(t)
+  }, [items])
 
   const addItem = React.useCallback((product: BxProduct) => {
     setItems((prev) => {

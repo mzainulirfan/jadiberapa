@@ -25,8 +25,10 @@ import {
 } from "@/components/ui/popover"
 import { ProductDialog } from "./product-dialog"
 import {
-  getProductsPage,
+  getProducts,
   getCategories,
+} from "@/lib/db/queries"
+import {
   deleteProduct,
   type ProductSort,
 } from "@/lib/actions/products"
@@ -103,7 +105,7 @@ export function ProductList() {
     let cancelled = false
     const t = setTimeout(async () => {
       setLoading(true)
-      const { data, total: count } = await getProductsPage({
+      const { data, total: count } = await getProducts({
         search,
         categoryIds: catIds,
         sort,
@@ -116,7 +118,7 @@ export function ProductList() {
         setPage(0)
         setLoading(false)
       }
-    }, 300)
+    }, 150)
     return () => {
       cancelled = true
       clearTimeout(t)
@@ -125,7 +127,7 @@ export function ProductList() {
 
   async function loadMore() {
     setLoadingMore(true)
-    const { data } = await getProductsPage({
+    const { data } = await getProducts({
       search,
       categoryIds: catIds,
       sort,
@@ -135,6 +137,19 @@ export function ProductList() {
     setProducts((prev) => [...prev, ...data])
     setPage((p) => p + 1)
     setLoadingMore(false)
+  }
+
+  async function reload() {
+    setLoading(true)
+    const [{ data, total: count }, cats] = await Promise.all([
+      getProducts({ search, categoryIds: catIds, sort, page: 0, pageSize: PAGE_SIZE }),
+      getCategories(),
+    ])
+    setProducts(data)
+    setTotal(count)
+    setCategories(cats)
+    setPage(0)
+    setLoading(false)
   }
 
   async function handleDelete() {
@@ -161,7 +176,7 @@ export function ProductList() {
             className="pl-8"
           />
         </div>
-        <ProductDialog product={null}>
+        <ProductDialog product={null} onSaved={reload}>
           <Button className="rounded-full size-9 p-0">
             <Plus className="size-5" />
           </Button>
@@ -328,7 +343,7 @@ export function ProductList() {
                 </div>
               </button>
               <div className="flex items-center justify-end gap-1 px-2.5 pb-2">
-                <ProductDialog product={p}>
+                <ProductDialog product={p} onSaved={reload}>
                   <button className="rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft">
                     <Pencil className="size-4" />
                   </button>
@@ -362,7 +377,7 @@ export function ProductList() {
                 </p>
               </div>
               <div className="flex items-center gap-1">
-                <ProductDialog product={p}>
+                <ProductDialog product={p} onSaved={reload}>
                   <button className="rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft">
                     <Pencil className="size-4" />
                   </button>
@@ -468,7 +483,7 @@ export function ProductList() {
               </div>
 
               <div className="flex shrink-0 gap-2 border-t border-hairline p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-                <ProductDialog product={selected}>
+                <ProductDialog product={selected} onSaved={reload}>
                   <Button variant="outline" className="flex-1 rounded-full gap-1.5">
                     <Pencil className="size-4" />
                     Edit

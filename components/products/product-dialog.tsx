@@ -1,6 +1,6 @@
 ﻿"use client"
 
-import { useActionState, useEffect, useState } from "react"
+import { useActionState, useEffect, useRef, useState } from "react"
 import {
   Drawer,
   DrawerContent,
@@ -11,28 +11,40 @@ import {
 } from "@/components/ui/drawer"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { createProduct, updateProduct, getCategories, createCategory, uploadProductImage } from "@/lib/actions/products"
+import { createProduct, updateProduct, createCategory, uploadProductImage } from "@/lib/actions/products"
+import { getCategories, invalidateCategories } from "@/lib/db/queries"
 import type { BxCategory, BxProduct } from "./types"
-import { Plus, Trash, X } from "@/components/ui/icons"
+import { Trash, X } from "@/components/ui/icons"
 
 type Props = {
   product?: BxProduct | null
   children: React.ReactNode
+  onSaved?: () => void
 }
 
-export function ProductDialog({ product, children }: Props) {
+export function ProductDialog({ product, children, onSaved }: Props) {
   const [open, setOpen] = useState(false)
   const [categories, setCategories] = useState<BxCategory[]>([])
   const [newCategory, setNewCategory] = useState("")
   const [imageUrl, setImageUrl] = useState("")
   const [uploading, setUploading] = useState(false)
   const action = product ? updateProduct.bind(null, product.id) : createProduct
+  const submittedRef = useRef(false)
+  const onSavedRef = useRef(onSaved)
+  useEffect(() => {
+    onSavedRef.current = onSaved
+  }, [onSaved])
 
   const [state, formAction, pending] = useActionState(
     async (_prev: unknown, formData: FormData) => {
+      submittedRef.current = true
       if (newCategory) {
         const { data, error } = await createCategory(newCategory)
-        if (data) formData.set("category_id", data.id)
+        if (data) {
+          formData.set("category_id", data.id)
+          invalidateCategories()
+          getCategories().then(setCategories)
+        }
         if (error) return { error }
       }
       return action(formData)
@@ -48,7 +60,11 @@ export function ProductDialog({ product, children }: Props) {
   }, [open])
 
   useEffect(() => {
-    if (state?.error === null && !pending) setOpen(false)
+    if (state?.error === null && !pending && submittedRef.current) {
+      submittedRef.current = false
+      setOpen(false)
+      onSavedRef.current?.()
+    }
   }, [state, pending])
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {

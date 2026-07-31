@@ -4,7 +4,8 @@ import { useEffect, useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { getCategories, createCategory, updateCategory, deleteCategory } from "@/lib/actions/products"
+import { getCategories, invalidateCategories } from "@/lib/db/queries"
+import { createCategory, updateCategory, deleteCategory } from "@/lib/actions/products"
 import { Pencil, Trash, Check, X, Plus, Tag } from "@/components/ui/icons"
 
 type Cat = { id: string; name: string }
@@ -27,6 +28,7 @@ export function CategoriesTab() {
   async function handleCreate() {
     if (!newName.trim()) return
     await createCategory(newName.trim())
+    invalidateCategories()
     setNewName("")
     load()
   }
@@ -34,6 +36,7 @@ export function CategoriesTab() {
   async function handleUpdate(id: string) {
     if (!editName.trim()) return
     await updateCategory(id, editName.trim())
+    invalidateCategories()
     setEditId(null)
     load()
   }
@@ -41,6 +44,7 @@ export function CategoriesTab() {
   async function handleDelete(id: string) {
     if (!confirm("Hapus kategori?")) return
     await deleteCategory(id)
+    invalidateCategories()
     load()
   }
 

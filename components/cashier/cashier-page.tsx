@@ -3,9 +3,8 @@
 import { useEffect, useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { getProducts, getCategories } from "@/lib/actions/products"
+import { getProducts, getCategories } from "@/lib/db/queries"
 import { useCart } from "@/components/cart/cart-provider"
 import { toast } from "sonner"
 import { Search, Filter, Barcode, X, Check } from "@/components/ui/icons"
@@ -45,17 +44,19 @@ export function CashierPage() {
 
   useEffect(() => {
     let cancelled = false
+    const idle = !search.trim() && catIds.length === 0
     const t = setTimeout(async () => {
       setLoading(true)
-      const prods =
-        !search.trim() && catIds.length === 0
-          ? await getProducts(undefined, undefined, 8)
-          : await getProducts(search.trim() || undefined, catIds.length > 0 ? catIds : undefined)
+      const { data } = await getProducts({
+        search: idle ? undefined : search.trim() || undefined,
+        categoryIds: idle ? undefined : catIds.length > 0 ? catIds : undefined,
+        limit: idle ? 8 : undefined,
+      })
       if (!cancelled) {
-        setProducts(prods)
+        setProducts(data)
         setLoading(false)
       }
-    }, 300)
+    }, idle ? 0 : 150)
     return () => {
       cancelled = true
       clearTimeout(t)
