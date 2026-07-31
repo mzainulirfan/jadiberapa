@@ -59,9 +59,60 @@ export function ProductCard({
         <div className="flex items-center justify-between gap-1 pt-0.5">
           <p className="text-sm font-semibold text-primary">Rp{p.price_sell.toLocaleString()}</p>
           {!out && p.stock <= 5 && (
-            <span className="text-[11px] font-medium text-amber-600">Stok {p.stock}</span>
+            <span className="text-[11px] font-medium text-accent-orange">Stok {p.stock}</span>
           )}
         </div>
+      </div>
+    </button>
+  )
+}
+
+export function ProductRow({
+  p,
+  qty,
+  onAdd,
+}: {
+  p: BxProduct
+  qty: number
+  onAdd: () => void
+}) {
+  const out = p.stock <= 0
+  return (
+    <button
+      type="button"
+      onClick={onAdd}
+      disabled={out}
+      className={cn(
+        "flex w-full items-center gap-3 rounded-xl border border-hairline bg-canvas p-2.5 text-left transition-colors",
+        out ? "opacity-40" : "active:border-primary/40"
+      )}
+    >
+      <div className="relative size-11 shrink-0 overflow-hidden rounded-lg bg-canvas-soft">
+        {p.image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={p.image_url} alt={p.name} className="size-full object-cover" loading="lazy" />
+        ) : (
+          <div className="flex size-full items-center justify-center text-ink-faint">
+            <Package className="size-5" />
+          </div>
+        )}
+        {qty > 0 && (
+          <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+            {qty}
+          </span>
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-ink">{p.name}</p>
+        <p className="truncate text-xs text-ink-muted">{p.categories?.name ?? "Tanpa kategori"}</p>
+      </div>
+      <div className="shrink-0 text-right">
+        <p className="text-sm font-semibold text-primary">Rp{p.price_sell.toLocaleString()}</p>
+        {out ? (
+          <span className="text-[11px] font-semibold text-destructive">Habis</span>
+        ) : (
+          p.stock <= 5 && <span className="text-[11px] font-medium text-accent-orange">Stok {p.stock}</span>
+        )}
       </div>
     </button>
   )

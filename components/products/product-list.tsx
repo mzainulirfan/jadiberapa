@@ -27,12 +27,14 @@ import { ProductDialog } from "./product-dialog"
 import {
   getProducts,
   getCategories,
+  getInventorySummary,
 } from "@/lib/db/queries"
 import {
   deleteProduct,
   type ProductSort,
 } from "@/lib/actions/products"
 import { Search, Plus, Pencil, Trash, Check, ChevronDown, Grid, List, X, Package } from "@/components/ui/icons"
+import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { id as localeId } from "date-fns/locale"
@@ -52,7 +54,7 @@ function StockBadge({ stock }: { stock: number }) {
   if (stock <= 0) return <Badge variant="destructive">Habis</Badge>
   if (stock <= 5)
     return (
-      <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700">
+      <Badge variant="outline" className="border-accent-orange/30 bg-accent-orange/10 text-accent-orange">
         Stok {stock}
       </Badge>
     )
@@ -92,6 +94,8 @@ export function ProductList() {
   const [selected, setSelected] = useState<BxProduct | null>(null)
   const [catOpen, setCatOpen] = useState(false)
   const [sortOpen, setSortOpen] = useState(false)
+  const [lowStock, setLowStock] = useState(false)
+  const [summary, setSummary] = useState<{ count: number; stockValue: number; lowStock: number } | null>(null)
 
   function toggleCat(id: string) {
     setCatIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
@@ -102,6 +106,20 @@ export function ProductList() {
   }, [])
 
   useEffect(() => {
+    getInventorySummary().then(setSummary)
+  }, [])
+
+  useEffect(() => {
+    const v = localStorage.getItem("products_view")
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sinkron preferensi setelah mount
+    if (v === "list" || v === "grid") setView(v)
+  }, [])
+
+  useEffect(() => {
+    localStorage.setItem("products_view", view)
+  }, [view])
+
+  useEffect(() => {
     let cancelled = false
     const t = setTimeout(async () => {
       setLoading(true)
@@ -109,6 +127,7 @@ export function ProductList() {
         search,
         categoryIds: catIds,
         sort,
+        lowStock,
         page: 0,
         pageSize: PAGE_SIZE,
       })
@@ -123,7 +142,7 @@ export function ProductList() {
       cancelled = true
       clearTimeout(t)
     }
-  }, [search, catIds, sort])
+  }, [search, catIds, sort, lowStock])
 
   async function loadMore() {
     setLoadingMore(true)
@@ -131,6 +150,7 @@ export function ProductList() {
       search,
       categoryIds: catIds,
       sort,
+      lowStock,
       page: page + 1,
       pageSize: PAGE_SIZE,
     })
@@ -142,7 +162,7 @@ export function ProductList() {
   async function reload() {
     setLoading(true)
     const [{ data, total: count }, cats] = await Promise.all([
-      getProducts({ search, categoryIds: catIds, sort, page: 0, pageSize: PAGE_SIZE }),
+      getProducts({ search, categoryIds: catIds, sort, lowStock, page: 0, pageSize: PAGE_SIZE }),
       getCategories(),
     ])
     setProducts(data)
@@ -150,22 +170,56 @@ export function ProductList() {
     setCategories(cats)
     setPage(0)
     setLoading(false)
+    getInventorySummary().then(setSummary)
   }
 
   async function handleDelete() {
     if (!deleteTarget) return
-    await deleteProduct(deleteTarget.id)
+    const res = await deleteProduct(deleteTarget.id)
+    if (res?.error) {
+      toast.error("Gagal menghapus barang")
+      return
+    }
+    const id = deleteTarget.id
     setDeleteTarget(null)
-    setProducts((prev) => prev.filter((p) => p.id !== deleteTarget.id))
+    setProducts((prev) => prev.filter((p) => p.id !== id))
     setTotal((t) => Math.max(0, t - 1))
+    getInventorySummary().then(setSummary)
+    toast.success("Barang dihapus")
   }
 
   const hasMore = products.length < total
   const activeCats = categories.filter((c) => catIds.includes(c.id))
   const sortLabel = sortOptions.find((s) => s.id === sort)?.label ?? "Nama (A-Z)"
+  const isFiltering = search.trim() !== "" || catIds.length > 0 || lowStock
 
   return (
     <div className="p-4 space-y-3">
+      {summary && (
+        <div className="flex items-center divide-x divide-hairline overflow-hidden rounded-xl border border-hairline bg-canvas">
+          <div className="flex-1 px-3 py-2">
+            <p className="text-[11px] text-ink-muted">Barang</p>
+            <p className="text-sm font-bold text-ink">{summary.count}</p>
+          </div>
+          <div className="flex-1 px-3 py-2">
+            <p className="text-[11px] text-ink-muted">Nilai Stok</p>
+            <p className="truncate text-sm font-bold text-ink">Rp{summary.stockValue.toLocaleString("id-ID")}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setLowStock((v) => !v)}
+            className={cn(
+              "flex-1 px-3 py-2 text-left transition-colors active:bg-canvas-soft",
+              lowStock && "bg-accent-orange/10"
+            )}
+          >
+            <p className="text-[11px] text-ink-muted">Menipis</p>
+            <p className={cn("text-sm font-bold", summary.lowStock > 0 ? "text-accent-orange" : "text-ink")}>
+              {summary.lowStock}
+            </p>
+          </button>
+        </div>
+      )}
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-ink-faint" />
@@ -275,8 +329,21 @@ export function ProductList() {
         </div>
       </div>
 
-      {catIds.length > 0 && (
+      {(catIds.length > 0 || lowStock) && (
         <div className="flex flex-wrap items-center gap-1.5">
+          {lowStock && (
+            <Badge variant="default" className="gap-1 rounded-full bg-accent-orange">
+              Stok menipis
+              <button
+                type="button"
+                onClick={() => setLowStock(false)}
+                className="-mr-0.5 flex size-4 items-center justify-center rounded-full hover:bg-primary-foreground/20"
+                aria-label="Hapus filter stok menipis"
+              >
+                <X className="size-3" />
+              </button>
+            </Badge>
+          )}
           {activeCats.map((c) => (
             <Badge key={c.id} variant="default" className="rounded-full gap-1">
               {c.name}
@@ -292,7 +359,10 @@ export function ProductList() {
           ))}
           <button
             type="button"
-            onClick={() => setCatIds([])}
+            onClick={() => {
+              setCatIds([])
+              setLowStock(false)
+            }}
             className="text-xs text-ink-muted active:text-ink"
           >
             Hapus semua
@@ -308,8 +378,14 @@ export function ProductList() {
         </div>
       ) : products.length === 0 ? (
         <div className="text-center py-12 text-ink-faint">
-          <p className="text-sm">Belum ada barang</p>
-          <p className="text-xs mt-1">Tambah barang pertama</p>
+          {isFiltering ? (
+            <p className="text-sm">Barang tidak ditemukan</p>
+          ) : (
+            <>
+              <p className="text-sm">Belum ada barang</p>
+              <p className="text-xs mt-1">Tambah barang pertama</p>
+            </>
+          )}
         </div>
       ) : view === "grid" ? (
         <div className="grid grid-cols-2 gap-2">
@@ -452,6 +528,10 @@ export function ProductList() {
 
                 <div className="rounded-xl bg-canvas-soft p-3 space-y-1.5 text-sm">
                   <div className="flex justify-between">
+                    <span className="text-ink-muted">Stok</span>
+                    <span className="font-medium text-ink">{selected.stock}</span>
+                  </div>
+                  <div className="flex justify-between">
                     <span className="text-ink-muted">SKU</span>
                     <span className="text-ink">{selected.sku || "-"}</span>
                   </div>
@@ -470,6 +550,8 @@ export function ProductList() {
                       <span className="text-ink-muted">Margin</span>
                       <span className="text-ink">
                         Rp{(selected.price_sell - selected.price_buy).toLocaleString()}
+                        {" · "}
+                        {Math.round(((selected.price_sell - selected.price_buy) / selected.price_buy) * 100)}%
                       </span>
                     </div>
                   )}

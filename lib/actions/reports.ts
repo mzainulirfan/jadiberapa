@@ -17,9 +17,9 @@ export async function getReports(from?: string, to?: string) {
 
   const totalRevenue = transactions?.reduce((s, t) => s + t.total, 0) ?? 0
   const totalItems = transactions?.reduce((s, t) =>
-    s + (t.transaction_items?.reduce((si: number, i: any) => si + i.qty, 0) ?? 0), 0) ?? 0
+    s + (t.transaction_items?.reduce((si: number, i: { qty: number }) => si + i.qty, 0) ?? 0), 0) ?? 0
   const totalCost = transactions?.reduce((s, t) =>
-    s + (t.transaction_items?.reduce((si: number, i: any) => si + (i.products?.price_buy ?? 0) * i.qty, 0) ?? 0), 0) ?? 0
+    s + (t.transaction_items?.reduce((si: number, i: { qty: number; products: { price_buy: number | null } | null }) => si + (i.products?.price_buy ?? 0) * i.qty, 0) ?? 0), 0) ?? 0
 
   const productSales: Record<string, { name: string; qty: number; total: number }> = {}
   for (const tx of transactions ?? []) {

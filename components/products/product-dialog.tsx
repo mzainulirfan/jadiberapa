@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useActionState, useEffect, useRef, useState } from "react"
 import {
@@ -14,7 +14,9 @@ import { Input } from "@/components/ui/input"
 import { createProduct, updateProduct, createCategory, uploadProductImage } from "@/lib/actions/products"
 import { getCategories, invalidateCategories } from "@/lib/db/queries"
 import type { BxCategory, BxProduct } from "./types"
-import { Trash, X } from "@/components/ui/icons"
+import { Trash, X, Plus } from "@/components/ui/icons"
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
+import { cn } from "@/lib/utils"
 
 type Props = {
   product?: BxProduct | null
@@ -28,6 +30,9 @@ export function ProductDialog({ product, children, onSaved }: Props) {
   const [newCategory, setNewCategory] = useState("")
   const [imageUrl, setImageUrl] = useState("")
   const [uploading, setUploading] = useState(false)
+  const [addingCategory, setAddingCategory] = useState(false)
+  const [priceBuy, setPriceBuy] = useState(product?.price_buy ? String(product.price_buy) : "")
+  const [priceSell, setPriceSell] = useState(product?.price_sell ? String(product.price_sell) : "")
   const action = product ? updateProduct.bind(null, product.id) : createProduct
   const submittedRef = useRef(false)
   const onSavedRef = useRef(onSaved)
@@ -55,7 +60,6 @@ export function ProductDialog({ product, children, onSaved }: Props) {
   useEffect(() => {
     if (open) {
       getCategories().then(setCategories)
-      setImageUrl(product?.image_url ?? "")
     }
   }, [open])
 
@@ -73,14 +77,32 @@ export function ProductDialog({ product, children, onSaved }: Props) {
     setUploading(true)
     const fd = new FormData()
     fd.append("file", file)
-    const { url, error } = await uploadProductImage(fd)
+    const { url } = await uploadProductImage(fd)
     setUploading(false)
     e.target.value = ""
     if (url) setImageUrl(url)
   }
 
+  const buy = Number(priceBuy) || 0
+  const sell = Number(priceSell) || 0
+  const marginRp = sell - buy
+  const marginPct = buy > 0 ? (marginRp / buy) * 100 : null
+
   return (
-    <Drawer open={open} onOpenChange={setOpen} showSwipeHandle>
+    <Drawer
+      open={open}
+      onOpenChange={(v) => {
+        setOpen(v)
+        if (v) {
+          setImageUrl(product?.image_url ?? "")
+          setAddingCategory(false)
+          setNewCategory("")
+          setPriceBuy(product?.price_buy ? String(product.price_buy) : "")
+          setPriceSell(product?.price_sell ? String(product.price_sell) : "")
+        }
+      }}
+      showSwipeHandle
+    >
       <DrawerTrigger render={children as React.ReactElement} />
       <DrawerContent className="rounded-t-xl">
         <DrawerHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
@@ -135,29 +157,54 @@ export function ProductDialog({ product, children, onSaved }: Props) {
             <div className="rounded-xl bg-canvas-soft p-3 space-y-3">
               <p className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Informasi Barang</p>
               <div>
-                <label className="text-xs text-ink-muted mb-1 block">Nama Barang</label>
-                <Input name="name" placeholder="Contoh: Indomie Goreng" defaultValue={product?.name} required />
+                <label htmlFor="name" className="text-xs text-ink-muted mb-1 block">Nama Barang</label>
+                <Input id="name" name="name" placeholder="Contoh: Indomie Goreng" defaultValue={product?.name} required />
               </div>
               <div>
-                <label className="text-xs text-ink-muted mb-1 block">Kategori</label>
-                <div className="flex gap-2">
-                  <select
-                    name="category_id"
-                    defaultValue={product?.category_id ?? ""}
-                    className="flex h-9 w-full rounded-[4px] border border-hairline bg-canvas px-2.5 text-sm text-ink outline-none focus:border-primary"
-                  >
-                    <option value="">Tanpa kategori</option>
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                  <Input
-                    placeholder="Baru"
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value)}
-                    className="w-24"
-                  />
-                </div>
+                <label htmlFor="category_id" className="text-xs text-ink-muted mb-1 block">Kategori</label>
+                {addingCategory ? (
+                  <div className="flex gap-2">
+                    <Input
+                      autoFocus
+                      placeholder="Nama kategori baru"
+                      value={newCategory}
+                      onChange={(e) => setNewCategory(e.target.value)}
+                      className="flex-1"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAddingCategory(false)
+                        setNewCategory("")
+                      }}
+                      className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-hairline text-ink-muted active:bg-canvas"
+                      aria-label="Batal kategori baru"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <select
+                      id="category_id"
+                      name="category_id"
+                      defaultValue={product?.category_id ?? ""}
+                      className="h-8 flex-1 rounded-lg border border-hairline bg-canvas px-2.5 text-sm text-ink outline-none focus:border-primary"
+                    >
+                      <option value="">Tanpa kategori</option>
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setAddingCategory(true)}
+                      className="flex h-8 shrink-0 items-center gap-1 rounded-lg border border-hairline px-3 text-xs font-medium text-ink active:bg-canvas"
+                    >
+                      <Plus className="size-3.5" /> Baru
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -165,29 +212,68 @@ export function ProductDialog({ product, children, onSaved }: Props) {
               <p className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Harga & Stok</p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-ink-muted mb-1 block">Harga Beli</label>
-                  <Input name="price_buy" type="number" placeholder="0" defaultValue={product?.price_buy ?? ""} />
+                  <label htmlFor="price_buy" className="text-xs text-ink-muted mb-1 block">Harga Beli</label>
+                  <InputGroup className="bg-canvas">
+                    <InputGroupAddon>Rp</InputGroupAddon>
+                    <InputGroupInput
+                      id="price_buy"
+                      name="price_buy"
+                      type="number"
+                      inputMode="numeric"
+                      min="0"
+                      placeholder="0"
+                      value={priceBuy}
+                      onChange={(e) => setPriceBuy(e.target.value)}
+                    />
+                  </InputGroup>
                 </div>
                 <div>
-                  <label className="text-xs text-ink-muted mb-1 block">Harga Jual</label>
-                  <Input name="price_sell" type="number" placeholder="0" defaultValue={product?.price_sell ?? ""} required />
+                  <label htmlFor="price_sell" className="text-xs text-ink-muted mb-1 block">Harga Jual</label>
+                  <InputGroup className="bg-canvas">
+                    <InputGroupAddon>Rp</InputGroupAddon>
+                    <InputGroupInput
+                      id="price_sell"
+                      name="price_sell"
+                      type="number"
+                      inputMode="numeric"
+                      min="0"
+                      placeholder="0"
+                      value={priceSell}
+                      onChange={(e) => setPriceSell(e.target.value)}
+                      required
+                    />
+                  </InputGroup>
                 </div>
               </div>
+              {priceSell !== "" && (
+                <div
+                  className={cn(
+                    "flex items-center justify-between rounded-lg px-3 py-2 text-xs",
+                    marginRp < 0 ? "bg-destructive/10 text-destructive" : "bg-canvas text-ink-muted"
+                  )}
+                >
+                  <span>{marginRp < 0 ? "Harga jual di bawah modal" : "Margin per item"}</span>
+                  <span className="font-semibold">
+                    Rp{marginRp.toLocaleString("id-ID")}
+                    {marginPct !== null ? ` · ${Math.round(marginPct)}%` : ""}
+                  </span>
+                </div>
+              )}
               <div>
-                <label className="text-xs text-ink-muted mb-1 block">Stok</label>
-                <Input name="stock" type="number" placeholder="0" defaultValue={product?.stock ?? ""} />
+                <label htmlFor="stock" className="text-xs text-ink-muted mb-1 block">Stok</label>
+                <Input id="stock" name="stock" type="number" inputMode="numeric" min="0" placeholder="0" defaultValue={product?.stock ?? ""} />
               </div>
             </div>
 
             <div className="rounded-xl bg-canvas-soft p-3 space-y-3">
               <p className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Identitas</p>
               <div>
-                <label className="text-xs text-ink-muted mb-1 block">SKU</label>
-                <Input name="sku" placeholder="Kode SKU" defaultValue={product?.sku ?? ""} />
+                <label htmlFor="sku" className="text-xs text-ink-muted mb-1 block">SKU</label>
+                <Input id="sku" name="sku" placeholder="Kode SKU" defaultValue={product?.sku ?? ""} />
               </div>
               <div>
-                <label className="text-xs text-ink-muted mb-1 block">Barcode</label>
-                <Input name="barcode" placeholder="Opsional" defaultValue={product?.barcode ?? ""} />
+                <label htmlFor="barcode" className="text-xs text-ink-muted mb-1 block">Barcode</label>
+                <Input id="barcode" name="barcode" placeholder="Opsional" defaultValue={product?.barcode ?? ""} />
               </div>
             </div>
           </div>

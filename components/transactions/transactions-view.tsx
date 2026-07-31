@@ -6,8 +6,14 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getTransactions, getTransactionsSummary, type BxTransaction } from "@/lib/db/queries"
-import { Search, Receipt, ChevronRight, TrendingUp, Wallet } from "@/components/ui/icons"
-import { cn } from "@/lib/utils"
+import { Search, Receipt, ChevronRight, ChevronDown, Wallet } from "@/components/ui/icons"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 type RangeKey = "today" | "7d" | "30d" | "all"
 
@@ -45,6 +51,94 @@ function dateFromFor(range: RangeKey): string | null {
 }
 
 const fmtRp = (n: number) => `Rp${n.toLocaleString("id-ID")}`
+
+const dayHeaderFmt = new Intl.DateTimeFormat("id-ID", {
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+})
+
+function dayLabel(d: Date): string {
+  const diff = (startOfDay(new Date()).getTime() - startOfDay(d).getTime()) / 86400000
+  if (diff === 0) return "Hari Ini"
+  if (diff === 1) return "Kemarin"
+  return dayHeaderFmt.format(d)
+}
+
+const timeFmt = new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit" })
+
+type TxGroup = { key: string; label: string; items: BxTransaction[] }
+
+function groupByDay(list: BxTransaction[]): TxGroup[] {
+  const groups: TxGroup[] = []
+  let current: TxGroup | null = null
+  for (const tx of list) {
+    const d = new Date(tx.created_at)
+    const key = startOfDay(d).toISOString()
+    if (!current || current.key !== key) {
+      current = { key, label: dayLabel(d), items: [] }
+      groups.push(current)
+    }
+    current.items.push(tx)
+  }
+  return groups
+}
+
+function PeriodDropdown({
+  value,
+  onChange,
+}: {
+  value: RangeKey
+  onChange: (r: RangeKey) => void
+}) {
+  const current = RANGES.find((r) => r.key === value)?.label
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-hairline bg-canvas px-3 text-xs font-semibold text-ink transition-colors outline-none active:bg-canvas-soft data-[popup-open]:bg-canvas-soft">
+        {current}
+        <ChevronDown className="size-3.5 text-ink-muted" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-[140px]">
+        <DropdownMenuRadioGroup value={value} onValueChange={(v) => onChange(v as RangeKey)}>
+          {RANGES.map((r) => (
+            <DropdownMenuRadioItem key={r.key} value={r.key} closeOnClick>
+              {r.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+function TxRow({ tx }: { tx: BxTransaction }) {
+  const items = tx.transaction_items ?? []
+  const buyer = tx.customers?.name
+  const subtitle = [buyer, timeFmt.format(new Date(tx.created_at)), `${items.length} item`]
+    .filter(Boolean)
+    .join(" · ")
+  return (
+    <Link
+      href={`/transactions/${tx.id}`}
+      className="flex items-center gap-3 rounded-xl border border-hairline bg-canvas p-3.5 transition-colors active:bg-canvas-soft"
+    >
+      <Receipt className="size-5 shrink-0 text-ink-muted" />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <p className="truncate font-mono text-sm font-semibold text-ink">
+            {tx.number ?? tx.id.slice(0, 8).toUpperCase()}
+          </p>
+          <span className="shrink-0 rounded-full border border-hairline bg-canvas-soft px-2 py-0.5 text-[10px] font-semibold tracking-wide text-ink-muted uppercase">
+            {tx.payment_method ?? "cash"}
+          </span>
+        </div>
+        <p className="mt-0.5 truncate text-xs text-ink-faint">{subtitle}</p>
+      </div>
+      <p className="shrink-0 text-sm font-bold text-ink">{fmtRp(tx.total)}</p>
+      <ChevronRight className="size-4 shrink-0 text-ink-faint" />
+    </Link>
+  )
+}
 
 export function TransactionsView() {
   const [transactions, setTransactions] = useState<BxTransaction[]>([])
@@ -95,17 +189,13 @@ export function TransactionsView() {
   }
 
   const rangeFilterActive = range !== "all"
+  const groups = groupByDay(transactions)
 
   return (
-    <div className="p-4 space-y-3">
-      <div>
-        <h1 className="text-[26px] font-bold leading-[1.23] tracking-[-0.625px] text-ink mb-1">
-          Transaksi
-        </h1>
-        <p className="text-ink-muted text-sm mb-3">Riwayat penjualan</p>
-
-        <div className="relative mb-3">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-ink-faint" />
+    <div className="space-y-3 p-4">
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-ink-faint" />
           <Input
             placeholder="Cari no. nota atau pembeli..."
             value={search}
@@ -113,44 +203,22 @@ export function TransactionsView() {
             className="pl-8"
           />
         </div>
-
-        <div className="flex gap-1.5">
-          {RANGES.map((r) => (
-            <button
-              key={r.key}
-              type="button"
-              onClick={() => setRange(r.key)}
-              className={cn(
-                "flex-1 rounded-full border px-2 py-1.5 text-xs font-medium transition-colors",
-                range === r.key
-                  ? "border-ink bg-ink text-white"
-                  : "border-hairline bg-canvas-soft text-ink-muted active:bg-canvas"
-              )}
-            >
-              {r.label}
-            </button>
-          ))}
-        </div>
+        <PeriodDropdown value={range} onChange={setRange} />
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-xl bg-canvas border border-hairline p-3.5">
-          <div className="flex items-center gap-1.5 text-ink-faint">
-            <Wallet className="size-3.5" />
-            <span className="text-xs">Pendapatan</span>
-          </div>
-          <p className="mt-1 text-base font-bold text-ink">
+      <div className="flex items-center justify-between rounded-xl border border-hairline bg-canvas px-4 py-3">
+        <div className="flex items-center gap-2">
+          <Wallet className="size-4 text-ink-faint" />
+          <span className="text-xs text-ink-faint">Pendapatan</span>
+          <span className="text-sm font-bold text-ink">
             {loading && !summary ? "…" : fmtRp(summary?.total ?? 0)}
-          </p>
+          </span>
         </div>
-        <div className="rounded-xl bg-canvas border border-hairline p-3.5">
-          <div className="flex items-center gap-1.5 text-ink-faint">
-            <TrendingUp className="size-3.5" />
-            <span className="text-xs">Transaksi</span>
-          </div>
-          <p className="mt-1 text-base font-bold text-ink">
+        <div className="flex items-center gap-1.5 border-l border-hairline pl-3">
+          <span className="text-sm font-bold text-ink">
             {loading && !summary ? "…" : (summary?.count ?? 0)}
-          </p>
+          </span>
+          <span className="text-xs text-ink-faint">transaksi</span>
         </div>
       </div>
 
@@ -161,51 +229,28 @@ export function TransactionsView() {
           ))}
         </div>
       ) : error ? (
-        <p className="text-destructive text-sm">{error}</p>
+        <p className="text-sm text-destructive">{error}</p>
       ) : transactions.length === 0 ? (
-        <div className="text-center py-12 text-ink-faint text-sm">
+        <div className="py-12 text-center text-sm text-ink-faint">
           {search.trim() || rangeFilterActive
             ? "Tidak ada transaksi untuk filter ini"
             : "Belum ada transaksi"}
         </div>
       ) : (
         <>
-          <div className="space-y-2">
-            {transactions.map((tx) => {
-              const items = tx.transaction_items ?? []
-              const buyer = tx.customers?.name
-              return (
-                <Link
-                  key={tx.id}
-                  href={`/transactions/${tx.id}`}
-                  className="flex items-center gap-3 rounded-xl bg-canvas border border-hairline p-3.5"
-                >
-                  <Receipt className="size-5 text-ink-muted shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-mono text-sm font-medium text-ink">
-                        {tx.number ?? tx.id.slice(0, 8).toUpperCase()}
-                      </p>
-                      <span className="shrink-0 rounded-full bg-canvas-soft border border-hairline px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-muted">
-                        {tx.payment_method ?? "cash"}
-                      </span>
-                    </div>
-                    <p className="text-xs text-ink-faint mt-0.5 truncate">
-                      {fmtRp(tx.total)}
-                      {buyer ? ` · ${buyer}` : ""} ·{" "}
-                      {new Date(tx.created_at).toLocaleDateString("id", {
-                        day: "numeric",
-                        month: "short",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </p>
-                  </div>
-                  <span className="text-xs text-ink-faint shrink-0">{items.length} item</span>
-                  <ChevronRight className="size-4 text-ink-faint shrink-0" />
-                </Link>
-              )
-            })}
+          <div className="space-y-4">
+            {groups.map((g) => (
+              <div key={g.key} className="space-y-2">
+                <p className="px-1 text-xs font-semibold tracking-wide text-ink-faint uppercase">
+                  {g.label}
+                </p>
+                <div className="space-y-2">
+                  {g.items.map((tx) => (
+                    <TxRow key={tx.id} tx={tx} />
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
 
           {hasMore && (

@@ -19,7 +19,6 @@ import { createCustomer } from "@/lib/actions/customers"
 import { getCustomers, type BxCustomer } from "@/lib/db/queries"
 import { useCart } from "@/components/cart/cart-provider"
 import {
-  ChevronLeft,
   ChevronRight,
   Dollar,
   Qr,
@@ -43,7 +42,7 @@ const methods: { id: PaymentMethod; label: string; icon: typeof Dollar }[] = [
 const quickAmounts = [10000, 20000, 50000, 100000, 200000]
 
 export function CheckoutView() {
-  const { items, clearCart, total, count } = useCart()
+  const { items, clearCart, total } = useCart()
   const router = useRouter()
 
   const [loading, setLoading] = useState(false)
@@ -148,14 +147,6 @@ export function CheckoutView() {
   if (items.length === 0) {
     return (
       <div className="flex h-full flex-col">
-        <div className="flex items-center gap-2 p-4 pb-3">
-          <Link href="/cart" className="rounded-full p-1.5 -ml-1.5 text-ink-muted">
-            <ChevronLeft className="size-5" />
-          </Link>
-          <h1 className="text-[26px] font-bold leading-[1.23] tracking-[-0.625px] text-ink">
-            Pembayaran
-          </h1>
-        </div>
         <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center p-6">
           <p className="text-ink-faint text-sm">Keranjang kosong, tidak ada yang dibayar</p>
           <Button variant="outline" onClick={() => router.push("/cashier")}>
@@ -168,17 +159,7 @@ export function CheckoutView() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2 p-4 pb-3">
-        <Link href="/cart" className="rounded-full p-1.5 -ml-1.5 text-ink-muted">
-          <ChevronLeft className="size-5" />
-        </Link>
-        <h1 className="text-[26px] font-bold leading-[1.23] tracking-[-0.625px] text-ink">
-          Pembayaran
-        </h1>
-        <span className="text-ink-faint text-sm">({count} item)</span>
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-4 pt-0 pb-4 space-y-4">
+      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-4 space-y-4">
         <div className="rounded-xl bg-canvas border border-hairline">
           <p className="px-3 pt-3 pb-2 text-xs font-semibold text-ink-muted uppercase tracking-wider">
             Pembeli

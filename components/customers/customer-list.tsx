@@ -1,17 +1,30 @@
-﻿"use client"
+"use client"
 
 import { useEffect, useState } from "react"
+import { useActionState } from "react"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Search, Pencil, Trash, Plus, User } from "@/components/ui/icons"
+import { Search, Pencil, Trash, Plus, User, Phone, LocationPin, Whatsapp } from "@/components/ui/icons"
 import { getCustomers, createCustomer, updateCustomer, deleteCustomer } from "@/lib/actions/customers"
-import { useActionState } from "react"
 
 type Customer = { id: string; name: string; phone: string | null; address: string | null }
+
+function waLink(phone: string) {
+  const digits = phone.replace(/\D/g, "")
+  const normalized = digits.startsWith("0") ? `62${digits.slice(1)}` : digits
+  return `https://wa.me/${normalized}`
+}
 
 function CustomerForm({ customer, onDone }: { customer?: Customer | null; onDone: () => void }) {
   const action = customer ? updateCustomer.bind(null, customer.id) : createCustomer
@@ -26,10 +39,38 @@ function CustomerForm({ customer, onDone }: { customer?: Customer | null; onDone
 
   return (
     <form action={formAction} className="space-y-3">
-      <Input name="name" placeholder="Nama" defaultValue={customer?.name} required />
-      <Input name="phone" placeholder="Telepon" defaultValue={customer?.phone ?? ""} />
-      <Input name="address" placeholder="Alamat" defaultValue={customer?.address ?? ""} />
-      {state?.error && <p className="text-destructive text-sm">{state.error}</p>}
+      <div>
+        <label htmlFor="cust-name" className="mb-1.5 flex items-center gap-2 text-xs text-ink-muted">
+          <User className="size-3.5" /> Nama
+        </label>
+        <Input id="cust-name" name="name" placeholder="Nama pembeli" defaultValue={customer?.name} required />
+      </div>
+      <div>
+        <label htmlFor="cust-phone" className="mb-1.5 flex items-center gap-2 text-xs text-ink-muted">
+          <Phone className="size-3.5" /> Telepon
+        </label>
+        <Input
+          id="cust-phone"
+          name="phone"
+          type="tel"
+          inputMode="tel"
+          placeholder="08xxx"
+          defaultValue={customer?.phone ?? ""}
+        />
+      </div>
+      <div>
+        <label htmlFor="cust-address" className="mb-1.5 flex items-center gap-2 text-xs text-ink-muted">
+          <LocationPin className="size-3.5" /> Alamat
+        </label>
+        <Textarea
+          id="cust-address"
+          name="address"
+          placeholder="Alamat (opsional)"
+          defaultValue={customer?.address ?? ""}
+          className="min-h-[60px]"
+        />
+      </div>
+      {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
       <Button type="submit" className="w-full rounded-full" disabled={pending}>
         {pending ? "Menyimpan..." : customer ? "Simpan" : "Tambah"}
       </Button>
@@ -43,6 +84,7 @@ export function CustomerList() {
   const [search, setSearch] = useState("")
   const [edit, setEdit] = useState<Customer | null>(null)
   const [open, setOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null)
 
   async function load() {
     setLoading(true)
@@ -50,62 +92,158 @@ export function CustomerList() {
     setLoading(false)
   }
 
-  useEffect(() => { const t = setTimeout(load, 300); return () => clearTimeout(t) }, [search])
+  useEffect(() => {
+    let active = true
+    const t = setTimeout(async () => {
+      const list = await getCustomers(search || undefined)
+      if (active) {
+        setCustomers(list)
+        setLoading(false)
+      }
+    }, 300)
+    return () => {
+      active = false
+      clearTimeout(t)
+    }
+  }, [search])
 
-  async function handleDelete(id: string) {
-    if (!confirm("Hapus pembeli ini?")) return
-    await deleteCustomer(id)
-    load()
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return
+    await deleteCustomer(deleteTarget.id)
+    setCustomers((prev) => prev.filter((c) => c.id !== deleteTarget.id))
+    setDeleteTarget(null)
   }
 
   return (
-    <div className="p-4 space-y-3">
+    <div className="space-y-3 p-4">
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-ink-faint" />
-          <Input placeholder="Cari pembeli..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8" />
+          <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-ink-faint" />
+          <Input
+            placeholder="Cari pembeli..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-8"
+          />
         </div>
-        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEdit(null) } }}>
-          <DialogTrigger className="rounded-full size-9 p-0 bg-primary text-on-primary flex items-center justify-center" onClick={() => setEdit(null)}>
+        <Dialog
+          open={open}
+          onOpenChange={(v) => {
+            setOpen(v)
+            if (!v) setEdit(null)
+          }}
+        >
+          <DialogTrigger
+            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary p-0 text-primary-foreground"
+            onClick={() => setEdit(null)}
+          >
             <Plus className="size-5" />
           </DialogTrigger>
           <DialogContent className="rounded-xl">
-            <DialogHeader><DialogTitle>{edit ? "Edit Pembeli" : "Tambah Pembeli"}</DialogTitle></DialogHeader>
-            <CustomerForm customer={edit} onDone={() => { setOpen(false); setEdit(null); load() }} />
+            <DialogHeader>
+              <DialogTitle>{edit ? "Edit Pembeli" : "Tambah Pembeli"}</DialogTitle>
+            </DialogHeader>
+            <CustomerForm
+              customer={edit}
+              onDone={() => {
+                setOpen(false)
+                setEdit(null)
+                load()
+              }}
+            />
           </DialogContent>
         </Dialog>
       </div>
 
       {loading ? (
-        <div className="space-y-2">{[1,2,3].map((i) => <Skeleton key={i} className="h-16 rounded-lg" />)}</div>
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-16 rounded-xl" />
+          ))}
+        </div>
       ) : customers.length === 0 ? (
-        <div className="text-center py-12 text-ink-faint text-sm">Belum ada pembeli</div>
+        <div className="py-12 text-center text-sm text-ink-faint">
+          {search.trim() ? "Pembeli tidak ditemukan" : "Belum ada pembeli"}
+        </div>
       ) : (
-        <div className="space-y-1">
+        <div className="space-y-2">
           {customers.map((c) => (
-            <div key={c.id} className="flex items-center gap-3 rounded-lg bg-canvas border border-hairline p-3">
-              <User className="size-8 rounded-full bg-canvas-soft p-1.5 text-ink-muted" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-ink">{c.name}</p>
-                <div className="flex items-center gap-2 text-xs text-ink-faint">
-                  {c.phone && <span>{c.phone}</span>}
-                  {c.address && <span className="truncate">{c.address}</span>}
-                </div>
+            <div
+              key={c.id}
+              className="flex items-center gap-3 rounded-xl border border-hairline bg-canvas p-3"
+            >
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-canvas-soft text-sm font-semibold text-ink">
+                {c.name.charAt(0).toUpperCase()}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-ink">{c.name}</p>
+                <p className="truncate text-xs text-ink-faint">
+                  {[c.phone, c.address].filter(Boolean).join(" · ") || "Tanpa kontak"}
+                </p>
               </div>
-              <button
-                onClick={() => { setEdit(c); setOpen(true) }}
-                className="rounded-lg p-1.5 hover:bg-canvas-soft text-ink-muted"
-              >
-                <Pencil className="size-4" />
-              </button>
-              <button onClick={() => handleDelete(c.id)} className="rounded-lg p-1.5 hover:bg-canvas-soft text-ink-muted">
-                <Trash className="size-4" />
-              </button>
+              <div className="flex shrink-0 items-center gap-1">
+                {c.phone && (
+                  <>
+                    <a
+                      href={waLink(c.phone)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`WhatsApp ${c.name}`}
+                      className="flex size-8 items-center justify-center rounded-lg text-accent-green active:bg-canvas-soft"
+                    >
+                      <Whatsapp className="size-4" />
+                    </a>
+                    <a
+                      href={`tel:${c.phone}`}
+                      aria-label={`Telepon ${c.name}`}
+                      className="flex size-8 items-center justify-center rounded-lg text-ink-muted active:bg-canvas-soft"
+                    >
+                      <Phone className="size-4" />
+                    </a>
+                    <span className="mx-0.5 h-5 w-px bg-hairline" />
+                  </>
+                )}
+                <button
+                  onClick={() => {
+                    setEdit(c)
+                    setOpen(true)
+                  }}
+                  aria-label={`Edit ${c.name}`}
+                  className="flex size-8 items-center justify-center rounded-lg text-ink-muted active:bg-canvas-soft"
+                >
+                  <Pencil className="size-4" />
+                </button>
+                <button
+                  onClick={() => setDeleteTarget(c)}
+                  aria-label={`Hapus ${c.name}`}
+                  className="flex size-8 items-center justify-center rounded-lg text-ink-muted active:bg-canvas-soft"
+                >
+                  <Trash className="size-4" />
+                </button>
+              </div>
             </div>
           ))}
         </div>
       )}
+
+      <Dialog open={deleteTarget !== null} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Hapus Pembeli?</DialogTitle>
+            <DialogDescription>
+              &quot;{deleteTarget?.name}&quot; akan dihapus permanen dan tidak bisa dikembalikan.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+              Batal
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDelete}>
+              Hapus
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
-

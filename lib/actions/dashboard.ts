@@ -28,7 +28,7 @@ export async function getDashboardData() {
   ])
 
   const todayTotal = todayData?.reduce((sum, t) => sum + t.total, 0) ?? 0
-  const todayItems = todayData?.reduce((sum, t) => sum + (t.transaction_items?.reduce((s: number, i: any) => s + i.qty, 0) ?? 0), 0) ?? 0
+  const todayItems = todayData?.reduce((sum, t) => sum + (t.transaction_items?.reduce((s: number, i: { qty: number }) => s + i.qty, 0) ?? 0), 0) ?? 0
 
   return {
     todayTotal,

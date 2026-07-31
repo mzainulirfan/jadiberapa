@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -16,7 +15,7 @@ import {
 import { getProducts } from "@/lib/db/queries"
 import { useCart } from "@/components/cart/cart-provider"
 import { ProductCard } from "@/components/cashier/product-card"
-import { Minus, Plus, Trash, ChevronLeft, Package } from "@/components/ui/icons"
+import { Minus, Plus, Trash, Package } from "@/components/ui/icons"
 import type { BxProduct } from "@/components/products/types"
 
 export function CartView() {
@@ -49,25 +48,19 @@ export function CartView() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2 p-4 pb-3">
-        <Link href="/cashier" className="rounded-full p-1.5 -ml-1.5 text-ink-muted">
-          <ChevronLeft className="size-5" />
-        </Link>
-        <h1 className="text-[26px] font-bold leading-[1.23] tracking-[-0.625px] text-ink">
-          Keranjang
-        </h1>
-        <span className="text-ink-faint text-sm">({count})</span>
-        {items.length > 0 && (
+      {items.length > 0 && (
+        <div className="flex items-center justify-between p-4 pb-2">
+          <span className="text-ink-muted text-sm">{count} item</span>
           <button
             type="button"
             onClick={() => setConfirmClear(true)}
-            className="ml-auto flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium text-destructive hover:bg-canvas-soft"
+            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium text-destructive hover:bg-canvas-soft"
           >
             <Trash className="size-4" />
             Hapus Semua
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {items.length === 0 ? (
         <div className="flex-1 overflow-y-auto p-4 pt-0">
