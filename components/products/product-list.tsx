@@ -14,6 +14,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
+  Drawer,
+  DrawerContent,
+  DrawerClose,
+} from "@/components/ui/drawer"
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -385,28 +390,35 @@ export function ProductList() {
         </Button>
       )}
 
-      <Dialog
+      <Drawer
         open={selected !== null}
         onOpenChange={(o) => !o && setSelected(null)}
+        showSwipeHandle
       >
-        <DialogContent className="p-0 overflow-hidden" showCloseButton={true}>
+        <DrawerContent className="rounded-t-xl">
           {selected && (
-            <>
-              <div className="aspect-[16/9] w-full overflow-hidden bg-canvas-soft">
-                {selected.image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={selected.image_url}
-                    alt={selected.name}
-                    className="size-full object-cover"
-                  />
-                ) : (
-                  <div className="flex size-full items-center justify-center">
-                    <Package className="size-12 text-ink-faint" />
-                  </div>
-                )}
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div className="relative shrink-0">
+                <div className="aspect-[16/9] w-full overflow-hidden bg-canvas-soft">
+                  {selected.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={selected.image_url}
+                      alt={selected.name}
+                      className="size-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex size-full items-center justify-center">
+                      <Package className="size-12 text-ink-faint" />
+                    </div>
+                  )}
+                </div>
+                <DrawerClose className="absolute right-3 top-3 rounded-full bg-black/35 p-2 text-white backdrop-blur-sm">
+                  <X className="size-4" />
+                </DrawerClose>
               </div>
-              <div className="px-4 pb-4 space-y-3">
+
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
                 <div>
                   <h2 className="text-lg font-bold text-ink leading-snug">{selected.name}</h2>
                   <div className="flex items-center gap-1.5 mt-1.5">
@@ -453,31 +465,31 @@ export function ProductList() {
                     </span>
                   </div>
                 </div>
-
-                <div className="flex gap-2">
-                  <ProductDialog product={selected}>
-                    <Button variant="outline" className="flex-1 rounded-full gap-1.5">
-                      <Pencil className="size-4" />
-                      Edit
-                    </Button>
-                  </ProductDialog>
-                  <Button
-                    variant="destructive"
-                    className="flex-1 rounded-full gap-1.5"
-                    onClick={() => {
-                      setDeleteTarget(selected)
-                      setSelected(null)
-                    }}
-                  >
-                    <Trash className="size-4" />
-                    Hapus
-                  </Button>
-                </div>
               </div>
-            </>
+
+              <div className="flex shrink-0 gap-2 border-t border-hairline p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+                <ProductDialog product={selected}>
+                  <Button variant="outline" className="flex-1 rounded-full gap-1.5">
+                    <Pencil className="size-4" />
+                    Edit
+                  </Button>
+                </ProductDialog>
+                <Button
+                  variant="destructive"
+                  className="flex-1 rounded-full gap-1.5"
+                  onClick={() => {
+                    setDeleteTarget(selected)
+                    setSelected(null)
+                  }}
+                >
+                  <Trash className="size-4" />
+                  Hapus
+                </Button>
+              </div>
+            </div>
           )}
-        </DialogContent>
-      </Dialog>
+        </DrawerContent>
+      </Drawer>
 
       <Dialog
         open={deleteTarget !== null}

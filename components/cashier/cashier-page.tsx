@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getProducts, getCategories } from "@/lib/actions/products"
 import { useCart } from "@/components/cart/cart-provider"
+import { toast } from "sonner"
 import { Search, Filter, Barcode, X, Check } from "@/components/ui/icons"
 import {
   Popover,
@@ -24,6 +25,11 @@ export function CashierPage() {
   const [catIds, setCatIds] = useState<string[]>([])
   const [catOpen, setCatOpen] = useState(false)
   const cart = useCart()
+
+  function addToCart(p: BxProduct) {
+    cart.addItem(p)
+    toast.success(`${p.name} ditambahkan ke keranjang`)
+  }
 
   const isIdle = !search.trim() && catIds.length === 0
 
@@ -159,7 +165,7 @@ export function CashierPage() {
                   {products.map((p) => (
                     <button
                       key={p.id}
-                      onClick={() => cart.addItem(p)}
+                      onClick={() => addToCart(p)}
                       disabled={p.stock <= 0}
                       className="text-left rounded-xl bg-canvas border border-hairline p-3 hover:border-primary/30 transition-colors disabled:opacity-40"
                     >

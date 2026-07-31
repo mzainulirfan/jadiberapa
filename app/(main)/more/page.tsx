@@ -4,13 +4,11 @@ import {
   BarChart,
   Tag,
   Cog,
-  Receipt,
   ChevronRight,
 } from "@/components/ui/icons"
 
 const menu = [
   { href: "/customers", label: "Pembeli", desc: "Daftar dan kelola pembeli", icon: UserIcon },
-  { href: "/transactions", label: "Transaksi", desc: "Riwayat transaksi penjualan", icon: Receipt },
   { href: "/reports", label: "Laporan", desc: "Laporan penjualan", icon: BarChart },
   { href: "/categories", label: "Kategori", desc: "Kelola kategori barang", icon: Tag },
   { href: "/settings", label: "Pengaturan", desc: "Pengaturan toko", icon: Cog },

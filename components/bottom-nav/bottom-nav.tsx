@@ -6,12 +6,14 @@ import {
   Dashboard as DashboardIcon,
   CartAlt as CashierIcon,
   Package as PackageIcon,
+  Receipt as ReceiptIcon,
   DotsHorizontalRounded as MoreIcon,
 } from "@/components/ui/icons"
 import { cn } from "@/lib/utils"
 
 const mainNav = [
   { href: "/dashboard", label: "Dashboard", icon: DashboardIcon },
+  { href: "/transactions", label: "Transaksi", icon: ReceiptIcon },
   { href: "/cashier", label: "Kasir", icon: CashierIcon },
   { href: "/products", label: "Barang", icon: PackageIcon },
   { href: "/more", label: "Lainnya", icon: MoreIcon },
