@@ -25,7 +25,22 @@ export async function createTransaction(
     .update({ number: transaction.id.slice(0, 8).toUpperCase() })
     .eq("id", transaction.id)
 
-  const txItems = items.map((i) => ({ ...i, transaction_id: transaction.id }))
+  // Snapshot harga beli (cost) per produk agar laba historis akurat & hitung laba
+  // dashboard tak perlu join ke products.
+  const productIds = [...new Set(items.map((i) => i.product_id))]
+  const { data: costRows } = await supabase
+    .from("products")
+    .select("id, price_buy")
+    .in("id", productIds)
+  const costMap = new Map(
+    (costRows ?? []).map((p) => [p.id as string, (p.price_buy as number) ?? 0])
+  )
+
+  const txItems = items.map((i) => ({
+    ...i,
+    transaction_id: transaction.id,
+    price_buy: costMap.get(i.product_id) ?? 0,
+  }))
   const { error: itemError } = await supabase.from("transaction_items").insert(txItems)
 
   if (itemError) return { error: itemError.message }

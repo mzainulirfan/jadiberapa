@@ -405,22 +405,29 @@ export function DashboardView() {
       }
     }
     refresh()
+
+    // Debounce agar beberapa perubahan beruntun (mis. satu transaksi + banyak item)
+    // tidak memicu banyak reload berat.
+    let timer: ReturnType<typeof setTimeout> | null = null
     const reload = () => {
-      getDashboardSummary(period).then((summary) => {
-        if (active) setData(summary)
-      })
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => {
+        getDashboardSummary(period).then((summary) => {
+          if (active) setData(summary)
+        })
+      }, 500)
     }
     const unsub = watchTransactions(reload)
-    function onFocus() {
+    // Cukup visibilitychange (mencakup kembali ke tab/app); hindari duplikasi dengan focus.
+    const onVisible = () => {
       if (document.visibilityState === "visible") reload()
     }
-    window.addEventListener("focus", onFocus)
-    document.addEventListener("visibilitychange", onFocus)
+    document.addEventListener("visibilitychange", onVisible)
     return () => {
       active = false
+      if (timer) clearTimeout(timer)
       unsub()
-      window.removeEventListener("focus", onFocus)
-      document.removeEventListener("visibilitychange", onFocus)
+      document.removeEventListener("visibilitychange", onVisible)
     }
   }, [period])
 

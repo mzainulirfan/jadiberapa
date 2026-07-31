@@ -112,9 +112,8 @@ function PeriodDropdown({
 }
 
 function TxRow({ tx }: { tx: BxTransaction }) {
-  const items = tx.transaction_items ?? []
-  const buyer = tx.customers?.name
-  const subtitle = [buyer, timeFmt.format(new Date(tx.created_at)), `${items.length} item`]
+  const buyer = tx.customer_name
+  const subtitle = [buyer, timeFmt.format(new Date(tx.created_at)), `${tx.item_count} item`]
     .filter(Boolean)
     .join(" · ")
   return (
@@ -163,7 +162,7 @@ export function TransactionsView() {
       if (cancelled) return
       setTransactions(list.data)
       setSummary(sum)
-      setHasMore(list.total > list.data.length)
+      setHasMore(list.hasMore)
       setError(null)
       setLoading(false)
     }, 200)
@@ -177,14 +176,14 @@ export function TransactionsView() {
     setLoadingMore(true)
     const dateFrom = dateFromFor(range)
     const s = search.trim() || undefined
-    const { data, total } = await getTransactions({
+    const { data, hasMore: more } = await getTransactions({
       search: s,
       dateFrom,
       page: transactions.length / PAGE_SIZE,
       pageSize: PAGE_SIZE,
     })
     setTransactions((prev) => [...prev, ...data])
-    setHasMore(transactions.length + data.length < total)
+    setHasMore(more)
     setLoadingMore(false)
   }
 
