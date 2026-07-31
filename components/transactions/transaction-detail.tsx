@@ -27,6 +27,7 @@ import {
 import { recordPayment } from "@/lib/actions/transactions"
 import { Printer, Share, X, Receipt } from "@/components/ui/icons"
 import { Barcode, barcodeSvgString } from "@/components/ui/barcode"
+import { isBluetoothPrintSupported, printReceiptBluetooth } from "@/lib/bluetooth-printer"
 
 type Transaction = NonNullable<Awaited<ReturnType<typeof getTransaction>>["transaction"]>
 type TxItem = {
@@ -75,7 +76,7 @@ function formatDate(d: Date) {
   return `${date} · ${time}`
 }
 
-function buildStrukHtml(tx: Transaction, settings: Record<string, string>, barcodeSvg: string) {
+function buildStrukLines(tx: Transaction, settings: Record<string, string>): string[] {
   const storeName = settings.store_name || "Toko Saya"
   const storeAddress = settings.store_address || ""
   const storePhone = settings.store_phone || ""
@@ -123,6 +124,13 @@ function buildStrukHtml(tx: Transaction, settings: Record<string, string>, barco
     lines.push(`Sisa${right(fmtRp(Math.max(0, tx.total - paidOf(tx))))}`)
   }
   lines.push(sep)
+  lines.push(center("Terima kasih"))
+  lines.push(center("Sampai jumpa kembali"))
+  return lines
+}
+
+function buildStrukHtml(tx: Transaction, settings: Record<string, string>, barcodeSvg: string) {
+  const lines = buildStrukLines(tx, settings)
 
   return `<!doctype html>
 <html>
@@ -151,11 +159,17 @@ function StrukSheet({
   settings,
   onPrint,
   onShare,
+  onBluetooth,
+  bluetoothSupported,
+  bluetoothBusy,
 }: {
   tx: Transaction
   settings: Record<string, string>
   onPrint: () => void
   onShare: () => void
+  onBluetooth: () => void
+  bluetoothSupported: boolean
+  bluetoothBusy: boolean
 }) {
   return (
     <DrawerContent className="rounded-t-xl">
@@ -230,15 +244,28 @@ function StrukSheet({
           </div>
         </div>
 
-        <div className="flex shrink-0 gap-2 border-t border-hairline p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-          <Button variant="outline" className="flex-1 rounded-full gap-1.5" onClick={onShare}>
-            <Share className="size-4" />
-            Bagikan
-          </Button>
-          <Button className="flex-1 rounded-full gap-1.5" onClick={onPrint}>
-            <Printer className="size-4" />
-            Cetak
-          </Button>
+        <div className="flex shrink-0 flex-col gap-2 border-t border-hairline p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          {bluetoothSupported && (
+            <Button
+              variant="outline"
+              className="w-full rounded-full gap-1.5"
+              onClick={onBluetooth}
+              disabled={bluetoothBusy}
+            >
+              <Printer className="size-4" />
+              {bluetoothBusy ? "Menghubungkan..." : "Cetak ke Printer Bluetooth"}
+            </Button>
+          )}
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1 rounded-full gap-1.5" onClick={onShare}>
+              <Share className="size-4" />
+              Bagikan
+            </Button>
+            <Button className="flex-1 rounded-full gap-1.5" onClick={onPrint}>
+              <Printer className="size-4" />
+              Cetak
+            </Button>
+          </div>
         </div>
       </div>
     </DrawerContent>
@@ -256,6 +283,12 @@ export function TransactionDetail({ id }: { id: string }) {
   const [showPay, setShowPay] = useState(false)
   const [payInput, setPayInput] = useState("")
   const [saving, setSaving] = useState(false)
+  const [btSupported, setBtSupported] = useState(false)
+  const [btBusy, setBtBusy] = useState(false)
+
+  useEffect(() => {
+    setBtSupported(isBluetoothPrintSupported())
+  }, [])
 
   useEffect(() => {
     getSettings().then(setSettings)
@@ -290,6 +323,23 @@ export function TransactionDetail({ id }: { id: string }) {
     // Muat ulang data terkini.
     getTransaction(id).then(({ transaction }) => setTx(transaction))
     getPayments(id).then(setPayments)
+  }
+
+  async function doBluetooth() {
+    if (!tx) return
+    setBtBusy(true)
+    try {
+      await printReceiptBluetooth(buildStrukLines(tx, settings))
+      toast.success("Struk terkirim ke printer")
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : ""
+      // Pengguna membatalkan pemilihan perangkat — jangan tampilkan error.
+      if (!/cancel|user|dibatalkan/i.test(msg)) {
+        toast.error(msg || "Gagal mencetak via Bluetooth")
+      }
+    } finally {
+      setBtBusy(false)
+    }
   }
 
   function doPrint() {
@@ -585,6 +635,9 @@ Terima kasih`
             settings={settings}
             onPrint={doPrint}
             onShare={doShare}
+            onBluetooth={doBluetooth}
+            bluetoothSupported={btSupported}
+            bluetoothBusy={btBusy}
           />
         )}
       </Drawer>

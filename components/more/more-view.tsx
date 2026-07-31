@@ -37,6 +37,7 @@ const groups: {
       { href: "/customers", label: "Pembeli", desc: "Daftar & kelola pembeli", icon: UserIcon },
       { href: "/debts", label: "Utang", desc: "Kasbon & pelunasan pembeli", icon: Wallet },
       { href: "/expenses", label: "Pengeluaran", desc: "Biaya operasional & laba bersih", icon: Dollar },
+      { href: "/shift", label: "Shift Kasir", desc: "Buka/tutup laci & selisih kas", icon: Wallet },
       { href: "/categories", label: "Kategori", desc: "Kelola kategori barang", icon: Tag },
       { href: "/reports", label: "Laporan", desc: "Laporan penjualan", icon: BarChart },
     ],

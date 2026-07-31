@@ -566,3 +566,44 @@ export async function getExpenses(from?: string, to?: string): Promise<BxExpense
   const { data } = await query
   return (data ?? []) as unknown as BxExpense[]
 }
+
+export type BxCashSession = {
+  id: string
+  opening: number
+  closing: number | null
+  expected: number | null
+  diff: number | null
+  note: string | null
+  opened_at: string
+  closed_at: string | null
+}
+
+export async function getActiveShift(): Promise<BxCashSession | null> {
+  const { data } = await supabase
+    .from("cash_sessions")
+    .select("id, opening, closing, expected, diff, note, opened_at, closed_at")
+    .is("closed_at", null)
+    .order("opened_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  return (data as unknown as BxCashSession) ?? null
+}
+
+export async function getShifts(limit = 20): Promise<BxCashSession[]> {
+  const { data } = await supabase
+    .from("cash_sessions")
+    .select("id, opening, closing, expected, diff, note, opened_at, closed_at")
+    .not("closed_at", "is", null)
+    .order("opened_at", { ascending: false })
+    .limit(limit)
+  return (data ?? []) as unknown as BxCashSession[]
+}
+
+// Kas tunai sejak sesi dibuka (penjualan tunai + pembayaran tunai) untuk shift berjalan.
+export async function getShiftSummary(
+  openedAt: string
+): Promise<{ cashSales: number; txCount: number }> {
+  const { data } = await supabase.rpc("get_shift_summary", { p_opened_at: openedAt })
+  const r = (data ?? {}) as { cashSales?: number; txCount?: number }
+  return { cashSales: Number(r.cashSales) || 0, txCount: Number(r.txCount) || 0 }
+}
