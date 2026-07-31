@@ -183,15 +183,15 @@ export function TransactionsView() {
                   <Receipt className="size-5 text-ink-muted shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-ink">
-                        {fmtRp(tx.total)}
+                      <p className="font-mono text-sm font-medium text-ink">
+                        {tx.number ?? tx.id.slice(0, 8).toUpperCase()}
                       </p>
                       <span className="shrink-0 rounded-full bg-canvas-soft border border-hairline px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-muted">
                         {tx.payment_method ?? "cash"}
                       </span>
                     </div>
                     <p className="text-xs text-ink-faint mt-0.5 truncate">
-                      {tx.number ?? tx.id.slice(0, 8).toUpperCase()}
+                      {fmtRp(tx.total)}
                       {buyer ? ` · ${buyer}` : ""} ·{" "}
                       {new Date(tx.created_at).toLocaleDateString("id", {
                         day: "numeric",
