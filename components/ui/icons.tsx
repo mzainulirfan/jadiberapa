@@ -703,6 +703,22 @@ const Zap = forwardRef<SVGSVGElement, React.SVGProps<SVGSVGElement>>(
 )
 Zap.displayName = "Zap"
 
+const Refresh = forwardRef<SVGSVGElement, React.SVGProps<SVGSVGElement>>(
+  ({ className, ...props }, ref) => (
+    <svg
+      ref={ref}
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+      {...props}
+      dangerouslySetInnerHTML={{ __html: "<path d=\"M6.351 6.351A7.958 7.958 0 0 1 12 4c4.411 0 8 3.589 8 8h2c0-5.514-4.486-10-10-10-2.827 0-5.362 1.182-7.185 3.067L3 3v6h6L6.351 6.351zM17.649 17.649A7.958 7.958 0 0 1 12 20c-4.411 0-8-3.589-8-8H2c0 5.514 4.486 10 10 10 2.827 0 5.362-1.182 7.185-3.067L21 21v-6h-6l2.649 2.649z\"/>" }}
+    />
+  )
+)
+Refresh.displayName = "Refresh"
+
 export {
   Dashboard,
   CartAlt,
@@ -747,5 +763,6 @@ export {
   Whatsapp,
   Camera,
   Zap,
+  Refresh,
 }
 
