@@ -107,8 +107,8 @@
   [data-sonner-toaster] {
     left: auto !important;
     right: var(--mobile-offset-right) !important;
-    width: fit-content !important;
-    max-width: calc(100vw - var(--mobile-offset-left) - var(--mobile-offset-right)) !important;
+    width: min(var(--width), calc(100vw - var(--mobile-offset-left) - var(--mobile-offset-right))) !important;
+    top: var(--mobile-offset-top) !important;
   }
   [data-sonner-toaster] [data-sonner-toast] {
     left: auto !important;
