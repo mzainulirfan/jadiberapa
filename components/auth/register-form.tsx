@@ -11,6 +11,7 @@ export function RegisterForm() {
   const supabase = createClient()
   const [username, setUsername] = useState("")
   const [passcode, setPasscode] = useState("")
+  const [storeName, setStoreName] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -29,6 +30,9 @@ export function RegisterForm() {
     const { error: signUpError } = await supabase.auth.signUp({
       email,
       password: passcode,
+      options: {
+        data: { store_name: storeName.trim() || "Toko Saya" },
+      },
     })
 
     setLoading(false)
@@ -46,6 +50,14 @@ export function RegisterForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <Input
+          placeholder="Nama Toko"
+          value={storeName}
+          onChange={(e) => setStoreName(e.target.value)}
+          autoComplete="organization"
+        />
+      </div>
       <div>
         <Input
           placeholder="Username"
