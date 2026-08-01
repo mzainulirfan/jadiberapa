@@ -104,34 +104,21 @@ function StatusBadge({ status, onRetry }: { status?: FieldStatus; onRetry?: () =
 }
 
 function SectionCard({
-  icon: Icon,
-  title,
-  desc,
   status,
   onRetry,
   children,
 }: {
-  icon: React.ComponentType<{ className?: string }>
-  title: string
-  desc?: string
   status?: FieldStatus
   onRetry?: () => void
   children: React.ReactNode
 }) {
   return (
     <section className="space-y-1.5">
-      <div className="flex items-center justify-between gap-2 px-1">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-black/[0.05] text-ink-muted">
-            <Icon className="size-3.5" />
-          </span>
-          <div className="min-w-0">
-            <h2 className="text-sm font-semibold text-ink">{title}</h2>
-            {desc && <p className="text-[11px] text-ink-faint">{desc}</p>}
-          </div>
+      {status && (
+        <div className="flex justify-end px-1">
+          <StatusBadge status={status} onRetry={onRetry} />
         </div>
-        <StatusBadge status={status} onRetry={onRetry} />
-      </div>
+      )}
       <div className="divide-y divide-hairline rounded-xl border border-hairline bg-canvas">{children}</div>
     </section>
   )
@@ -349,29 +336,39 @@ export function SettingsForm() {
   return (
     <div className="space-y-5 p-4">
       <Tabs defaultValue="toko" className="space-y-5">
-        <TabsList className="w-full">
-          <TabsTrigger value="toko" className="flex-1">
-            Toko
-          </TabsTrigger>
-          <TabsTrigger value="pembayaran" className="flex-1">
-            Pembayaran
-          </TabsTrigger>
-          <TabsTrigger value="nota" className="flex-1">
-            Nota
-          </TabsTrigger>
-          <TabsTrigger value="preferensi" className="flex-1">
-            Preferensi
-          </TabsTrigger>
-        </TabsList>
+        <div className="sticky top-0 -mx-4 -mt-4 z-10 border-b border-hairline bg-canvas/95 px-4 pt-2 pb-3 backdrop-blur-sm">
+          <TabsList variant="line" className="w-full">
+            <TabsTrigger value="toko" className="flex-1 justify-start px-1 after:hidden data-active:font-bold">
+              <Store className="size-4" />
+              <span>Toko</span>
+            </TabsTrigger>
+            <TabsTrigger value="pembayaran" className="flex-1 justify-start px-1 after:hidden data-active:font-bold">
+              <Wallet className="size-4" />
+              <span>Pembayaran</span>
+            </TabsTrigger>
+            <TabsTrigger value="nota" className="flex-1 justify-start px-1 after:hidden data-active:font-bold">
+              <Receipt className="size-4" />
+              <span>Nota</span>
+            </TabsTrigger>
+            <TabsTrigger value="preferensi" className="flex-1 justify-start px-1 after:hidden data-active:font-bold">
+              <Tag className="size-4" />
+              <span>Preferensi</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="toko" className="space-y-5">
-          <SectionCard
-            icon={Store}
-            title="Informasi Toko"
-            desc="Ditampilkan di struk & halaman kasir."
-            status={sectionStatus(STORE_KEYS)}
-            onRetry={() => retrySection(STORE_KEYS)}
-          >
+          <div className="flex items-start gap-2.5 px-1">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-black/[0.05] text-ink-muted">
+              <Store className="size-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-sm font-semibold text-ink">Pengaturan Toko</h2>
+              <p className="text-xs text-ink-faint">Identitas toko, kontak, & undangan kasir.</p>
+            </div>
+          </div>
+
+          <SectionCard status={sectionStatus(STORE_KEYS)} onRetry={() => retrySection(STORE_KEYS)}>
             {STORE_FIELDS.map((f) => (
               <FieldRow
                 key={f.key}
@@ -384,7 +381,7 @@ export function SettingsForm() {
             ))}
           </SectionCard>
 
-          <SectionCard icon={Qr} title="Undang Kasir" desc="Kasir yang membuka link ini langsung terhubung ke toko Anda.">
+          <SectionCard>
             <div className="p-4">
               <div className="flex flex-col items-center gap-3">
                 <div className="rounded-xl border-2 border-dashed border-hairline px-6 py-3">
@@ -414,13 +411,17 @@ export function SettingsForm() {
         </TabsContent>
 
         <TabsContent value="pembayaran" className="space-y-5">
-          <SectionCard
-            icon={Wallet}
-            title="Pembayaran"
-            desc="Metode non-tunai yang ditampilkan saat checkout."
-            status={sectionStatus(PAYMENT_KEYS)}
-            onRetry={() => retrySection(PAYMENT_KEYS)}
-          >
+          <div className="flex items-start gap-2.5 px-1">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-black/[0.05] text-ink-muted">
+              <Wallet className="size-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-sm font-semibold text-ink">Metode Pembayaran</h2>
+              <p className="text-xs text-ink-faint">Metode non-tunai yang tampil saat checkout.</p>
+            </div>
+          </div>
+
+          <SectionCard status={sectionStatus(PAYMENT_KEYS)} onRetry={() => retrySection(PAYMENT_KEYS)}>
             <div className="p-3.5">
               <div className="mb-1.5 flex items-center gap-2">
                 <label htmlFor="qris_payload" className="flex items-center gap-2 text-xs text-ink-muted">
@@ -484,13 +485,17 @@ export function SettingsForm() {
         </TabsContent>
 
         <TabsContent value="nota" className="space-y-5">
-          <SectionCard
-            icon={Receipt}
-            title="Nota & Struk"
-            desc="Tampilan nota penjualan & struk cetak."
-            status={sectionStatus(NOTA_KEYS)}
-            onRetry={() => retrySection(NOTA_KEYS)}
-          >
+          <div className="flex items-start gap-2.5 px-1">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-black/[0.05] text-ink-muted">
+              <Receipt className="size-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-sm font-semibold text-ink">Nota & Struk</h2>
+              <p className="text-xs text-ink-faint">Tampilan nota penjualan & struk cetak.</p>
+            </div>
+          </div>
+
+          <SectionCard status={sectionStatus(NOTA_KEYS)} onRetry={() => retrySection(NOTA_KEYS)}>
             <div className="p-3.5">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -547,13 +552,17 @@ export function SettingsForm() {
         </TabsContent>
 
         <TabsContent value="preferensi" className="space-y-5">
-          <SectionCard
-            icon={Tag}
-            title="Preferensi"
-            desc="Nilai bawaan untuk operasional toko."
-            status={sectionStatus(PREFERENSI_KEYS)}
-            onRetry={() => retrySection(PREFERENSI_KEYS)}
-          >
+          <div className="flex items-start gap-2.5 px-1">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-black/[0.05] text-ink-muted">
+              <Tag className="size-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-sm font-semibold text-ink">Preferensi</h2>
+              <p className="text-xs text-ink-faint">Nilai bawaan untuk operasional toko.</p>
+            </div>
+          </div>
+
+          <SectionCard status={sectionStatus(PREFERENSI_KEYS)} onRetry={() => retrySection(PREFERENSI_KEYS)}>
             <FieldRow
               def={{
                 key: "default_min_stock",
