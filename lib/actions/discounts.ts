@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { isOwner } from "@/lib/auth/roles"
 import { revalidatePath } from "next/cache"
 
 export type DiscountType = "product" | "category" | "global"
@@ -24,6 +25,7 @@ export async function createDiscount(
   value: number,
   productIds: string[]
 ) {
+  if (!(await isOwner())) return { error: "Hanya pemilik toko yang bisa kelola diskon" }
   const supabase = await createClient()
   const v = Math.round(Number(value) || 0)
   if (!name?.trim()) return { error: "Nama diskon wajib diisi." }
@@ -61,6 +63,7 @@ export async function updateDiscount(
   value: number,
   productIds: string[]
 ) {
+  if (!(await isOwner())) return { error: "Hanya pemilik toko yang bisa kelola diskon" }
   const supabase = await createClient()
   const v = Math.round(Number(value) || 0)
   if (!name?.trim()) return { error: "Nama diskon wajib diisi." }
@@ -91,6 +94,7 @@ export async function updateDiscount(
 }
 
 export async function toggleDiscount(id: string, active: boolean) {
+  if (!(await isOwner())) return { error: "Hanya pemilik toko yang bisa kelola diskon" }
   const supabase = await createClient()
   const { error } = await supabase.from("discounts").update({ active }).eq("id", id)
   if (error) return { error: error.message }
@@ -99,6 +103,7 @@ export async function toggleDiscount(id: string, active: boolean) {
 }
 
 export async function deleteDiscount(id: string) {
+  if (!(await isOwner())) return { error: "Hanya pemilik toko yang bisa kelola diskon" }
   const supabase = await createClient()
   const { error } = await supabase.from("discounts").delete().eq("id", id)
   if (error) return { error: error.message }

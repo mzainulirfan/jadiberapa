@@ -207,6 +207,59 @@ export function invalidateSettings() {
   settingsFetchedAt = 0
 }
 
+export type BxStore = {
+  store_id: string
+  name: string
+  role: "owner" | "kasir"
+  active: boolean
+}
+
+// Daftar toko user + peran + toko aktif (RPC security definer).
+export async function getMyStores(): Promise<BxStore[]> {
+  const { data } = await supabase.rpc("get_my_stores")
+  return (data as BxStore[]) ?? []
+}
+
+// Ganti toko aktif. Mengembalikan pesan error, atau null bila sukses.
+export async function setActiveStore(storeId: string): Promise<string | null> {
+  const { data } = await supabase.rpc("set_active_store", { p_store_id: storeId })
+  return (data as { error?: string | null } | null)?.error ?? null
+}
+
+export type BxStaffMember = {
+  user_id: string
+  role: "owner" | "kasir"
+  username: string
+  created_at: string
+}
+
+export async function getStoreMembers(): Promise<{
+  error: string | null
+  members: BxStaffMember[]
+}> {
+  const { data } = await supabase.rpc("get_store_members")
+  const res = (data as { error?: string | null; members?: BxStaffMember[] } | null) ?? {}
+  return { error: res.error ?? null, members: res.members ?? [] }
+}
+
+export async function inviteKasir(username: string): Promise<string | null> {
+  const { data } = await supabase.rpc("invite_kasir", { p_username: username })
+  return (data as { error?: string | null } | null)?.error ?? null
+}
+
+export async function removeMember(userId: string): Promise<string | null> {
+  const { data } = await supabase.rpc("remove_member", { p_user_id: userId })
+  return (data as { error?: string | null } | null)?.error ?? null
+}
+
+// Hapus seluruh cache data yang bergantung pada toko aktif (setelah ganti toko).
+export function invalidateAllDataCaches() {
+  invalidateCategories()
+  invalidateDiscounts()
+  invalidateSettings()
+  invalidateStoreProfile()
+}
+
 export async function getCategoryProductCounts(): Promise<Record<string, number>> {
   const { data } = await supabase.from("products").select("category_id")
   const counts: Record<string, number> = {}

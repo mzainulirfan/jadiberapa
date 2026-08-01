@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { isOwner } from "@/lib/auth/roles"
 import { revalidatePath } from "next/cache"
 
 export type ProductSort = "name-asc" | "price-asc" | "price-desc" | "stock-asc" | "stock-desc"
@@ -183,6 +184,7 @@ export async function updateProduct(id: string, formData: FormData) {
 }
 
 export async function deleteProduct(id: string) {
+  if (!(await isOwner())) return { error: "Hanya pemilik toko yang bisa menghapus barang" }
   const supabase = await createClient()
   const { error } = await supabase.from("products").delete().eq("id", id)
   if (error) return { error: error.message }
@@ -224,6 +226,7 @@ export async function addStock(
 // Stok opname: setel stok ke nilai hasil hitung ulang. Jejak audit menyimpan
 // selisih (delta) terhadap stok lama beserta alasan.
 export async function adjustStock(productId: string, newStock: number, note?: string) {
+  if (!(await isOwner())) return { error: "Hanya pemilik toko yang bisa stok opname" }
   const supabase = await createClient()
   const target = Math.round(newStock)
   if (!Number.isFinite(target) || target < 0) return { error: "Stok hasil opname tidak valid" }
@@ -256,6 +259,7 @@ export async function adjustStock(productId: string, newStock: number, note?: st
 }
 
 export async function createCategory(name: string) {
+  if (!(await isOwner())) return { error: "Hanya pemilik toko yang bisa kelola kategori" }
   const supabase = await createClient()
   const { data, error } = await supabase.from("categories").insert({ name }).select().single()
   if (error) return { error: error.message, data: null }
@@ -270,6 +274,7 @@ export async function getCategories() {
 }
 
 export async function deleteCategory(id: string) {
+  if (!(await isOwner())) return { error: "Hanya pemilik toko yang bisa kelola kategori" }
   const supabase = await createClient()
   const { error } = await supabase.from("categories").delete().eq("id", id)
   if (error) return { error: error.message }
@@ -278,6 +283,7 @@ export async function deleteCategory(id: string) {
 }
 
 export async function updateCategory(id: string, name: string) {
+  if (!(await isOwner())) return { error: "Hanya pemilik toko yang bisa kelola kategori" }
   const supabase = await createClient()
   const { error } = await supabase.from("categories").update({ name }).eq("id", id)
   if (error) return { error: error.message }

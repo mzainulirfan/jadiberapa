@@ -1,9 +1,11 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { isOwner } from "@/lib/auth/roles"
 import { revalidatePath } from "next/cache"
 
 export async function updateSetting(key: string, value: string) {
+  if (!(await isOwner())) return { error: "Hanya pemilik toko yang bisa ubah pengaturan" }
   const supabase = await createClient()
 
   // Settings kini per toko (PK store_id + key). Ambil toko aktif user dulu.
