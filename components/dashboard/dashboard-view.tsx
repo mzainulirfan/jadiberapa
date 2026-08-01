@@ -466,7 +466,7 @@ export function DashboardView() {
   const roleLabel = role === "owner" ? "Pemilik" : role === "kasir" ? "Kasir" : null
   const [period, setPeriod] = useState<BxPeriod>("today")
   const [data, setData] = useState<BxDashboardSummary | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -474,7 +474,7 @@ export function DashboardView() {
       const summary = await getDashboardSummary(period)
       if (active) {
         setData(summary)
-        setLoading(false)
+        setRefreshing(false)
       }
     }
     refresh()
@@ -506,7 +506,7 @@ export function DashboardView() {
 
   function changePeriod(p: BxPeriod) {
     if (p === period) return
-    setLoading(true)
+    setRefreshing(true)
     setPeriod(p)
   }
 
@@ -530,7 +530,9 @@ export function DashboardView() {
         <PeriodDropdown value={period} onChange={changePeriod} />
       </div>
 
-      {loading || !data ? <DashboardSkeleton /> : <DashboardContent data={data} />}
+      <div className={cn("transition-opacity duration-200", refreshing && "opacity-60")}>
+        {!data ? <DashboardSkeleton /> : <DashboardContent data={data} />}
+      </div>
     </div>
   )
 }
