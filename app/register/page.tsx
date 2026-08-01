@@ -9,8 +9,8 @@ export default async function RegisterPage({
 }) {
   const { code } = await searchParams
   return (
-    <div className="flex flex-1 overflow-y-auto bg-canvas-soft">
-      <div className="mx-auto flex w-full max-w-md flex-col justify-center px-4 py-6 sm:px-6">
+    <div className="fixed inset-0 overflow-y-auto overscroll-y-auto bg-canvas-soft">
+      <div className="mx-auto flex min-h-full w-full max-w-md flex-col justify-center px-4 py-6 sm:px-6">
         <div className="mb-5 space-y-4">
           <div className="flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.125px] text-ink-muted">
             <span className="rounded-full border border-hairline bg-canvas px-2.5 py-1">Mobile POS UMKM</span>

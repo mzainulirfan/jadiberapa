@@ -7,12 +7,18 @@
 // PENTING: jangan pernah cache request ke Supabase / non-GET / lintas-origin
 // supaya auth, data realtime, dan penyimpanan transaksi tidak rusak.
 
-const VERSION = "v1"
+const VERSION = "v2"
 const STATIC_CACHE = `saberaha-static-${VERSION}`
 const PAGE_CACHE = `saberaha-pages-${VERSION}`
 const OFFLINE_URL = "/offline.html"
 
-const PRECACHE = ["/offline.html", "/icon.svg", "/manifest.webmanifest"]
+const PRECACHE = [
+  "/offline.html",
+  "/icon.svg",
+  "/icon-192.png",
+  "/icon-512.png",
+  "/manifest.webmanifest",
+]
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
