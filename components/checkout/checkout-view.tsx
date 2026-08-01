@@ -43,7 +43,7 @@ const methods: { id: PaymentMethod; label: string; icon: typeof Dollar }[] = [
 const quickAmounts = [10000, 20000, 50000, 100000, 200000]
 
 export function CheckoutView() {
-  const { items, clearCart, total, discounts } = useCart()
+  const { items, clearCart, total, discounts, customer, setCustomer } = useCart()
   const router = useRouter()
 
   const [loading, setLoading] = useState(false)
@@ -58,7 +58,6 @@ export function CheckoutView() {
   const [payConfig, setPayConfig] = useState<Record<string, string>>({})
   const [copied, setCopied] = useState(false)
 
-  const [customer, setCustomer] = useState<{ id: string | null; name: string } | null>(null)
   const [custOpen, setCustOpen] = useState(false)
   const [custSearch, setCustSearch] = useState("")
   const [customers, setCustomers] = useState<BxCustomer[]>([])

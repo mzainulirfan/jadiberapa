@@ -1,7 +1,7 @@
 "use client"
 
 import { createClient } from "@/lib/supabase/client"
-import type { CartItem } from "@/components/cart/cart-provider"
+import type { CartItem, BxCartCustomer } from "@/components/cart/cart-provider"
 
 const supabase = createClient()
 
@@ -10,6 +10,11 @@ export type HeldCart = {
   label: string
   item_count: number
   created_at: string
+}
+
+export type HeldCartDetail = {
+  items: CartItem[]
+  customer: BxCartCustomer | null
 }
 
 // Daftar pesanan yang ditahan user di toko aktif (terbaru dulu).
@@ -23,22 +28,29 @@ export async function getHeldCarts(): Promise<HeldCart[]> {
   )
 }
 
-// Muat isi satu pesanan ditahan untuk dilanjutkan.
-export async function getHeldCart(id: string): Promise<CartItem[] | null> {
-  const { data } = await supabase.from("held_carts").select("items").eq("id", id).maybeSingle()
+// Muat isi satu pesanan ditahan untuk dilanjutkan (barang + pembeli).
+export async function getHeldCart(id: string): Promise<HeldCartDetail | null> {
+  const { data } = await supabase.from("held_carts").select("items, customer").eq("id", id).maybeSingle()
   if (!data) return null
-  return (data.items ?? []) as CartItem[]
+  return {
+    items: (data.items ?? []) as CartItem[],
+    customer: (data.customer ?? null) as BxCartCustomer | null,
+  }
 }
 
 // Simpan keranjang aktif sebagai pesanan ditahan. Mengembalikan id, atau null.
-export async function saveHeldCart(label: string, items: CartItem[]): Promise<string | null> {
+export async function saveHeldCart(
+  label: string,
+  items: CartItem[],
+  customer: BxCartCustomer | null
+): Promise<string | null> {
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return null
   const { data, error } = await supabase
     .from("held_carts")
-    .insert({ user_id: user.id, label, items })
+    .insert({ user_id: user.id, label, items, customer })
     .select("id")
     .single()
   if (error) return null

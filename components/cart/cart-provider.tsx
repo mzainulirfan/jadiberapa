@@ -16,6 +16,10 @@ export type CartItem = {
   qty: number
 }
 
+// Pembeli terpilih untuk transaksi yang sedang dibuat. Disimpan bersama keranjang
+// agar tidak hilang saat kasir keluar-masuk halaman checkout.
+export type BxCartCustomer = { id: string | null; name: string }
+
 // Kunci identitas baris keranjang: produk + varian. Produk yang sama dengan
 // varian berbeda dihitung sebagai baris terpisah.
 export function cartKey(i: { product: BxProduct; variant?: BxVariant | null }) {
@@ -29,6 +33,8 @@ export function priceOf(i: CartItem) {
 
 type CartContextValue = {
   items: CartItem[]
+  customer: BxCartCustomer | null
+  setCustomer: (c: BxCartCustomer | null) => void
   addItem: (product: BxProduct, variant?: BxVariant | null) => void
   updateQty: (key: string, qty: number) => void
   removeItem: (key: string) => void
@@ -58,6 +64,7 @@ function tsMs(s: string | null | undefined) {
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = React.useState<CartItem[]>([])
+  const [customer, setCustomer] = React.useState<BxCartCustomer | null>(null)
   const [discounts, setDiscounts] = React.useState<BxDiscount[]>([])
   const hydratedRef = React.useRef(false)
   // updated_at (epoch ms) terakhir yang sudah kita terapkan/tulis. Echo realtime
@@ -88,10 +95,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (!mounted) return
       if (stored) {
         setItems(stored.items)
+        setCustomer(stored.customer)
         lastTsRef.current = tsMs(stored.updatedAt)
       }
       hydratedRef.current = true
-      unsubscribe = await watchCart((remoteItems, updatedAt) => {
+      unsubscribe = await watchCart((remoteItems, updatedAt, remoteCustomer) => {
         const ts = tsMs(updatedAt)
         // Abaikan echo yang tidak lebih baru dari state yang sudah kita
         // terapkan/tulis (termasuk echo tulisan sendiri & echo lama/redeliver).
@@ -99,6 +107,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         if (ts) lastTsRef.current = ts
         const sig = cartSig(remoteItems)
         setItems((prev) => (cartSig(prev) === sig ? prev : remoteItems))
+        setCustomer((prev) => {
+          const same = prev?.id === remoteCustomer?.id
+          return same ? prev : remoteCustomer
+        })
       })
     }
 
@@ -112,6 +124,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (ts && ts <= lastTsRef.current) return
       if (ts) lastTsRef.current = ts
       setItems((prev) => (cartSig(prev) === cartSig(stored.items) ? prev : stored.items))
+      setCustomer((prev) =>
+        prev?.id === stored.customer?.id ? prev : stored.customer
+      )
     }
     window.addEventListener("focus", refetch)
     document.addEventListener("visibilitychange", refetch)
@@ -127,13 +142,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     if (!hydratedRef.current) return
     const t = setTimeout(() => {
-      saveCart(items).then((ts) => {
+      saveCart(items, customer).then((ts) => {
         const ms = tsMs(ts)
         if (ms > lastTsRef.current) lastTsRef.current = ms
       })
     }, 400)
     return () => clearTimeout(t)
-  }, [items])
+  }, [items, customer])
 
   const addItem = React.useCallback((product: BxProduct, variant?: BxVariant | null) => {
     setItems((prev) => {
@@ -166,6 +181,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const clearCart = React.useCallback(() => {
     setItems([])
+    setCustomer(null)
   }, [])
 
   // Ganti seluruh isi keranjang (dipakai untuk melanjutkan pesanan ditahan).
@@ -188,8 +204,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   )
 
   const value = React.useMemo(
-    () => ({ items, addItem, updateQty, removeItem, clearCart, replaceCart, total, netTotal, count, discounts, reloadDiscounts }),
-    [items, addItem, updateQty, removeItem, clearCart, replaceCart, total, netTotal, count, discounts, reloadDiscounts]
+    () => ({ items, customer, setCustomer, addItem, updateQty, removeItem, clearCart, replaceCart, total, netTotal, count, discounts, reloadDiscounts }),
+    [items, customer, setCustomer, addItem, updateQty, removeItem, clearCart, replaceCart, total, netTotal, count, discounts, reloadDiscounts]
   )
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>

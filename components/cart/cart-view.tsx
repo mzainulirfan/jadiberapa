@@ -34,7 +34,7 @@ const heldDateFmt = new Intl.DateTimeFormat("id-ID", {
 })
 
 export function CartView() {
-  const { items, addItem, updateQty, removeItem, clearCart, replaceCart, netTotal, discounts, count } = useCart()
+  const { items, addItem, updateQty, removeItem, clearCart, replaceCart, netTotal, discounts, count, customer, setCustomer } = useCart()
   const [confirmClear, setConfirmClear] = useState(false)
   const [popular, setPopular] = useState<BxProduct[]>([])
   const [pop, setPop] = useState<{ id: string; key: number } | null>(null)
@@ -82,8 +82,9 @@ export function CartView() {
   async function handleHold() {
     if (items.length === 0) return
     setHolding(true)
-    const label = holdLabel.trim() || `Pesanan ${heldCarts.length + 1}`
-    const id = await saveHeldCart(label, items)
+    // Kalau label kosong, pakai nama pembeli terpilih; kalau tidak ada, "Pesanan N".
+    const label = holdLabel.trim() || customer?.name || `Pesanan ${heldCarts.length + 1}`
+    const id = await saveHeldCart(label, items, customer)
     setHolding(false)
     if (!id) {
       toast.error("Gagal menahan pesanan")
@@ -99,7 +100,7 @@ export function CartView() {
   async function handleResume(h: HeldCart) {
     setHeldOpen(false)
     const held = await getHeldCart(h.id)
-    if (!held || held.length === 0) {
+    if (!held || held.items.length === 0) {
       toast.error("Pesanan sudah tidak tersedia")
       loadHeld()
       return
@@ -109,7 +110,8 @@ export function CartView() {
       setResumeTarget(h)
       return
     }
-    replaceCart(held)
+    replaceCart(held.items)
+    setCustomer(held.customer)
     await deleteHeldCart(h.id)
     loadHeld()
     toast.success(`Pesanan "${h.label}" dilanjutkan`)
@@ -119,14 +121,15 @@ export function CartView() {
     if (!resumeTarget) return
     setResuming(true)
     const held = await getHeldCart(resumeTarget.id)
-    if (!held || held.length === 0) {
+    if (!held || held.items.length === 0) {
       toast.error("Pesanan sudah tidak tersedia")
       setResuming(false)
       setResumeTarget(null)
       loadHeld()
       return
     }
-    replaceCart(held)
+    replaceCart(held.items)
+    setCustomer(held.customer)
     await deleteHeldCart(resumeTarget.id)
     setResuming(false)
     setResumeTarget(null)
