@@ -1,0 +1,41 @@
+import type { StoreTemplate } from "./types"
+
+export const kelontong: StoreTemplate = {
+  key: "kelontong",
+  name: "Toko Kelontong",
+  desc: "Sembako, makanan pokok, minuman & kebutuhan rumah tangga.",
+  icon: "store",
+  categories: ["Makanan Pokok", "Sembako", "Minuman", "Makanan Ringan", "Rumah Tangga"],
+  products: [
+    { name: "Beras Premium 5kg", category: "Makanan Pokok", price_buy: 52000, price_sell: 58000, stock: 20, unit: "karung", sku: "BRP-5" },
+    { name: "Beras Medium 5kg", category: "Makanan Pokok", price_buy: 45000, price_sell: 50000, stock: 15, unit: "karung", sku: "BRM-5" },
+    { name: "Telur Ayam 1kg", category: "Makanan Pokok", price_buy: 24000, price_sell: 27000, stock: 30, unit: "kg", sku: "TLR-1" },
+    { name: "Gula Pasir 1kg", category: "Sembako", price_buy: 14000, price_sell: 16500, stock: 40, unit: "kg", sku: "GLP-1" },
+    { name: "Minyak Goreng 1L", category: "Sembako", price_buy: 13000, price_sell: 15500, stock: 35, unit: "botol", sku: "MYG-1" },
+    { name: "Tepung Terigu 1kg", category: "Sembako", price_buy: 11000, price_sell: 13500, stock: 25, unit: "kg", sku: "TPT-1" },
+    { name: "Garam 500g", category: "Sembako", price_buy: 4000, price_sell: 5500, stock: 50, unit: "bungkus", sku: "GRM-500" },
+    { name: "Kecap Manis 600ml", category: "Sembako", price_buy: 14000, price_sell: 17000, stock: 20, unit: "botol", sku: "KCP-600" },
+    { name: "Indomie Goreng", category: "Makanan Ringan", price_buy: 2500, price_sell: 3500, stock: 100, unit: "pcs", sku: "IDM-GRG" },
+    { name: "Indomie Soto", category: "Makanan Ringan", price_buy: 2500, price_sell: 3500, stock: 80, unit: "pcs", sku: "IDM-STO" },
+    { name: "Biskuit Roma Kelapa", category: "Makanan Ringan", price_buy: 6000, price_sell: 8000, stock: 40, unit: "bungkus", sku: "BSK-KLP" },
+    { name: "Roti Tawar", category: "Makanan Ringan", price_buy: 8000, price_sell: 10000, stock: 15, unit: "pcs", sku: "RTP-1" },
+    { name: "Air Mineral 600ml", category: "Minuman", price_buy: 3000, price_sell: 4000, stock: 60, unit: "botol", sku: "AMM-600" },
+    { name: "Teh Botol 350ml", category: "Minuman", price_buy: 3500, price_sell: 5000, stock: 50, unit: "botol", sku: "THB-350" },
+    { name: "Kopi Sachet (30 pcs)", category: "Minuman", price_buy: 15000, price_sell: 18500, stock: 30, unit: "dus", sku: "KPS-30" },
+    { name: "Teh Celup 25 pcs", category: "Minuman", price_buy: 7000, price_sell: 9000, stock: 30, unit: "kotak", sku: "THC-25" },
+    { name: "Sabun Mandi 80g", category: "Rumah Tangga", price_buy: 3500, price_sell: 5000, stock: 40, unit: "pcs", sku: "SBM-80" },
+    { name: "Deterjen Bubuk 500g", category: "Rumah Tangga", price_buy: 10000, price_sell: 12500, stock: 25, unit: "sachet", sku: "DTJ-500" },
+    { name: "Shampoo Sachet", category: "Rumah Tangga", price_buy: 800, price_sell: 1500, stock: 100, unit: "sachet", sku: "SHP-SCT" },
+    { name: "Pasta Gigi 100g", category: "Rumah Tangga", price_buy: 9000, price_sell: 11500, stock: 20, unit: "pcs", sku: "PDG-100" },
+  ],
+  discounts: [
+    {
+      name: "Promo Akhir Pekan",
+      type: "global",
+      value_type: "percent",
+      value: 5,
+      active: false,
+    },
+  ],
+  settings: { default_min_stock: "5" },
+}

@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Eye, EyeOff } from "@/components/ui/icons"
 import { getStoreByCode } from "@/lib/db/queries"
+import { TemplatePicker } from "@/components/templates/template-picker"
+import { PENDING_STORE_TEMPLATE_KEY } from "@/lib/templates/options"
 
 type Mode = "owner" | "kasir"
 
@@ -20,6 +22,7 @@ export function RegisterForm({ initialCode }: { initialCode?: string }) {
   const [showPass, setShowPass] = useState(false)
   const [storeName, setStoreName] = useState("")
   const [storeCode, setStoreCode] = useState(initialCode ?? "")
+  const [templateKey, setTemplateKey] = useState("kelontong")
   const [foundStore, setFoundStore] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -72,7 +75,7 @@ export function RegisterForm({ initialCode }: { initialCode?: string }) {
         data:
           mode === "kasir"
             ? { store_code: storeCode.trim() }
-            : { store_name: storeName.trim() || "Toko Saya" },
+            : { store_name: storeName.trim() || "Toko Saya", store_template: templateKey },
       },
     })
 
@@ -84,6 +87,10 @@ export function RegisterForm({ initialCode }: { initialCode?: string }) {
         setError(signUpError.message)
       }
       return
+    }
+
+    if (mode === "owner") {
+      window.localStorage.setItem(PENDING_STORE_TEMPLATE_KEY, templateKey)
     }
 
     router.push("/dashboard")
@@ -126,13 +133,22 @@ export function RegisterForm({ initialCode }: { initialCode?: string }) {
       </div>
 
       {mode === "owner" ? (
-        <div>
-          <Input
-            placeholder="Nama Toko"
-            value={storeName}
-            onChange={(e) => setStoreName(e.target.value)}
-            autoComplete="organization"
-          />
+        <div className="space-y-4">
+          <div>
+            <Input
+              placeholder="Nama Toko"
+              value={storeName}
+              onChange={(e) => setStoreName(e.target.value)}
+              autoComplete="organization"
+            />
+          </div>
+          <div className="space-y-2">
+            <div>
+              <p className="text-sm font-semibold text-ink">Template toko</p>
+              <p className="text-xs text-ink-faint">Pilih data awal. Semua bisa diedit setelah daftar.</p>
+            </div>
+            <TemplatePicker value={templateKey} onChange={setTemplateKey} compact />
+          </div>
         </div>
       ) : (
         <div>

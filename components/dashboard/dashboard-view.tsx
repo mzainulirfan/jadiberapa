@@ -29,6 +29,7 @@ import {
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/hooks/use-auth"
 import { useRole } from "@/lib/hooks/use-role"
+import { TemplateOnboarding } from "@/components/templates/template-onboarding"
 
 const greeting = (() => {
   const h = new Date().getHours()
@@ -529,6 +530,8 @@ export function DashboardView() {
         </div>
         <PeriodDropdown value={period} onChange={changePeriod} />
       </div>
+
+      <TemplateOnboarding enabled={role === "owner"} />
 
       <div className={cn("transition-opacity duration-200", refreshing && "opacity-60")}>
         {!data ? <DashboardSkeleton /> : <DashboardContent data={data} />}

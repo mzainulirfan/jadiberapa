@@ -274,6 +274,27 @@ export function invalidateAllDataCaches() {
   invalidateStoreProfile()
 }
 
+export type StoreTemplateOnboardingState = {
+  empty: boolean
+  templateKey: string | null
+}
+
+export async function getStoreTemplateOnboardingState(): Promise<StoreTemplateOnboardingState> {
+  const { data: storeId } = await supabase.rpc("current_store_id")
+  if (!storeId) return { empty: false, templateKey: null }
+
+  const [{ count: productCount }, { count: categoryCount }, { data: store }] = await Promise.all([
+    supabase.from("products").select("id", { count: "exact", head: true }),
+    supabase.from("categories").select("id", { count: "exact", head: true }),
+    supabase.from("stores").select("template_key").eq("id", storeId).single(),
+  ])
+
+  return {
+    empty: (productCount ?? 0) === 0 && (categoryCount ?? 0) === 0,
+    templateKey: (store as { template_key?: string | null } | null)?.template_key ?? null,
+  }
+}
+
 export async function getCategoryProductCounts(): Promise<Record<string, number>> {
   const { data } = await supabase.from("products").select("category_id")
   const counts: Record<string, number> = {}
