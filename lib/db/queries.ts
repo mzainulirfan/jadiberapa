@@ -731,16 +731,25 @@ export async function getReports(
   bucket: "hour" | "day"
 ): Promise<BxReports> {
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Jakarta"
-  const { data } = await supabase.rpc("get_reports_summary", {
-    p_from: from ?? null,
-    p_to: null,
-    p_bucket: bucket,
-    p_tz: tz,
-  })
+  const [reportRes, expenseRes] = await Promise.all([
+    supabase.rpc("get_reports_summary", {
+      p_from: from ?? null,
+      p_to: null,
+      p_bucket: bucket,
+      p_tz: tz,
+    }),
+    (async () => {
+      let query = supabase.from("expenses").select("amount")
+      if (from) query = query.gte("created_at", from)
+      const { data } = await query
+      return (data ?? []).reduce((sum, row) => sum + (Number(row.amount) || 0), 0)
+    })(),
+  ])
+  const { data } = reportRes
   const r = (data ?? {}) as Partial<RpcReports>
   const totalRevenue = Number(r.totalRevenue) || 0
   const totalCost = Number(r.totalCost) || 0
-  const totalExpenses = Number(r.totalExpenses) || 0
+  const totalExpenses = r.totalExpenses == null ? expenseRes : Number(r.totalExpenses) || 0
   const profit = totalRevenue - totalCost
   return {
     totalRevenue,

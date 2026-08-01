@@ -554,43 +554,68 @@ export function ProductList() {
             return (
               <div
                 key={p.id}
-                className="flex flex-col overflow-hidden rounded-xl border border-hairline bg-canvas"
+                className={cn(
+                  "flex flex-col overflow-hidden rounded-2xl border bg-canvas shadow-[0_1px_0_rgba(0,0,0,0.02)] transition-colors",
+                  p.stock <= 0 ? "border-destructive/20 bg-canvas-soft/60" : "border-hairline"
+                )}
               >
                 <button
                   type="button"
                   onClick={() => setSelected(p)}
-                  className="flex flex-col text-left"
+                  className="flex flex-1 flex-col text-left active:bg-canvas-soft"
                 >
                   <ProductThumb
                     p={p}
-                    discount={disc}
                     showCategory
                     className="aspect-[4/3] w-full rounded-none"
                     iconClassName="size-8"
                   />
-                  <div className="flex flex-col gap-1 p-2.5">
-                    <p className="text-sm font-medium text-ink line-clamp-2 min-h-10">{p.name}</p>
-                    <div className="flex items-center justify-between gap-1.5 flex-wrap">
-                      <ProductPrice price={net} original={disc > 0 ? p.price_sell : undefined} />
+                  <div className="flex flex-1 flex-col gap-2 p-3">
+                    <div className="space-y-1">
+                      <p className="line-clamp-2 min-h-10 text-[15px] font-semibold leading-snug text-ink">
+                        {p.name}
+                      </p>
+                      <p className="truncate text-[11px] text-ink-faint">
+                        {hasVariants(p) && <span className="font-semibold text-primary">Varian</span>}
+                        {hasVariants(p) && (p.categories?.name || p.sku) && <span> · </span>}
+                        {p.categories?.name ? p.categories.name : p.sku ? `SKU ${p.sku}` : p.unit || "pcs"}
+                      </p>
+                    </div>
+                    <div className="mt-auto space-y-2">
+                      <ProductPrice
+                        price={net}
+                        original={disc > 0 ? p.price_sell : undefined}
+                        className="block"
+                      />
                       <StockBadge stock={p.stock} min={p.min_stock} />
                     </div>
                   </div>
                 </button>
-                {canManage && (
-                  <div className="flex items-center justify-end gap-1 px-2.5 pb-2.5">
-                    <ProductDialog product={p} onSaved={reload}>
-                      <button className="rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft">
-                        <Pencil className="size-4" />
+                <div className="flex items-center justify-between gap-1 border-t border-hairline px-2.5 py-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setSelected(p)}
+                    className="rounded-full px-3 py-1.5 text-xs font-semibold text-primary active:bg-primary/10"
+                  >
+                    Lihat Produk
+                  </button>
+                  {canManage && (
+                    <div className="flex items-center gap-1">
+                      <ProductDialog product={p} onSaved={reload}>
+                        <button className="rounded-lg px-2 py-1.5 text-ink-muted active:bg-canvas-soft" aria-label={`Edit ${p.name}`}>
+                          <Pencil className="size-4" />
+                        </button>
+                      </ProductDialog>
+                      <button
+                        onClick={() => setDeleteTarget(p)}
+                        className="rounded-lg px-2 py-1.5 text-ink-muted active:bg-canvas-soft"
+                        aria-label={`Hapus ${p.name}`}
+                      >
+                        <Trash className="size-4" />
                       </button>
-                    </ProductDialog>
-                    <button
-                      onClick={() => setDeleteTarget(p)}
-                      className="rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft"
-                    >
-                      <Trash className="size-4" />
-                    </button>
-                  </div>
-                )}
+                    </div>
+                  )}
+                </div>
               </div>
             )
           })}
@@ -603,19 +628,23 @@ export function ProductList() {
             return (
               <div
                 key={p.id}
-                className="flex items-center gap-3 rounded-xl border border-hairline bg-canvas p-2.5"
+                className={cn(
+                  "flex items-center gap-3 rounded-2xl border bg-canvas p-2.5 transition-colors",
+                  p.stock <= 0 ? "border-destructive/20 bg-canvas-soft/60" : "border-hairline"
+                )}
               >
                 <button
                   type="button"
                   onClick={() => setSelected(p)}
-                  className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                  className="flex min-w-0 flex-1 items-center gap-3 rounded-xl text-left active:bg-canvas-soft"
                 >
-                  <ProductThumb p={p} discount={disc} className="size-12 rounded-xl" iconClassName="size-5" />
+                  <ProductThumb
+                    p={p}
+                    className="size-14 rounded-xl"
+                    iconClassName="size-5"
+                  />
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <p className="truncate text-sm font-medium text-ink">{p.name}</p>
-                      <StockBadge stock={p.stock} min={p.min_stock} />
-                    </div>
+                    <p className="truncate text-[15px] font-semibold text-ink">{p.name}</p>
                     <p className="truncate text-xs text-ink-muted">
                       {hasVariants(p) && <span className="font-medium text-primary">Varian</span>}
                       {hasVariants(p) &&
@@ -624,30 +653,46 @@ export function ProductList() {
                         )}
                       {p.categories?.name ? `${p.categories.name} · ` : ""}
                       {p.unit && p.unit !== "pcs" ? `${p.unit} · ` : ""}
-                      {p.sku ? `SKU ${p.sku}` : ""}
+                      {p.sku ? `SKU ${p.sku}` : !hasVariants(p) && !p.categories?.name ? p.unit || "pcs" : ""}
                     </p>
+                    <div className="mt-1 flex items-center gap-1.5">
+                      <StockBadge stock={p.stock} min={p.min_stock} />
+                    </div>
                   </div>
-                  <ProductPrice
-                    price={net}
-                    original={disc > 0 ? p.price_sell : undefined}
-                    className="shrink-0"
-                  />
+                  <div className="shrink-0 text-right">
+                    <p className="text-sm font-semibold text-primary">{fmtRp(net)}</p>
+                    {disc > 0 && (
+                      <p className="mt-0.5 text-[11px] text-ink-faint line-through">
+                        {fmtRp(p.price_sell)}
+                      </p>
+                    )}
+                  </div>
                 </button>
-                {canManage && (
-                  <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setSelected(p)}
+                    className="rounded-lg px-2 py-1.5 text-xs font-semibold text-primary active:bg-primary/10"
+                  >
+                    Lihat
+                  </button>
+                  {canManage && (
+                    <>
                     <ProductDialog product={p} onSaved={reload}>
-                      <button className="rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft">
+                      <button className="rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft" aria-label={`Edit ${p.name}`}>
                         <Pencil className="size-4" />
                       </button>
                     </ProductDialog>
                     <button
                       onClick={() => setDeleteTarget(p)}
                       className="rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft"
+                      aria-label={`Hapus ${p.name}`}
                     >
                       <Trash className="size-4" />
                     </button>
+                    </>
+                  )}
                   </div>
-                )}
               </div>
             )
           })}

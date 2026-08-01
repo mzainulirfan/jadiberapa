@@ -39,6 +39,7 @@ import {
   Check,
   ChartLine,
   Copy,
+  Package,
 } from "@/components/ui/icons"
 
 const APP_VERSION = "Saberaha v1.0.0"
@@ -81,6 +82,7 @@ const OWNER_GROUPS: Group[] = [
       items: [
         { href: "/settings", label: "Pengaturan", desc: "Info toko & pembayaran", icon: Cog },
         { href: "/backup", label: "Cadangan Data", desc: "Export / pulihkan data toko", icon: ChartLine },
+        { href: "/demo-data", label: "Data Demo", desc: "Reset & isi data contoh", icon: Package },
       ],
     },
   ]
