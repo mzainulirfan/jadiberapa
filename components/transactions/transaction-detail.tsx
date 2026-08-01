@@ -50,6 +50,10 @@ function buyerName(tx: Transaction) {
   return (tx as Transaction & { customers?: { name?: string } | null }).customers?.name
 }
 
+function cashierNameOf(tx: Transaction) {
+  return (tx as Transaction & { cashier_name?: string | null }).cashier_name
+}
+
 function paidOf(tx: Transaction) {
   return (tx as Transaction & { paid_amount?: number }).paid_amount ?? tx.total
 }
@@ -111,6 +115,7 @@ function buildStrukLines(tx: Transaction, settings: Record<string, string>): str
   lines.push(sep)
   lines.push(`No  : ${notaNo(tx)}`)
   lines.push(`Tgl : ${dateStr} ${timeStr}`)
+  if (cashierNameOf(tx)) lines.push(`Kasir: ${cashierNameOf(tx)}`)
   if (buyerName(tx)) lines.push(`Pembeli: ${buyerName(tx)}`)
   lines.push(sep)
   for (const item of tx.transaction_items as TxItem[]) {
@@ -212,6 +217,7 @@ function StrukSheet({
 
               <p className="text-xs text-ink-muted">{formatDate(new Date(tx.created_at))}</p>
               <p className="text-xs text-ink-muted mb-1">No. {notaNo(tx)}</p>
+              {cashierNameOf(tx) && <p className="text-xs text-ink-muted">Kasir: {cashierNameOf(tx)}</p>}
               {buyerName(tx) && <p className="text-xs text-ink-muted">Pembeli: {buyerName(tx)}</p>}
 
               <div className="my-3 border-t border-dashed border-hairline" />
@@ -421,7 +427,7 @@ ${settings.store_address || ""}${settings.store_phone ? `\n${settings.store_phon
 NOTA PENJUALAN
 ${formatDate(new Date(tx.created_at))}
 No. ${notaNo(tx)}
-${buyerName(tx) ? `Pembeli: ${buyerName(tx)}\n` : ""}----------------
+${cashierNameOf(tx) ? `Kasir: ${cashierNameOf(tx)}\n` : ""}${buyerName(tx) ? `Pembeli: ${buyerName(tx)}\n` : ""}----------------
 ${(tx.transaction_items as TxItem[])
   .map(
     (item) =>
@@ -614,6 +620,12 @@ Terima kasih`
                     {notaNo(tx)}
                   </span>
                 </div>
+                {cashierNameOf(tx) && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-ink-muted">Kasir</span>
+                    <span className="font-medium text-ink">{cashierNameOf(tx)}</span>
+                  </div>
+                )}
                 {buyerName(tx) && (
                   <div className="flex items-center justify-between">
                     <span className="text-ink-muted">Pembeli</span>

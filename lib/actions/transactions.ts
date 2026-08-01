@@ -25,6 +25,15 @@ export async function createTransaction(
 ) {
   const supabase = await createClient()
 
+  // Siapa kasir yang membuat transaksi (untuk detail transaksi & struk).
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  const rawName = user?.email?.split("@")[0] ?? ""
+  const cashierName = rawName
+    ? rawName.charAt(0).toUpperCase() + rawName.slice(1)
+    : null
+
   // Normalisasi item: diskon per item dibatasi ≤ subtotal baris (anti nilai negatif).
   const normItems = items.map((i) => ({
     product_id: i.product_id,
@@ -57,6 +66,8 @@ export async function createTransaction(
       customer_id: customer_id || null,
       paid_amount: paid,
       status,
+      user_id: user?.id ?? null,
+      cashier_name: cashierName,
     })
     .select()
     .single()
