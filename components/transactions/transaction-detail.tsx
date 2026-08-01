@@ -306,6 +306,20 @@ function StrukSheet({
                 <span>Pembayaran</span>
                 <span>{methodLabel[tx.payment_method] ?? tx.payment_method}</span>
               </div>
+              {statusOf(tx) === "utang" && (
+                <>
+                  <div className="flex items-center justify-between text-xs text-ink-muted">
+                    <span>Dibayar</span>
+                    <span>{fmtRp(paidOf(tx))}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs font-semibold">
+                    <span className="text-destructive">Sisa Utang</span>
+                    <span className="text-destructive">
+                      {fmtRp(Math.max(0, tx.total - paidOf(tx)))}
+                    </span>
+                  </div>
+                </>
+              )}
 
               <div className="my-3 border-t border-dashed border-hairline" />
               <div className="flex justify-center">
@@ -477,7 +491,11 @@ ${(() => {
   }`
 })()}Total: ${fmtRp(tx.total)}
 Bayar: ${methodLabel[tx.payment_method] ?? tx.payment_method}
-================
+${
+  statusOf(tx) === "utang"
+    ? `Dibayar: ${fmtRp(paidOf(tx))}\nSisa Utang: ${fmtRp(Math.max(0, tx.total - paidOf(tx)))}\n`
+    : ""
+}================
 Terima kasih`
     if (navigator.share) {
       try {
