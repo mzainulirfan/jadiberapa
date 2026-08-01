@@ -104,6 +104,12 @@ function buildStrukLines(tx: Transaction, settings: Record<string, string>): str
     const l = left.length > avail ? left.slice(0, avail) : left
     return l + " ".repeat(avail - l.length) + value
   }
+  // Gabungkan beberapa bagian dalam satu baris, dipisah " | ". Bila kepanjangan,
+  // sisi kanan dipertahankan agar nilai penting (No/Pembeli) tetap terlihat.
+  const pipe = (...parts: (string | false | null | undefined)[]) => {
+    const s = parts.filter(Boolean).join(" | ")
+    return s.length <= width ? s : "…" + s.slice(s.length - width + 1)
+  }
 
   const d = new Date(tx.created_at)
   const dateStr = d.toLocaleDateString("id-ID", {
@@ -120,10 +126,13 @@ function buildStrukLines(tx: Transaction, settings: Record<string, string>): str
   lines.push(sep)
   lines.push(center("NOTA PENJUALAN"))
   lines.push(sep)
-  lines.push(`No  : ${notaNo(tx)}`)
-  lines.push(`Tgl : ${dateStr} ${timeStr}`)
-  if (cashierNameOf(tx)) lines.push(`Kasir: ${cashierNameOf(tx)}`)
-  if (buyerName(tx)) lines.push(`Pembeli: ${buyerName(tx)}`)
+  lines.push(pipe(`${dateStr} ${timeStr}`, `No: ${notaNo(tx)}`))
+  lines.push(
+    pipe(
+      cashierNameOf(tx) && `Kasir: ${cashierNameOf(tx)}`,
+      buyerName(tx) && `Pembeli: ${buyerName(tx)}`
+    )
+  )
   lines.push(sep)
   for (const item of tx.transaction_items as TxItem[]) {
     const name = item.products?.name ?? "Produk dihapus"
@@ -222,10 +231,19 @@ function StrukSheet({
               <p className="text-xs font-semibold tracking-wide">NOTA PENJUALAN</p>
               <div className="my-3 border-t border-dashed border-hairline" />
 
-              <p className="text-xs text-ink-muted">{formatDate(new Date(tx.created_at))}</p>
-              <p className="text-xs text-ink-muted mb-1">No. {notaNo(tx)}</p>
-              {cashierNameOf(tx) && <p className="text-xs text-ink-muted">Kasir: {cashierNameOf(tx)}</p>}
-              {buyerName(tx) && <p className="text-xs text-ink-muted">Pembeli: {buyerName(tx)}</p>}
+              <p className="text-xs text-ink-muted">
+                {formatDate(new Date(tx.created_at))} | No. {notaNo(tx)}
+              </p>
+              {(cashierNameOf(tx) || buyerName(tx)) && (
+                <p className="text-xs text-ink-muted">
+                  {[
+                    cashierNameOf(tx) && `Kasir: ${cashierNameOf(tx)}`,
+                    buyerName(tx) && `Pembeli: ${buyerName(tx)}`,
+                  ]
+                    .filter(Boolean)
+                    .join(" | ")}
+                </p>
+              )}
 
               <div className="my-3 border-t border-dashed border-hairline" />
 
