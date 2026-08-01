@@ -156,7 +156,7 @@ export function DiscountDialog({
       {children ? <DrawerTrigger render={children as React.ReactElement} /> : null}
       <DrawerContent className="rounded-t-xl">
         <DrawerHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
-          <DrawerTitle className="text-lg font-bold">
+          <DrawerTitle>
             {discount ? "Edit Diskon" : "Tambah Diskon"}
           </DrawerTitle>
           <DrawerClose className="rounded-full p-1.5 -mr-1.5 text-ink-muted active:bg-canvas-soft">

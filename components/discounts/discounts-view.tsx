@@ -202,7 +202,7 @@ export function DiscountsView() {
           <DialogHeader>
             <DialogTitle>Hapus Diskon?</DialogTitle>
             <DialogDescription>
-              Diskon “{deleteTarget?.name}” akan dihapus dan tidak bisa dikembalikan.
+              &quot;{deleteTarget?.name}&quot; akan dihapus permanen dan tidak bisa dikembalikan.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

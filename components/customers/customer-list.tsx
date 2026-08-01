@@ -154,6 +154,11 @@ export function CustomerList() {
           <DialogContent className="rounded-xl">
             <DialogHeader>
               <DialogTitle>{edit ? "Edit Pembeli" : "Tambah Pembeli"}</DialogTitle>
+              <DialogDescription>
+                {edit
+                  ? "Perbarui data pembeli untuk riwayat transaksi yang lebih jelas."
+                  : "Tambah pembeli untuk riwayat transaksi yang lebih jelas."}
+              </DialogDescription>
             </DialogHeader>
             <CustomerForm
               key={edit?.id ?? "new"}

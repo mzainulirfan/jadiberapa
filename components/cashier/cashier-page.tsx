@@ -15,6 +15,7 @@ import { Search, Filter, Barcode, X, Check, CartAlt, Grid, List, Star, Package }
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -408,9 +409,10 @@ export function CashierPage() {
       />
 
       <Dialog open={pickProduct !== null} onOpenChange={(v) => !v && setPickProduct(null)}>
-        <DialogContent showCloseButton={false} className="max-w-md">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Pilih Varian</DialogTitle>
+            <DialogDescription>Pilih ukuran atau varian untuk barang ini.</DialogDescription>
           </DialogHeader>
           {pickProduct && (
             <div className="flex flex-col gap-2">

@@ -235,7 +235,7 @@ export function ShiftView() {
       <Drawer open={openDrawer} onOpenChange={setOpenDrawer} showSwipeHandle>
         <DrawerContent className="rounded-t-xl">
           <DrawerHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
-            <DrawerTitle className="text-lg font-bold">Buka Shift</DrawerTitle>
+            <DrawerTitle>Buka Shift</DrawerTitle>
             <DrawerClose className="rounded-full p-1.5 -mr-1.5 text-ink-muted active:bg-canvas-soft">
               <X className="size-4" />
             </DrawerClose>
@@ -261,13 +261,15 @@ export function ShiftView() {
                 Jumlah uang tunai di laci saat mulai jaga.
               </p>
             </div>
-            <Button
-              className="w-full rounded-full h-11 text-base"
-              disabled={saving}
-              onClick={handleOpen}
-            >
-              {saving ? "Menyimpan..." : "Mulai Shift"}
-            </Button>
+            <div className="border-t border-hairline bg-canvas p-4 -mx-4 -mb-4 mt-4 rounded-b-xl">
+              <Button
+                className="w-full rounded-full h-11 text-base"
+                disabled={saving}
+                onClick={handleOpen}
+              >
+                {saving ? "Menyimpan..." : "Mulai Shift"}
+              </Button>
+            </div>
           </div>
         </DrawerContent>
       </Drawer>
@@ -276,7 +278,7 @@ export function ShiftView() {
       <Drawer open={closeDrawer} onOpenChange={setCloseDrawer} showSwipeHandle>
         <DrawerContent className="rounded-t-xl">
           <DrawerHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
-            <DrawerTitle className="text-lg font-bold">Tutup Shift</DrawerTitle>
+            <DrawerTitle>Tutup Shift</DrawerTitle>
             <DrawerClose className="rounded-full p-1.5 -mr-1.5 text-ink-muted active:bg-canvas-soft">
               <X className="size-4" />
             </DrawerClose>
@@ -341,14 +343,15 @@ export function ShiftView() {
                 onChange={(e) => setNote(e.target.value)}
               />
             </div>
-            <Button
-              variant="destructive"
-              className="w-full rounded-full h-11 text-base"
-              disabled={saving || closingInput === ""}
-              onClick={handleClose}
-            >
-              {saving ? "Menyimpan..." : "Tutup Shift"}
-            </Button>
+            <div className="border-t border-hairline bg-canvas p-4 -mx-4 -mb-4 mt-4 rounded-b-xl">
+              <Button
+                className="w-full rounded-full h-11 text-base"
+                disabled={saving || closingInput === ""}
+                onClick={handleClose}
+              >
+                {saving ? "Menyimpan..." : "Tutup Shift"}
+              </Button>
+            </div>
           </div>
         </DrawerContent>
       </Drawer>

@@ -282,7 +282,7 @@ export function ExpensesView() {
       <Drawer open={addOpen} onOpenChange={setAddOpen} showSwipeHandle>
         <DrawerContent className="rounded-t-xl">
           <DrawerHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
-            <DrawerTitle className="text-lg font-bold">Tambah Pengeluaran</DrawerTitle>
+            <DrawerTitle>Tambah Pengeluaran</DrawerTitle>
             <DrawerClose className="rounded-full p-1.5 -mr-1.5 text-ink-muted active:bg-canvas-soft">
               <X className="size-4" />
             </DrawerClose>
@@ -359,7 +359,7 @@ export function ExpensesView() {
           <DialogHeader>
             <DialogTitle>Hapus Pengeluaran?</DialogTitle>
             <DialogDescription>
-              Catatan &quot;{deleteTarget?.category}&quot; sebesar {deleteTarget ? fmtRp(deleteTarget.amount) : ""} akan dihapus.
+              Catatan &quot;{deleteTarget?.category}&quot; sebesar {deleteTarget ? fmtRp(deleteTarget.amount) : ""} akan dihapus permanen dan tidak bisa dikembalikan.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

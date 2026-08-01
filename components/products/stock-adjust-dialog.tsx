@@ -112,7 +112,7 @@ export function StockAdjustDialog({ product, open, onOpenChange, onSaved, canAdj
       <DrawerContent className="rounded-t-xl">
         <DrawerHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
           <div>
-            <DrawerTitle className="text-lg font-bold">Kelola Stok</DrawerTitle>
+            <DrawerTitle>Kelola Stok</DrawerTitle>
             <p className="truncate text-xs text-ink-muted">{product.name}</p>
           </div>
           <DrawerClose className="rounded-full p-1.5 -mr-1.5 text-ink-muted active:bg-canvas-soft">

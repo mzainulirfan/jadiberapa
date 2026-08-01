@@ -130,6 +130,9 @@ export function CategoriesTab() {
         <DialogContent className="rounded-xl">
           <DialogHeader>
             <DialogTitle>{edit ? "Edit Kategori" : "Tambah Kategori"}</DialogTitle>
+            <DialogDescription>
+              Kelompokkan barang agar mudah ditemukan dan dilaporkan.
+            </DialogDescription>
           </DialogHeader>
           <CategoryForm
             category={edit}
@@ -199,7 +202,7 @@ export function CategoriesTab() {
           <DialogHeader>
             <DialogTitle>Hapus Kategori?</DialogTitle>
             <DialogDescription>
-              &quot;{deleteTarget?.name}&quot; akan dihapus.
+              &quot;{deleteTarget?.name}&quot; akan dihapus permanen dan tidak bisa dikembalikan.
               {deleteCount > 0
                 ? ` ${deleteCount} barang di kategori ini akan menjadi tanpa kategori.`
                 : ""}

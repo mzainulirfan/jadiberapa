@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -608,9 +609,12 @@ export function CheckoutView() {
       </div>
 
       <Dialog open={custOpen} onOpenChange={setCustOpen}>
-        <DialogContent showCloseButton className="max-w-sm">
+        <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold">Pilih Pembeli</DialogTitle>
+            <DialogTitle>Pilih Pembeli</DialogTitle>
+            <DialogDescription>
+              Pilih pembeli atau lanjutkan sebagai pelanggan umum.
+            </DialogDescription>
           </DialogHeader>
           <div className="max-h-[55dvh] space-y-2 overflow-y-auto pr-1">
             <div className="relative">

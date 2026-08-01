@@ -20,7 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { createProduct, updateProduct, uploadProductImage } from "@/lib/actions/products"
-import { getCategories, getProductVariantsByProduct } from "@/lib/db/queries"
+import { getCategories, getProductVariantsByProduct, getSettings } from "@/lib/db/queries"
 import type { BxCategory, BxProduct } from "./types"
 import { Trash, X, Camera, Plus } from "@/components/ui/icons"
 import { toast } from "sonner"
@@ -80,6 +80,7 @@ export function ProductDialog({
   const [discardOpen, setDiscardOpen] = useState(false)
   const [variants, setVariants] = useState<VariantDraft[]>([])
   const [fieldErrors, setFieldErrors] = useState<{ name?: string; price_sell?: string }>({})
+  const [defaultMinStock, setDefaultMinStock] = useState(5)
   const action = product ? updateProduct.bind(null, product.id) : createProduct
   const submittedRef = useRef(false)
   const onSavedRef = useRef(onSaved)
@@ -106,6 +107,10 @@ export function ProductDialog({
   useEffect(() => {
     if (open) {
       getCategories().then(setCategories)
+      getSettings().then((s) => {
+        const v = Number(s.default_min_stock)
+        if (!Number.isNaN(v) && v >= 0) setDefaultMinStock(v)
+      })
     }
   }, [open])
 
@@ -253,7 +258,7 @@ export function ProductDialog({
       {children ? <DrawerTrigger render={children as React.ReactElement} /> : null}
       <DrawerContent className="rounded-t-xl">
         <DrawerHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
-          <DrawerTitle className="text-lg font-bold">
+          <DrawerTitle>
             {product ? "Edit Barang" : "Tambah Barang"}
           </DrawerTitle>
           <DrawerClose className="rounded-full p-1.5 -mr-1.5 text-ink-muted active:bg-canvas-soft">
@@ -437,7 +442,7 @@ export function ProductDialog({
                 </div>
                 <div>
                   <label htmlFor="min_stock" className="text-xs text-ink-muted mb-1 block">Stok Minimum</label>
-                  <Input id="min_stock" name="min_stock" type="number" inputMode="numeric" min="0" placeholder="5" defaultValue={product?.min_stock ?? 5} />
+                  <Input id="min_stock" name="min_stock" type="number" inputMode="numeric" min="0" placeholder="5" defaultValue={product?.min_stock ?? defaultMinStock} />
                 </div>
               </div>
               <p className="text-[11px] text-ink-faint">Peringatan “stok menipis” muncul saat stok ≤ stok minimum.</p>
@@ -568,7 +573,7 @@ export function ProductDialog({
         </DialogHeader>
         <DialogFooter>
           <Button variant="outline" onClick={() => setDiscardOpen(false)}>
-            Lanjut Isi
+            Kembali
           </Button>
           <Button
             variant="destructive"

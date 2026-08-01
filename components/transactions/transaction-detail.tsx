@@ -90,6 +90,7 @@ function buildStrukLines(tx: Transaction, settings: Record<string, string>): str
   const storeName = settings.store_name || "Toko Saya"
   const storeAddress = settings.store_address || ""
   const storePhone = settings.store_phone || ""
+  const showNota = settings.show_nota_number !== "0"
   const width = 32
   const sep = "-".repeat(width)
   const center = (s: string) => {
@@ -126,7 +127,7 @@ function buildStrukLines(tx: Transaction, settings: Record<string, string>): str
   lines.push(sep)
   lines.push(center("NOTA PENJUALAN"))
   lines.push(sep)
-  lines.push(pipe(`${dateStr} ${timeStr}`, `No: ${notaNo(tx)}`))
+  lines.push(pipe(`${dateStr} ${timeStr}`, showNota ? `No: ${notaNo(tx)}` : false))
   lines.push(
     pipe(
       cashierNameOf(tx) && `Kasir: ${cashierNameOf(tx)}`,
@@ -159,13 +160,24 @@ function buildStrukLines(tx: Transaction, settings: Record<string, string>): str
     lines.push(`Sisa${right(fmtRp(Math.max(0, tx.total - paidOf(tx))))}`)
   }
   lines.push(sep)
-  lines.push(center("Terima kasih"))
-  lines.push(center("Sampai jumpa kembali"))
+  const footer = settings.receipt_footer?.trim()
+  if (footer) {
+    for (const line of footer.split("\n")) {
+      if (line.trim()) lines.push(center(line.trim()))
+    }
+  } else {
+    lines.push(center("Terima kasih"))
+    lines.push(center("Sampai jumpa kembali"))
+  }
   return lines
 }
 
 function buildStrukHtml(tx: Transaction, settings: Record<string, string>, barcodeSvg: string) {
   const lines = buildStrukLines(tx, settings)
+  const showNota = settings.show_nota_number !== "0"
+  const footer = settings.receipt_footer?.trim()
+    ? settings.receipt_footer.trim().replace(/\n/g, "<br/>")
+    : "Terima kasih<br/>Sampai jumpa kembali"
 
   return `<!doctype html>
 <html>
@@ -183,8 +195,8 @@ function buildStrukHtml(tx: Transaction, settings: Record<string, string>, barco
 </head>
 <body>
 <pre>${lines.join("\n")}</pre>
-<div class="barcode">${barcodeSvg}</div>
-<div class="footer">Terima kasih<br/>Sampai jumpa kembali</div>
+${showNota ? `<div class="barcode">${barcodeSvg}</div>` : ""}
+<div class="footer">${footer}</div>
 </body>
 </html>`
 }
@@ -211,10 +223,10 @@ function StrukSheet({
   return (
     <DrawerContent className="rounded-t-xl">
       <div className="flex min-h-0 flex-1 flex-col">
-        <DrawerHeader className="flex flex-row items-center justify-between border-b border-hairline text-left">
-          <DrawerTitle className="text-lg font-bold">Struk</DrawerTitle>
+        <DrawerHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
+          <DrawerTitle>Struk</DrawerTitle>
           <DrawerClose className="rounded-full p-1.5 -mr-1.5 text-ink-muted active:bg-canvas-soft">
-            <X className="size-5" />
+            <X className="size-4" />
           </DrawerClose>
         </DrawerHeader>
 
@@ -232,7 +244,8 @@ function StrukSheet({
               <div className="my-3 border-t border-dashed border-hairline" />
 
               <p className="text-xs text-ink-muted">
-                {formatDate(new Date(tx.created_at))} | No. {notaNo(tx)}
+                {formatDate(new Date(tx.created_at))}
+                {settings.show_nota_number !== "0" ? ` | No. ${notaNo(tx)}` : ""}
               </p>
               {(cashierNameOf(tx) || buyerName(tx)) && (
                 <p className="text-xs text-ink-muted">
@@ -322,11 +335,15 @@ function StrukSheet({
               )}
 
               <div className="my-3 border-t border-dashed border-hairline" />
-              <div className="flex justify-center">
-                <Barcode value={notaNo(tx)} format="CODE128" height={40} fontSize={10} />
-              </div>
+              {settings.show_nota_number !== "0" && (
+                <div className="flex justify-center">
+                  <Barcode value={notaNo(tx)} format="CODE128" height={40} fontSize={10} />
+                </div>
+              )}
               <div className="my-3 border-t border-dashed border-hairline" />
-              <p className="text-xs text-ink-muted">Terima kasih</p>
+              <p className="text-xs text-ink-muted">
+                {settings.receipt_footer?.trim() || "Terima kasih"}
+              </p>
             </div>
           </div>
         </div>
@@ -465,8 +482,7 @@ ${settings.store_address || ""}${settings.store_phone ? `\n${settings.store_phon
 ================
 NOTA PENJUALAN
 ${formatDate(new Date(tx.created_at))}
-No. ${notaNo(tx)}
-${cashierNameOf(tx) ? `Kasir: ${cashierNameOf(tx)}\n` : ""}${buyerName(tx) ? `Pembeli: ${buyerName(tx)}\n` : ""}----------------
+${settings.show_nota_number !== "0" ? `No. ${notaNo(tx)}\n` : ""}${cashierNameOf(tx) ? `Kasir: ${cashierNameOf(tx)}\n` : ""}${buyerName(tx) ? `Pembeli: ${buyerName(tx)}\n` : ""}----------------
 ${(tx.transaction_items as TxItem[])
   .map(
     (item) =>
@@ -496,7 +512,7 @@ ${
     ? `Dibayar: ${fmtRp(paidOf(tx))}\nSisa Utang: ${fmtRp(Math.max(0, tx.total - paidOf(tx)))}\n`
     : ""
 }================
-Terima kasih`
+${settings.receipt_footer?.trim() || "Terima kasih"}`
     if (navigator.share) {
       try {
         await navigator.share({ title: "Struk Transaksi", text })
@@ -797,9 +813,9 @@ Terima kasih`
       )}
 
       <Dialog open={showPay} onOpenChange={(o) => !saving && setShowPay(o)}>
-        <DialogContent showCloseButton className="max-w-sm">
+        <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold">Catat Pembayaran</DialogTitle>
+            <DialogTitle>Catat Pembayaran</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="flex items-center justify-between rounded-xl border border-hairline bg-canvas-soft p-3 text-sm">

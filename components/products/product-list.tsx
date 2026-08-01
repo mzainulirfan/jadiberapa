@@ -17,6 +17,7 @@ import {
   Drawer,
   DrawerContent,
   DrawerClose,
+  DrawerTitle,
 } from "@/components/ui/drawer"
 import {
   Popover,
@@ -669,6 +670,7 @@ export function ProductList() {
         <DrawerContent className="rounded-t-xl">
           {selected && (
             <div className="flex min-h-0 flex-1 flex-col">
+              <DrawerTitle className="sr-only">{selected.name}</DrawerTitle>
               <div className="relative shrink-0">
                 <div className="aspect-[16/9] w-full overflow-hidden bg-canvas-soft">
                   {selected.image_url ? (
