@@ -97,6 +97,13 @@ function buildStrukLines(tx: Transaction, settings: Record<string, string>): str
     return " ".repeat(pad) + s
   }
   const right = (s: string) => s.padStart(width)
+  // Dua kolom dalam satu baris: label di kiri (dipotong bila kepanjangan),
+  // nilai di kanan rata kanan.
+  const twoCol = (left: string, value: string) => {
+    const avail = Math.max(0, width - value.length)
+    const l = left.length > avail ? left.slice(0, avail) : left
+    return l + " ".repeat(avail - l.length) + value
+  }
 
   const d = new Date(tx.created_at)
   const dateStr = d.toLocaleDateString("id-ID", {
@@ -120,8 +127,8 @@ function buildStrukLines(tx: Transaction, settings: Record<string, string>): str
   lines.push(sep)
   for (const item of tx.transaction_items as TxItem[]) {
     const name = item.products?.name ?? "Produk dihapus"
-    lines.push(`${item.qty} x ${name}${item.variant_name ? ` (${item.variant_name})` : ""}`)
-    lines.push(right(fmtRp(item.subtotal - (item.discount ?? 0))))
+    const label = `${item.qty} x ${name}${item.variant_name ? ` (${item.variant_name})` : ""}`
+    lines.push(twoCol(label, fmtRp(item.subtotal - (item.discount ?? 0))))
   }
   lines.push(sep)
   const disc = discountOf(tx)
@@ -224,12 +231,12 @@ function StrukSheet({
 
               <div className="space-y-1.5 text-left">
                 {(tx.transaction_items as TxItem[]).map((item) => (
-                  <div key={item.id}>
-                    <p className="text-xs text-ink">
+                  <div key={item.id} className="flex items-baseline justify-between gap-2">
+                    <p className="min-w-0 flex-1 truncate text-xs text-ink">
                       {item.qty} x {item.products?.name ?? "Produk dihapus"}
                       {item.variant_name ? ` (${item.variant_name})` : ""}
                     </p>
-                    <p className="text-xs text-ink-muted text-right">
+                    <p className="shrink-0 text-xs text-ink-muted">
                       {fmtRp(item.subtotal - (item.discount ?? 0))}
                     </p>
                   </div>
