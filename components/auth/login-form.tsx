@@ -31,7 +31,8 @@ export function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
+      <div className="space-y-1.5">
+        <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Akun</p>
         <Input
           placeholder="Username"
           value={username}
@@ -40,7 +41,9 @@ export function LoginForm() {
           required
         />
       </div>
-      <div className="relative">
+      <div className="space-y-1.5">
+        <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Passcode</p>
+        <div className="relative">
         <Input
           type={showPass ? "text" : "password"}
           placeholder="Passcode"
@@ -59,12 +62,15 @@ export function LoginForm() {
         >
           {showPass ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
         </button>
+        </div>
       </div>
       {error && (
-        <p className="text-destructive text-sm text-center">{error}</p>
+        <p className="rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2 text-center text-sm text-destructive">
+          {error}
+        </p>
       )}
       <Button type="submit" className="w-full rounded-full" disabled={loading}>
-        {loading ? "Masuk..." : "Masuk"}
+        {loading ? "Masuk..." : "Masuk ke Kasir"}
       </Button>
     </form>
   )

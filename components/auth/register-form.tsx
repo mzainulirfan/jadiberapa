@@ -26,6 +26,11 @@ export function RegisterForm({ initialCode }: { initialCode?: string }) {
   const [foundStore, setFoundStore] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const isOwner = mode === "owner"
+  const headerTitle = isOwner ? "Buat toko baru" : "Gabung sebagai kasir"
+  const headerDesc = isOwner
+    ? "Pilih template awal, lalu sesuaikan kategori dan barang sesuai toko Anda."
+    : "Lengkapi akun untuk bergabung ke toko yang mengundang Anda."
 
   // Cek kode toko (dengan jeda singkat) untuk menampilkan nama toko tujuan.
   useEffect(() => {
@@ -75,7 +80,7 @@ export function RegisterForm({ initialCode }: { initialCode?: string }) {
         data:
           mode === "kasir"
             ? { store_code: storeCode.trim() }
-            : { store_name: storeName.trim() || "Toko Saya", store_template: templateKey },
+            : { store_name: storeName.trim() || "Toko Saya" },
       },
     })
 
@@ -89,7 +94,7 @@ export function RegisterForm({ initialCode }: { initialCode?: string }) {
       return
     }
 
-    if (mode === "owner") {
+    if (isOwner) {
       window.localStorage.setItem(PENDING_STORE_TEMPLATE_KEY, templateKey)
     }
 
@@ -99,21 +104,35 @@ export function RegisterForm({ initialCode }: { initialCode?: string }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {invited && (
-        <div className="rounded-xl border border-hairline bg-canvas p-3 text-sm text-ink-muted">
-          Anda diundang bergabung sebagai <span className="font-semibold text-ink">kasir</span>. Kode
-          toko sudah terisi — lengkapi akun Anda di bawah.
+        <div className="rounded-2xl border border-hairline bg-canvas p-3.5 text-sm text-ink-muted shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Undangan kasir</p>
+          <p className="mt-1">
+            Kode toko sudah terisi. Anda akan bergabung sebagai <span className="font-semibold text-ink">kasir</span>.
+          </p>
         </div>
       )}
 
-      <div className="flex rounded-full bg-canvas-soft p-1">
+      <div className="space-y-2">
+        <p className="text-[12px] font-semibold uppercase tracking-[0.125px] text-ink-faint">
+          Mobile POS UMKM
+        </p>
+        <div className="space-y-1">
+          <h1 className="text-[26px] font-bold leading-[1.1] tracking-[-0.625px] text-ink">
+            {headerTitle}
+          </h1>
+          <p className="text-sm text-ink-muted">{headerDesc}</p>
+        </div>
+      </div>
+
+      <div className="flex rounded-2xl bg-canvas-soft p-1">
         <button
           type="button"
           onClick={() => {
             setMode("owner")
             setFoundStore(null)
           }}
-          className={`flex-1 rounded-full px-3 py-1.5 text-sm font-semibold transition-colors ${
-            mode === "owner" ? "bg-canvas text-ink shadow-sm" : "text-ink-muted"
+          className={`flex-1 rounded-[14px] px-3 py-1.5 text-sm font-semibold transition-colors ${
+            isOwner ? "bg-canvas text-ink shadow-sm" : "text-ink-muted"
           }`}
         >
           Buat Toko Baru
@@ -124,7 +143,7 @@ export function RegisterForm({ initialCode }: { initialCode?: string }) {
             setMode("kasir")
             setFoundStore(null)
           }}
-          className={`flex-1 rounded-full px-3 py-1.5 text-sm font-semibold transition-colors ${
+          className={`flex-1 rounded-[14px] px-3 py-1.5 text-sm font-semibold transition-colors ${
             mode === "kasir" ? "bg-canvas text-ink shadow-sm" : "text-ink-muted"
           }`}
         >
@@ -132,9 +151,10 @@ export function RegisterForm({ initialCode }: { initialCode?: string }) {
         </button>
       </div>
 
-      {mode === "owner" ? (
+      {isOwner ? (
         <div className="space-y-4">
-          <div>
+          <div className="space-y-1.5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Detail toko</p>
             <Input
               placeholder="Nama Toko"
               value={storeName}
@@ -143,15 +163,16 @@ export function RegisterForm({ initialCode }: { initialCode?: string }) {
             />
           </div>
           <div className="space-y-2">
-            <div>
-              <p className="text-sm font-semibold text-ink">Template toko</p>
+            <div className="space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Template awal</p>
               <p className="text-xs text-ink-faint">Pilih data awal. Semua bisa diedit setelah daftar.</p>
             </div>
             <TemplatePicker value={templateKey} onChange={setTemplateKey} compact />
           </div>
         </div>
       ) : (
-        <div>
+        <div className="space-y-1.5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Kode toko</p>
           <Input
             placeholder="Kode Toko"
             value={storeCode}
@@ -171,7 +192,8 @@ export function RegisterForm({ initialCode }: { initialCode?: string }) {
         </div>
       )}
 
-      <div>
+      <div className="space-y-1.5">
+        <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Akun</p>
         <Input
           placeholder="Username"
           value={username}
@@ -201,10 +223,10 @@ export function RegisterForm({ initialCode }: { initialCode?: string }) {
         </button>
       </div>
       {error && (
-        <p className="text-destructive text-sm text-center">{error}</p>
+        <p className="text-center text-sm text-destructive">{error}</p>
       )}
       <Button type="submit" className="w-full rounded-full" disabled={loading}>
-        {loading ? "Mendaftar..." : "Daftar"}
+        {loading ? (isOwner ? "Membuat akun..." : "Bergabung...") : isOwner ? "Buat Toko" : "Gabung Toko"}
       </Button>
     </form>
   )
