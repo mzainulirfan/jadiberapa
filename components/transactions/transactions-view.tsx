@@ -6,7 +6,13 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getTransactions, getTransactionsSummary, type BxTransaction } from "@/lib/db/queries"
-import { Search, Receipt, ChevronRight, ChevronDown, Wallet, X } from "@/components/ui/icons"
+import {
+  listQueuedTransactions,
+  onQueuedTransactionsChange,
+  syncQueuedTransactions,
+  type OfflineTransactionDraft,
+} from "@/lib/offline/transactions"
+import { Refresh, Search, Receipt, ChevronRight, ChevronDown, Wallet, X } from "@/components/ui/icons"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -142,10 +148,12 @@ function TxRow({ tx }: { tx: BxTransaction }) {
 export function TransactionsView() {
   const [transactions, setTransactions] = useState<BxTransaction[]>([])
   const [summary, setSummary] = useState<{ count: number; total: number } | null>(null)
+  const [queuedTransactions, setQueuedTransactions] = useState<OfflineTransactionDraft[]>([])
   const [range, setRange] = useState<RangeKey>("today")
   const [search, setSearch] = useState("")
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [syncing, setSyncing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [hasMore, setHasMore] = useState(false)
 
@@ -172,6 +180,58 @@ export function TransactionsView() {
     }
   }, [range, search])
 
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const refreshQueue = async () => {
+      const queued = await listQueuedTransactions()
+      setQueuedTransactions(queued)
+    }
+
+    const syncAndRefresh = async () => {
+      if (!navigator.onLine) {
+        await refreshQueue()
+        return
+      }
+      await syncQueuedTransactions().catch(() => {})
+      await refreshQueue()
+    }
+
+    syncAndRefresh()
+    window.addEventListener("online", syncAndRefresh)
+    const unsubscribe = onQueuedTransactionsChange(refreshQueue)
+
+    return () => {
+      window.removeEventListener("online", syncAndRefresh)
+      unsubscribe()
+    }
+  }, [])
+
+  async function handleManualSync() {
+    setSyncing(true)
+    try {
+      if (!navigator.onLine) {
+        setQueuedTransactions(await listQueuedTransactions())
+        return
+      }
+      await syncQueuedTransactions().catch(() => {})
+      const [queued, list, sum] = await Promise.all([
+        listQueuedTransactions(),
+        getTransactions({ search: search.trim() || undefined, dateFrom: dateFromFor(range), pageSize: PAGE_SIZE }),
+        getTransactionsSummary({ search: search.trim() || undefined, dateFrom: dateFromFor(range) }),
+      ])
+      setQueuedTransactions(queued)
+      setTransactions(list.data)
+      setSummary(sum)
+      setHasMore(list.hasMore)
+      setError(null)
+    } catch {
+      setError("Gagal sinkron transaksi offline")
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   async function loadMore() {
     setLoadingMore(true)
     const dateFrom = dateFromFor(range)
@@ -189,9 +249,45 @@ export function TransactionsView() {
 
   const rangeFilterActive = range !== "all"
   const groups = groupByDay(transactions)
+  const hasQueued = queuedTransactions.length > 0
 
   return (
     <div className="space-y-3 p-4">
+      {hasQueued && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="font-semibold">{queuedTransactions.length} transaksi menunggu sinkronisasi</span>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-8 rounded-full border-amber-200 bg-white/70 px-3 text-xs font-semibold text-amber-900 hover:bg-white"
+              onClick={handleManualSync}
+              disabled={syncing}
+            >
+              <Refresh className={syncing ? "size-3.5 animate-spin" : "size-3.5"} />
+              {syncing ? "Menyinkronkan..." : "Sinkronkan sekarang"}
+            </Button>
+          </div>
+          <div className="mt-2 space-y-1.5">
+            {queuedTransactions.slice(0, 3).map((tx) => (
+              <div key={tx.id} className="rounded-lg bg-white/60 px-3 py-2 text-xs">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="truncate font-medium text-amber-900">
+                    {tx.customerName || "Umum"} · {tx.itemCount} item · {tx.payment_method}
+                  </span>
+                  <span className="shrink-0 text-amber-700">
+                    {timeFmt.format(new Date(tx.createdAt))}
+                  </span>
+                </div>
+                {tx.error && (
+                  <p className="mt-1 text-[11px] text-red-700">Gagal sync: {tx.error}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-ink-faint" />

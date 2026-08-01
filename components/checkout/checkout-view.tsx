@@ -31,6 +31,11 @@ import {
   Receipt,
 } from "@/components/ui/icons"
 import { cn } from "@/lib/utils"
+import {
+  onQueuedTransactionsChange,
+  queueOfflineTransaction,
+  syncQueuedTransactions,
+} from "@/lib/offline/transactions"
 
 type PaymentMethod = "cash" | "qris" | "dana" | "utang"
 
@@ -71,6 +76,25 @@ export function CheckoutView() {
 
   useEffect(() => {
     getSettings().then(setPayConfig)
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const syncNow = () => {
+      if (navigator.onLine) {
+        syncQueuedTransactions().catch(() => {})
+      }
+    }
+
+    syncNow()
+    window.addEventListener("online", syncNow)
+    const unsubscribe = onQueuedTransactionsChange(syncNow)
+
+    return () => {
+      window.removeEventListener("online", syncNow)
+      unsubscribe()
+    }
   }, [])
 
   useEffect(() => {
@@ -179,22 +203,62 @@ export function CheckoutView() {
       }
     })
     const dp = method === "utang" ? Math.min(paidAmount, netTotal) : undefined
-    const { error: err, id } = await createTransaction(
-      payload,
-      method,
-      customer?.id ?? null,
-      dp,
-      discountAmount,
-      feeAmount
-    )
-    setLoading(false)
-    if (err) {
-      setError(err)
+
+    const queueDraft = async () => {
+      try {
+        await queueOfflineTransaction({
+          items: payload,
+          payment_method: method,
+          customer_id: customer?.id ?? null,
+          paid_amount: dp,
+          discount: discountAmount,
+          fee: feeAmount,
+          total: netTotal,
+          itemCount: items.reduce((sum, item) => sum + item.qty, 0),
+          customerName: customer?.name ?? null,
+        })
+        setDone(true)
+        clearCart()
+        toast.success("Transaksi disimpan offline")
+        router.push("/transactions")
+      } catch {
+        setError("Gagal menyimpan transaksi offline")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      await queueDraft()
       return
     }
-    setDone(true)
-    clearCart()
-    router.push(`/transactions/${id}`)
+
+    try {
+      const { error: err, id } = await createTransaction(
+        payload,
+        method,
+        customer?.id ?? null,
+        dp,
+        discountAmount,
+        feeAmount
+      )
+      if (err) {
+        setError(err)
+        setLoading(false)
+        return
+      }
+      setDone(true)
+      clearCart()
+      router.push(`/transactions/${id}`)
+    } catch (e) {
+      const message = e instanceof Error ? e.message : ""
+      if (/fetch|network|offline|failed to fetch/i.test(message)) {
+        await queueDraft()
+        return
+      }
+      setError(message || "Gagal memproses transaksi")
+      setLoading(false)
+    }
   }
 
   const canCheckout =
