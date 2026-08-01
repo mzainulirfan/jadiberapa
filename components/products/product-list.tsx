@@ -511,117 +511,129 @@ export function ProductList() {
         </div>
       ) : view === "grid" ? (
         <div className="grid grid-cols-2 gap-2">
-          {products.map((p) => (
-            <div
-              key={p.id}
-              className="flex flex-col overflow-hidden rounded-xl border border-hairline bg-canvas"
-            >
-              <button
-                type="button"
-                onClick={() => setSelected(p)}
-                className="flex flex-col text-left"
+          {products.map((p) => {
+            const disc = discountOf(p)
+            const net = p.price_sell - disc
+            return (
+              <div
+                key={p.id}
+                className="flex flex-col overflow-hidden rounded-xl border border-hairline bg-canvas"
               >
-                <div className="relative">
-                  <ProductThumb p={p} className="aspect-[4/3] w-full rounded-none" />
-                  {p.categories?.name && (
-                    <span className="absolute right-1.5 top-1.5 max-w-[75%] truncate rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
-                      {p.categories.name}
-                    </span>
-                  )}
-                </div>
-                <div className="flex flex-col gap-1 p-2.5">
-                  <p className="text-sm font-medium text-ink line-clamp-2 min-h-10">{p.name}</p>
-                  <StockBadge stock={p.stock} min={p.min_stock} />
-                  {(() => {
-                    const disc = discountOf(p)
-                    const net = p.price_sell - disc
-                    return (
-                      <div className="flex items-baseline gap-1.5 flex-wrap">
-                        <p className="text-sm font-semibold text-primary">
-                          Rp{net.toLocaleString()}
-                        </p>
-                        {disc > 0 && (
-                          <>
-                            <p className="text-[11px] text-ink-faint line-through">
-                              Rp{p.price_sell.toLocaleString()}
-                            </p>
-                            <span className="rounded-full bg-accent-orange px-1.5 py-px text-[10px] font-semibold text-white">
-                              -Rp{disc.toLocaleString()}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    )
-                  })()}
-                </div>
-              </button>
-              {canManage && (
-                <div className="flex items-center justify-end gap-1 px-2.5 pb-2.5">
-                  <ProductDialog product={p} onSaved={reload}>
-                    <button className="rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft">
-                      <Pencil className="size-4" />
-                    </button>
-                  </ProductDialog>
-                  <button
-                    onClick={() => setDeleteTarget(p)}
-                    className="rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft"
-                  >
-                    <Trash className="size-4" />
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-1">
-          {products.map((p) => (
-            <div
-              key={p.id}
-              className="flex items-center gap-3 rounded-lg bg-canvas p-2.5 border border-hairline"
-            >
-              <button
-                type="button"
-                onClick={() => setSelected(p)}
-                className="flex min-w-0 flex-1 items-center gap-3 text-left"
-              >
-                <ProductThumb p={p} className="size-12" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <p className="text-sm font-medium text-ink truncate">{p.name}</p>
-                    <StockBadge stock={p.stock} min={p.min_stock} />
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <p className="text-xs text-ink-faint truncate">
-                      {p.categories?.name ? `${p.categories.name} · ` : ""}
-                      {p.unit && p.unit !== "pcs" ? `${p.unit} · ` : ""}
-                      Rp{(p.price_sell - discountOf(p)).toLocaleString()}
-                    </p>
-                    {discountOf(p) > 0 && (
-                      <span className="shrink-0 rounded-full bg-accent-orange px-1.5 py-px text-[10px] font-semibold text-white">
-                        -Rp{discountOf(p).toLocaleString()}
+                <button
+                  type="button"
+                  onClick={() => setSelected(p)}
+                  className="flex flex-col text-left"
+                >
+                  <div className="relative">
+                    <ProductThumb p={p} className="aspect-[4/3] w-full rounded-none" />
+                    {disc > 0 && (
+                      <span className="absolute left-1.5 top-1.5 rounded-full bg-accent-orange px-2 py-0.5 text-[10px] font-semibold text-white">
+                        -Rp{disc.toLocaleString("id-ID")}
+                      </span>
+                    )}
+                    {p.categories?.name && (
+                      <span className="absolute right-1.5 top-1.5 max-w-[75%] truncate rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
+                        {p.categories.name}
                       </span>
                     )}
                   </div>
-                </div>
-              </button>
-              {canManage && (
-                <div className="flex items-center gap-1">
-                  <ProductDialog product={p} onSaved={reload}>
-                    <button className="rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft">
-                      <Pencil className="size-4" />
+                  <div className="flex flex-col gap-1 p-2.5">
+                    <p className="text-sm font-medium text-ink line-clamp-2 min-h-10">{p.name}</p>
+                    <StockBadge stock={p.stock} min={p.min_stock} />
+                    <div className="flex items-baseline gap-1.5 flex-wrap">
+                      <p className="text-sm font-semibold text-primary">
+                        Rp{net.toLocaleString()}
+                      </p>
+                      {disc > 0 && (
+                        <p className="text-[11px] text-ink-faint line-through">
+                          Rp{p.price_sell.toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </button>
+                {canManage && (
+                  <div className="flex items-center justify-end gap-1 px-2.5 pb-2.5">
+                    <ProductDialog product={p} onSaved={reload}>
+                      <button className="rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft">
+                        <Pencil className="size-4" />
+                      </button>
+                    </ProductDialog>
+                    <button
+                      onClick={() => setDeleteTarget(p)}
+                      className="rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft"
+                    >
+                      <Trash className="size-4" />
                     </button>
-                  </ProductDialog>
-                  <button
-                    onClick={() => setDeleteTarget(p)}
-                    className="rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft"
-                  >
-                    <Trash className="size-4" />
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        <div className="space-y-1">
+          {products.map((p) => {
+            const disc = discountOf(p)
+            const net = p.price_sell - disc
+            return (
+              <div
+                key={p.id}
+                className="flex items-center gap-3 rounded-xl border border-hairline bg-canvas p-2.5"
+              >
+                <button
+                  type="button"
+                  onClick={() => setSelected(p)}
+                  className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                >
+                  <div className="relative">
+                    <ProductThumb p={p} className="size-12" />
+                    {disc > 0 && (
+                      <span className="absolute -left-1 -top-1 rounded-full bg-accent-orange px-1.5 py-px text-[9px] font-semibold text-white">
+                        -Rp{disc.toLocaleString("id-ID")}
+                      </span>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <p className="truncate text-sm font-medium text-ink">{p.name}</p>
+                      <StockBadge stock={p.stock} min={p.min_stock} />
+                    </div>
+                    <p className="truncate text-xs text-ink-muted">
+                      {p.categories?.name ? `${p.categories.name} · ` : ""}
+                      {p.unit && p.unit !== "pcs" ? `${p.unit} · ` : ""}
+                      {p.sku ? `SKU ${p.sku}` : ""}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className="flex items-baseline justify-end gap-1">
+                      <p className="text-sm font-semibold text-primary">Rp{net.toLocaleString()}</p>
+                      {disc > 0 && (
+                        <span className="text-[11px] text-ink-faint line-through">
+                          Rp{p.price_sell.toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </button>
+                {canManage && (
+                  <div className="flex items-center gap-1">
+                    <ProductDialog product={p} onSaved={reload}>
+                      <button className="rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft">
+                        <Pencil className="size-4" />
+                      </button>
+                    </ProductDialog>
+                    <button
+                      onClick={() => setDeleteTarget(p)}
+                      className="rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft"
+                    >
+                      <Trash className="size-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
 

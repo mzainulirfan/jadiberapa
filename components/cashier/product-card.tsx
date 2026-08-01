@@ -46,7 +46,7 @@ export function ProductCard({
             Habis
           </span>
         )}
-        {hasDisc && (
+        {hasDisc && !out && (
           <span className="absolute left-1.5 top-1.5 rounded-full bg-accent-orange px-2 py-0.5 text-[10px] font-semibold text-white">
             -Rp{discount.toLocaleString("id-ID")}
           </span>
