@@ -575,6 +575,8 @@ export type BxStat = {
 export type BxDashboardSummary = {
   period: BxPeriod
   revenue: BxStat
+  grossProfit: BxStat
+  expenses: BxStat
   profit: BxStat
   count: BxStat
   items: BxStat
@@ -592,6 +594,8 @@ const PERIOD_DAYS: Record<BxPeriod, number> = { today: 1, "7d": 7, "30d": 30 }
 type RpcStat = { value: number; prev: number }
 type RpcSummary = {
   revenue: RpcStat
+  grossProfit?: RpcStat
+  expenses?: RpcStat
   profit: RpcStat
   count: RpcStat
   items: RpcStat
@@ -661,13 +665,20 @@ export async function getDashboardSummary(
   }
 
   const revenue = r.revenue ?? { value: 0, prev: 0 }
-  const profit = r.profit ?? { value: 0, prev: 0 }
+  const grossProfit = r.grossProfit ?? r.profit ?? { value: 0, prev: 0 }
+  const expenses = r.expenses ?? { value: 0, prev: 0 }
+  const profit = r.profit ?? {
+    value: grossProfit.value - expenses.value,
+    prev: grossProfit.prev - expenses.prev,
+  }
   const count = r.count ?? { value: 0, prev: 0 }
   const itemsStat = r.items ?? { value: 0, prev: 0 }
 
   return {
     period,
     revenue: stat(revenue.value, revenue.prev),
+    grossProfit: stat(grossProfit.value, grossProfit.prev),
+    expenses: stat(expenses.value, expenses.prev),
     profit: stat(profit.value, profit.prev),
     count: stat(count.value, count.prev),
     items: stat(itemsStat.value, itemsStat.prev),

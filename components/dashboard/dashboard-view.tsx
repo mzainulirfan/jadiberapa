@@ -17,6 +17,7 @@ import {
   ChevronRight,
   ChevronDown,
   Wallet,
+  Dollar,
   AlertTriangle,
 } from "@/components/ui/icons"
 import {
@@ -274,13 +275,27 @@ function DashboardContent({ data }: { data: BxDashboardSummary }) {
           <span>{COMPARE_LABEL[period]}</span>
         </div>
         <div className="mt-4 grid grid-cols-3 gap-2 border-t border-white/10 pt-3">
-          <HeroStat label="Laba" value={`Rp${fmtShort(data.profit.value)}`} stat={data.profit} />
+          <HeroStat label="Laba Bersih" value={`Rp${fmtShort(data.profit.value)}`} stat={data.profit} />
           <HeroStat label="Transaksi" value={String(data.count.value)} stat={data.count} />
           <HeroStat label="Barang Terjual" value={String(data.items.value)} stat={data.items} />
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
+        <StatCard
+          label="Laba kotor"
+          value={fmtRp(data.grossProfit.value)}
+          hint="sebelum pengeluaran"
+          icon={TrendingUp}
+          tone="text-accent-green"
+        />
+        <StatCard
+          label="Pengeluaran"
+          value={fmtRp(data.expenses.value)}
+          hint="periode ini"
+          icon={Dollar}
+          tone="text-destructive"
+        />
         <StatCard
           label="Rata-rata / transaksi"
           value={fmtRp(data.avgOrder)}
