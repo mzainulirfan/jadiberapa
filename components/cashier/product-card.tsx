@@ -120,15 +120,17 @@ export function ProductRow({
         out ? "opacity-40" : "active:border-primary/40"
       )}
     >
-      <div className="relative size-11 shrink-0 overflow-hidden rounded-lg bg-canvas-soft">
-        {p.image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={p.image_url} alt={p.name} className="size-full object-cover" loading="lazy" />
-        ) : (
-          <div className="flex size-full items-center justify-center text-ink-faint">
-            <Package className="size-5" />
-          </div>
-        )}
+      <div className="relative size-11 shrink-0">
+        <div className="size-11 overflow-hidden rounded-lg bg-canvas-soft">
+          {p.image_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={p.image_url} alt={p.name} className="size-full object-cover" loading="lazy" />
+          ) : (
+            <div className="flex size-full items-center justify-center text-ink-faint">
+              <Package className="size-5" />
+            </div>
+          )}
+        </div>
         {hasDisc && (
           <span className="absolute -left-1 -top-1 rounded-full bg-accent-orange px-1.5 py-px text-[9px] font-semibold text-white">
             -Rp{discount.toLocaleString("id-ID")}
