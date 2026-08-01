@@ -26,9 +26,28 @@ const RANGES: { key: RangeKey; label: string }[] = [
   { key: "all", label: "Semua" },
 ]
 
-const PAYMENT_LABEL: Record<string, string> = { cash: "Tunai", qris: "QRIS", dana: "DANA" }
+const PAYMENT_LABEL: Record<string, string> = { cash: "Tunai", qris: "QRIS", dana: "DANA", utang: "Utang" }
 
 const fmtRp = (n: number) => `Rp${n.toLocaleString("id-ID")}`
+
+function safeFileName(label: string) {
+  return label.toLowerCase().replace(/\s+/g, "-")
+}
+
+function escapeHtml(s: string) {
+  return s.replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c
+  )
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = filename
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
 
 // Ekspor CSV — pemisah titik-koma + BOM UTF-8 agar Excel Indonesia mengenali kolom.
 function exportCsv(data: BxReports, periodLabel: string) {
@@ -54,13 +73,42 @@ function exportCsv(data: BxReports, periodLabel: string) {
     ...data.topProducts.map((p) => [p.name, p.qty, p.total]),
   ]
   const csv = rows.map((r) => r.map(esc).join(";")).join("\r\n")
-  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement("a")
-  a.href = url
-  a.download = `laporan-${periodLabel.toLowerCase().replace(/\s+/g, "-")}.csv`
-  a.click()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  downloadBlob(
+    new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" }),
+    `laporan-${safeFileName(periodLabel)}.csv`
+  )
+}
+
+function exportExcel(data: BxReports, periodLabel: string) {
+  const rows: [string, string | number][] = [
+    ["Omzet", data.totalRevenue],
+    ["Laba Kotor", data.profit],
+    ["Pengeluaran", data.totalExpenses],
+    ["Laba Bersih", data.netProfit],
+    ["Jumlah Transaksi", data.count],
+    ["Barang Terjual", data.totalItems],
+  ]
+  const html = `<!doctype html>
+<html><head><meta charset="utf-8" /></head><body>
+  <table>
+    <tr><th colspan="2">Laporan ${escapeHtml(periodLabel)}</th></tr>
+    ${rows.map(([k, v]) => `<tr><td>${escapeHtml(k)}</td><td>${v}</td></tr>`).join("")}
+  </table>
+  <br />
+  <table>
+    <tr><th>Metode Pembayaran</th><th>Nilai</th></tr>
+    ${data.payment.map((p) => `<tr><td>${escapeHtml(PAYMENT_LABEL[p.key] ?? p.key)}</td><td>${p.value}</td></tr>`).join("")}
+  </table>
+  <br />
+  <table>
+    <tr><th>Produk Terlaris</th><th>Qty</th><th>Total</th></tr>
+    ${data.topProducts.map((p) => `<tr><td>${escapeHtml(p.name)}</td><td>${p.qty}</td><td>${p.total}</td></tr>`).join("")}
+  </table>
+</body></html>`
+  downloadBlob(
+    new Blob(["\uFEFF" + html], { type: "application/vnd.ms-excel;charset=utf-8;" }),
+    `laporan-${safeFileName(periodLabel)}.xls`
+  )
 }
 
 // Ekspor PDF — render HTML lalu picu print (dialog cetak browser bisa "Simpan PDF").
@@ -68,14 +116,14 @@ function exportPdf(data: BxReports, periodLabel: string, marginPct: string) {
   const paymentRows = data.payment
     .map(
       (p) =>
-        `<tr><td>${PAYMENT_LABEL[p.key] ?? p.key}</td><td class="num">${fmtRp(p.value)}</td></tr>`
+        `<tr><td>${escapeHtml(PAYMENT_LABEL[p.key] ?? p.key)}</td><td class="num">${fmtRp(p.value)}</td></tr>`
     )
     .join("")
   const topRows = data.topProducts
     .slice(0, 15)
     .map(
       (p, i) =>
-        `<tr><td>${i + 1}. ${p.name}</td><td class="num">${p.qty}</td><td class="num">${fmtRp(p.total)}</td></tr>`
+        `<tr><td>${i + 1}. ${escapeHtml(p.name)}</td><td class="num">${p.qty}</td><td class="num">${fmtRp(p.total)}</td></tr>`
     )
     .join("")
   const html = `<!doctype html>
@@ -174,6 +222,22 @@ function trendLabels(trend: { t: string; value: number }[], range: RangeKey) {
   }))
 }
 
+function buildShareText(data: BxReports, periodLabel: string, marginPct: string) {
+  const lines = [
+    `Laporan ${periodLabel}`,
+    `Omzet: ${fmtRp(data.totalRevenue)}`,
+    `Laba kotor: ${fmtRp(data.profit)} (${marginPct})`,
+    `Pengeluaran: ${fmtRp(data.totalExpenses)}`,
+    `Laba bersih: ${fmtRp(data.netProfit)}`,
+    `Transaksi: ${data.count}`,
+    `Barang terjual: ${data.totalItems}`,
+  ]
+  if (data.topProducts.length) {
+    lines.push(`Terlaris: ${data.topProducts.slice(0, 3).map((p) => p.name).join(", ")}`)
+  }
+  return lines.join("\n")
+}
+
 export function ReportsView() {
   const [data, setData] = useState<ReportsData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -200,22 +264,11 @@ export function ReportsView() {
 
   const periodLabel = RANGES.find((r) => r.key === range)?.label ?? ""
   const marginPct = data && data.totalRevenue > 0 ? `${Math.round((data.profit / data.totalRevenue) * 100)}%` : "–"
+  const hasReportData = !!data && (data.count > 0 || data.totalExpenses > 0)
 
   async function share() {
     if (!data) return
-    const lines = [
-      `📊 Laporan ${periodLabel}`,
-      `Omzet: ${fmtRp(data.totalRevenue)}`,
-      `Laba kotor: ${fmtRp(data.profit)} (${marginPct})`,
-      `Pengeluaran: ${fmtRp(data.totalExpenses)}`,
-      `Laba bersih: ${fmtRp(data.netProfit)}`,
-      `Transaksi: ${data.count}`,
-      `Barang terjual: ${data.totalItems}`,
-    ]
-    if (data.topProducts.length) {
-      lines.push(`Terlaris: ${data.topProducts.slice(0, 3).map((p) => p.name).join(", ")}`)
-    }
-    const text = lines.join("\n")
+    const text = buildShareText(data, periodLabel, marginPct)
     const nav = navigator as Navigator & { share?: (d: { text: string }) => Promise<void> }
     if (nav.share) {
       try {
@@ -229,6 +282,11 @@ export function ReportsView() {
     toast.success("Ringkasan disalin")
   }
 
+  function shareWhatsApp() {
+    if (!data) return
+    window.open(`https://wa.me/?text=${encodeURIComponent(buildShareText(data, periodLabel, marginPct))}`, "_blank", "noopener,noreferrer")
+  }
+
   return (
     <div className="space-y-4 p-4">
       <div className="flex items-center justify-between gap-2">
@@ -236,7 +294,7 @@ export function ReportsView() {
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger
-              disabled={loading || !data || data.count === 0}
+              disabled={loading || !hasReportData}
               className="flex h-8 items-center gap-1.5 rounded-full border border-hairline bg-canvas px-3 text-xs font-semibold text-ink transition-colors outline-none active:bg-canvas-soft data-[popup-open]:bg-canvas-soft disabled:opacity-50"
             >
               <Printer className="size-3.5" /> Ekspor
@@ -246,6 +304,9 @@ export function ReportsView() {
               <DropdownMenuItem onClick={() => data && exportCsv(data, periodLabel)}>
                 Unduh CSV (Excel)
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => data && exportExcel(data, periodLabel)}>
+                Unduh Excel (.xls)
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => data && exportPdf(data, periodLabel, marginPct)}>
                 Cetak / PDF
               </DropdownMenuItem>
@@ -253,10 +314,17 @@ export function ReportsView() {
           </DropdownMenu>
           <button
             onClick={share}
-            disabled={loading || !data || data.count === 0}
+            disabled={loading || !hasReportData}
             className="flex h-8 items-center gap-1.5 rounded-full border border-hairline bg-canvas px-3 text-xs font-semibold text-ink transition-colors active:bg-canvas-soft disabled:opacity-50"
           >
             <Share className="size-3.5" /> Bagikan
+          </button>
+          <button
+            onClick={shareWhatsApp}
+            disabled={loading || !hasReportData}
+            className="hidden h-8 items-center gap-1.5 rounded-full border border-hairline bg-canvas px-3 text-xs font-semibold text-ink transition-colors active:bg-canvas-soft disabled:opacity-50 sm:flex"
+          >
+            WhatsApp
           </button>
         </div>
       </div>
