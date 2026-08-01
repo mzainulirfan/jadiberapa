@@ -37,6 +37,7 @@ import {
   ShoppingBag,
   Store,
   Check,
+  ChartLine,
 } from "@/components/ui/icons"
 
 const APP_VERSION = "Saberaha v1.0.0"
@@ -74,13 +75,14 @@ const OWNER_GROUPS: Group[] = [
       { href: "/staff", label: "Kelola Kasir", desc: "Tambah/hapus kasir toko", icon: UserIcon },
     ],
   },
-  {
-    title: "Aplikasi",
-    items: [
-      { href: "/settings", label: "Pengaturan", desc: "Info toko & pembayaran", icon: Cog },
-    ],
-  },
-]
+    {
+      title: "Aplikasi",
+      items: [
+        { href: "/settings", label: "Pengaturan", desc: "Info toko & pembayaran", icon: Cog },
+        { href: "/backup", label: "Cadangan Data", desc: "Export / pulihkan data toko", icon: ChartLine },
+      ],
+    },
+  ]
 
 // Menu yang tetap boleh dilihat kasir: operasional kasir sehari-hari.
 const KASIR_GROUPS: Group[] = [
