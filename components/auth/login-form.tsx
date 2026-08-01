@@ -4,11 +4,13 @@ import { useState } from "react"
 import { useAuth } from "@/lib/hooks/use-auth"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Eye, EyeOff } from "@/components/ui/icons"
 
 export function LoginForm() {
   const { login } = useAuth()
   const [username, setUsername] = useState("")
   const [passcode, setPasscode] = useState("")
+  const [showPass, setShowPass] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -38,16 +40,25 @@ export function LoginForm() {
           required
         />
       </div>
-      <div>
+      <div className="relative">
         <Input
-          type="password"
+          type={showPass ? "text" : "password"}
           placeholder="Passcode"
           value={passcode}
           onChange={(e) => setPasscode(e.target.value)}
           autoComplete="current-password"
           maxLength={6}
           required
+          className="pr-10"
         />
+        <button
+          type="button"
+          onClick={() => setShowPass((v) => !v)}
+          aria-label={showPass ? "Sembunyikan passcode" : "Tampilkan passcode"}
+          className="absolute inset-y-0 right-1 flex w-9 items-center justify-center text-ink-muted active:text-ink"
+        >
+          {showPass ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+        </button>
       </div>
       {error && (
         <p className="text-destructive text-sm text-center">{error}</p>

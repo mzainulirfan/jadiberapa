@@ -735,6 +735,38 @@ const Refresh = forwardRef<SVGSVGElement, React.SVGProps<SVGSVGElement>>(
 )
 Refresh.displayName = "Refresh"
 
+const Eye = forwardRef<SVGSVGElement, React.SVGProps<SVGSVGElement>>(
+  ({ className, ...props }, ref) => (
+    <svg
+      ref={ref}
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+      {...props}
+      dangerouslySetInnerHTML={{ __html: "<path d=\"M12 4C5.5 4 1.3 9.7 1 12c.3 2.3 4.5 8 11 8s10.7-5.7 11-8c-.3-2.3-4.5-8-11-8zm0 14c-5.1 0-8.6-4.2-9.6-6 1-1.8 4.5-6 9.6-6s8.6 4.2 9.6 6c-1 1.8-4.5 6-9.6 6zm0-11a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 8a3 3 0 1 1 0-6 3 3 0 0 1 0 6z\"/>" }}
+    />
+  )
+)
+Eye.displayName = "Eye"
+
+const EyeOff = forwardRef<SVGSVGElement, React.SVGProps<SVGSVGElement>>(
+  ({ className, ...props }, ref) => (
+    <svg
+      ref={ref}
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+      {...props}
+      dangerouslySetInnerHTML={{ __html: "<path d=\"M2.1 2 22 21.9l-1.1 1.1L17 19.2A13.8 13.8 0 0 1 12 20C5.5 20 1.3 14.3 1 12a18.5 18.5 0 0 1 3.5-5.2L1 3.1 2.1 2zM12 4c6.5 0 10.7 5.7 11 8a18.5 18.5 0 0 1-2.6 3.8l-3-3A5 5 0 0 0 12 6a5 5 0 0 0-1.2.1l-2.2-2.2A13.9 13.9 0 0 1 12 4zm-4.9 3.2 2.5 2.5a3 3 0 0 0 3.7 3.7l2.5 2.5A8 8 0 0 1 12 18c-5.1 0-8.6-4.2-9.6-6a15.4 15.4 0 0 1 4.7-4.8z\"/>" }}
+    />
+  )
+)
+EyeOff.displayName = "EyeOff"
+
 export {
   Dashboard,
   CartAlt,
@@ -781,5 +813,7 @@ export {
   Camera,
   Zap,
   Refresh,
+  Eye,
+  EyeOff,
 }
 

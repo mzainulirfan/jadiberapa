@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Eye, EyeOff } from "@/components/ui/icons"
 import { getStoreByCode } from "@/lib/db/queries"
 
 type Mode = "owner" | "kasir"
@@ -15,6 +16,7 @@ export function RegisterForm() {
   const [mode, setMode] = useState<Mode>("owner")
   const [username, setUsername] = useState("")
   const [passcode, setPasscode] = useState("")
+  const [showPass, setShowPass] = useState(false)
   const [storeName, setStoreName] = useState("")
   const [storeCode, setStoreCode] = useState("")
   const [foundStore, setFoundStore] = useState<string | null>(null)
@@ -154,16 +156,25 @@ export function RegisterForm() {
           required
         />
       </div>
-      <div>
+      <div className="relative">
         <Input
-          type="password"
+          type={showPass ? "text" : "password"}
           placeholder="Passcode"
           value={passcode}
           onChange={(e) => setPasscode(e.target.value)}
           autoComplete="new-password"
           minLength={4}
           required
+          className="pr-10"
         />
+        <button
+          type="button"
+          onClick={() => setShowPass((v) => !v)}
+          aria-label={showPass ? "Sembunyikan passcode" : "Tampilkan passcode"}
+          className="absolute inset-y-0 right-1 flex w-9 items-center justify-center text-ink-muted active:text-ink"
+        >
+          {showPass ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+        </button>
       </div>
       {error && (
         <p className="text-destructive text-sm text-center">{error}</p>
