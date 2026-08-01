@@ -27,6 +27,7 @@ import {
 import { cn } from "@/lib/utils"
 
 const APP_VERSION = "Saberaha v1.0.0"
+const SAVE_DEBOUNCE_MS = 1200
 
 type FieldStatus = "saving" | "saved" | "error"
 
@@ -129,12 +130,14 @@ function FieldRow({
   value,
   status,
   onChange,
+  onBlur,
   onReset,
 }: {
   def: FieldDef
   value: string
   status?: FieldStatus
   onChange: (key: string, value: string) => void
+  onBlur?: (key: string, value: string) => void
   onReset: () => void
 }) {
   const Icon = def.icon
@@ -164,6 +167,7 @@ function FieldRow({
           value={value}
           placeholder={def.placeholder}
           onChange={(e) => onChange(def.key, e.target.value)}
+          onBlur={onBlur ? () => onBlur(def.key, value) : undefined}
           className="min-h-[60px]"
         />
       ) : (
@@ -174,6 +178,7 @@ function FieldRow({
           placeholder={def.placeholder}
           inputMode={def.inputMode}
           onChange={(e) => onChange(def.key, e.target.value)}
+          onBlur={onBlur ? () => onBlur(def.key, value) : undefined}
         />
       )}
       {def.hint && <p className="mt-1.5 text-[11px] text-ink-faint">{def.hint}</p>}
@@ -247,7 +252,13 @@ export function SettingsForm() {
     setSettings((prev) => ({ ...prev, [key]: raw }))
     setSaveState((prev) => ({ ...prev, [key]: "saving" }))
     if (debounceRef.current[key]) clearTimeout(debounceRef.current[key])
-    debounceRef.current[key] = setTimeout(() => saveNow(key, raw), 600)
+    debounceRef.current[key] = setTimeout(() => saveNow(key, raw), SAVE_DEBOUNCE_MS)
+  }
+
+  function handleBlur(key: string, raw: string) {
+    // Simpan segera saat meninggalkan kolom agar tidak menunggu debounce.
+    if (debounceRef.current[key]) clearTimeout(debounceRef.current[key])
+    saveNow(key, raw)
   }
 
   function resetField(key: string) {
@@ -376,6 +387,7 @@ export function SettingsForm() {
                 value={settings[f.key] ?? ""}
                 status={saveState[f.key]}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 onReset={() => resetField(f.key)}
               />
             ))}
@@ -445,6 +457,7 @@ export function SettingsForm() {
                 value={qris}
                 placeholder="00020101021126..."
                 onChange={(e) => handleChange("qris_payload", e.target.value)}
+                onBlur={() => handleBlur("qris_payload", qris)}
                 className="min-h-[70px] font-mono text-xs"
               />
               {qris.trim() ? (
@@ -479,6 +492,7 @@ export function SettingsForm() {
               value={settings.dana_number ?? ""}
               status={saveState.dana_number}
               onChange={handleChange}
+              onBlur={handleBlur}
               onReset={() => resetField("dana_number")}
             />
           </SectionCard>
@@ -544,6 +558,7 @@ export function SettingsForm() {
                 value={settings.receipt_footer ?? ""}
                 placeholder={"Terima kasih\nSampai jumpa kembali"}
                 onChange={(e) => handleChange("receipt_footer", e.target.value)}
+                onBlur={() => handleBlur("receipt_footer", settings.receipt_footer ?? "")}
                 className="min-h-[60px]"
               />
               <p className="mt-1.5 text-[11px] text-ink-faint">Ditampilkan di bagian bawah struk.</p>
@@ -575,6 +590,7 @@ export function SettingsForm() {
               value={settings.default_min_stock ?? ""}
               status={saveState.default_min_stock}
               onChange={handleChange}
+              onBlur={handleBlur}
               onReset={() => resetField("default_min_stock")}
             />
           </SectionCard>
