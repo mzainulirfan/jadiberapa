@@ -30,6 +30,7 @@ import {
   getProducts,
   getCategories,
   getInventorySummary,
+  getProductVariants,
   getProductVariantsByProduct,
   resolveDiscountAmount,
 } from "@/lib/db/queries"
@@ -37,12 +38,14 @@ import {
   deleteProduct,
   type ProductSort,
 } from "@/lib/actions/products"
-import { Search, Plus, Pencil, Trash, Check, ChevronDown, Grid, List, X, Package, Printer, Barcode as BarcodeIcon } from "@/components/ui/icons"
+import { Search, Plus, Pencil, Trash, Check, ChevronDown, Grid, List, X, Package, Printer, Barcode as BarcodeIcon, Star } from "@/components/ui/icons"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { fmtRp } from "@/lib/format"
 import { format } from "date-fns"
 import { id as localeId } from "date-fns/locale"
 import type { BxProduct, BxCategory, BxVariant } from "./types"
+import { ProductThumb, ProductPrice, StockBadge } from "./product-view"
 import { Barcode, barcodeSvgString } from "@/components/ui/barcode"
 import { BarcodeScanner } from "@/components/cashier/barcode-scanner"
 import { useCart } from "@/components/cart/cart-provider"
@@ -112,35 +115,6 @@ function printProductLabel(p: BxProduct) {
   setTimeout(() => iframe.remove(), 1000)
 }
 
-function StockBadge({ stock, min = 5 }: { stock: number; min?: number }) {
-  if (stock <= 0) return <Badge variant="destructive">Habis</Badge>
-  if (stock <= min)
-    return (
-      <Badge variant="outline" className="border-accent-orange/30 bg-accent-orange/10 text-accent-orange">
-        Stok {stock}
-      </Badge>
-    )
-  return null
-}
-
-function ProductThumb({ p, className }: { p: BxProduct; className?: string }) {
-  return (
-    <div
-      className={cn(
-        "flex shrink-0 items-center justify-center overflow-hidden rounded-lg bg-canvas-soft text-ink-faint",
-        className
-      )}
-    >
-      {p.image_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={p.image_url} alt={p.name} className="size-full object-cover" loading="lazy" />
-      ) : (
-        <Package className="size-6" />
-      )}
-    </div>
-  )
-}
-
 export function ProductList() {
   const { discounts } = useCart()
   const role = useRole()
@@ -161,6 +135,7 @@ export function ProductList() {
   const [catOpen, setCatOpen] = useState(false)
   const [sortOpen, setSortOpen] = useState(false)
   const [lowStock, setLowStock] = useState(false)
+  const [favOnly, setFavOnly] = useState(false)
   const [scanOpen, setScanOpen] = useState(false)
   const [addBarcode, setAddBarcode] = useState<string | null>(null)
   const [summary, setSummary] = useState<{ count: number; stockValue: number; lowStock: number } | null>(null)
@@ -168,8 +143,11 @@ export function ProductList() {
   // Varian di-render hanya jika cocok dengan produk yang sedang dibuka, agar
   // tidak tampil data varian produk lama saat drawer baru saja berpindah.
   const [variantsProductId, setVariantsProductId] = useState<string | null>(null)
+  // Tanda "Varian" pada kartu/baris, dimuat untuk semua produk yang tampil.
+  const [variantsMap, setVariantsMap] = useState<Record<string, BxVariant[]>>({})
 
   const discountOf = (p: BxProduct) => resolveDiscountAmount(p.id, p.price_sell, discounts)
+  const hasVariants = (p: BxProduct) => (variantsMap[p.id]?.length ?? 0) > 0
 
   function toggleCat(id: string) {
     setCatIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
@@ -202,6 +180,22 @@ export function ProductList() {
   }, [view])
 
   useEffect(() => {
+    if (products.length === 0) return
+    let cancelled = false
+    getProductVariants(products.map((p) => p.id)).then((vs) => {
+      if (cancelled) return
+      const m: Record<string, BxVariant[]> = {}
+      for (const v of vs) {
+        ;(m[v.product_id] ??= []).push(v)
+      }
+      setVariantsMap(m)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [products])
+
+  useEffect(() => {
     let cancelled = false
     const t = setTimeout(async () => {
       setLoading(true)
@@ -210,6 +204,7 @@ export function ProductList() {
         categoryIds: catIds,
         sort,
         lowStock,
+        isFavorite: favOnly ? true : undefined,
         page: 0,
         pageSize: PAGE_SIZE,
         withCount: true,
@@ -225,7 +220,7 @@ export function ProductList() {
       cancelled = true
       clearTimeout(t)
     }
-  }, [search, catIds, sort, lowStock])
+  }, [search, catIds, sort, lowStock, favOnly])
 
   async function loadMore() {
     setLoadingMore(true)
@@ -234,6 +229,7 @@ export function ProductList() {
       categoryIds: catIds,
       sort,
       lowStock,
+      isFavorite: favOnly ? true : undefined,
       page: page + 1,
       pageSize: PAGE_SIZE,
     })
@@ -245,7 +241,7 @@ export function ProductList() {
   async function reload() {
     setLoading(true)
     const [{ data, total: count }, cats] = await Promise.all([
-      getProducts({ search, categoryIds: catIds, sort, lowStock, page: 0, pageSize: PAGE_SIZE, withCount: true }),
+      getProducts({ search, categoryIds: catIds, sort, lowStock, isFavorite: favOnly ? true : undefined, page: 0, pageSize: PAGE_SIZE, withCount: true }),
       getCategories(),
     ])
     setProducts(data)
@@ -294,7 +290,7 @@ export function ProductList() {
   const hasMore = products.length < total
   const activeCats = categories.filter((c) => catIds.includes(c.id))
   const sortLabel = sortOptions.find((s) => s.id === sort)?.label ?? "Nama (A-Z)"
-  const isFiltering = search.trim() !== "" || catIds.length > 0 || lowStock
+  const isFiltering = search.trim() !== "" || catIds.length > 0 || lowStock || favOnly
 
   return (
     <div className="p-4 space-y-3">
@@ -306,7 +302,7 @@ export function ProductList() {
           </div>
           <div className="flex-1 px-3 py-2">
             <p className="text-[11px] text-ink-muted">Nilai Stok</p>
-            <p className="truncate text-sm font-bold text-ink">Rp{summary.stockValue.toLocaleString("id-ID")}</p>
+            <p className="truncate text-sm font-bold text-ink">{fmtRp(summary.stockValue)}</p>
           </div>
           <button
             type="button"
@@ -431,6 +427,19 @@ export function ProductList() {
 
         <button
           type="button"
+          onClick={() => setFavOnly((v) => !v)}
+          aria-label="Tampilkan barang favorit"
+          className={cn(
+            "flex size-8 shrink-0 items-center justify-center rounded-lg border transition-colors",
+            favOnly
+              ? "border-accent-orange bg-accent-orange/10 text-accent-orange"
+              : "border-hairline bg-canvas-soft text-ink-muted"
+          )}
+        >
+          <Star className="size-4" />
+        </button>
+        <button
+          type="button"
           onClick={() => setView((v) => (v === "grid" ? "list" : "grid"))}
           aria-label={view === "grid" ? "Tampilan daftar" : "Tampilan grid"}
           className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-hairline bg-canvas-soft text-ink-muted transition-colors active:bg-canvas"
@@ -439,8 +448,21 @@ export function ProductList() {
         </button>
       </div>
 
-      {(catIds.length > 0 || lowStock) && (
+      {(catIds.length > 0 || lowStock || favOnly) && (
         <div className="flex flex-wrap items-center gap-1.5">
+          {favOnly && (
+            <Badge variant="default" className="gap-1 rounded-full bg-accent-orange">
+              Favorit
+              <button
+                type="button"
+                onClick={() => setFavOnly(false)}
+                className="-mr-0.5 flex size-4 items-center justify-center rounded-full hover:bg-primary-foreground/20"
+                aria-label="Hapus filter favorit"
+              >
+                <X className="size-3" />
+              </button>
+            </Badge>
+          )}
           {lowStock && (
             <Badge variant="default" className="gap-1 rounded-full bg-accent-orange">
               Stok menipis
@@ -472,6 +494,7 @@ export function ProductList() {
             onClick={() => {
               setCatIds([])
               setLowStock(false)
+              setFavOnly(false)
             }}
             className="text-xs text-ink-muted active:text-ink"
           >
@@ -538,31 +561,18 @@ export function ProductList() {
                   onClick={() => setSelected(p)}
                   className="flex flex-col text-left"
                 >
-                  <div className="relative">
-                    <ProductThumb p={p} className="aspect-[4/3] w-full rounded-none" />
-                    {disc > 0 && (
-                      <span className="absolute left-1.5 top-1.5 rounded-full bg-accent-orange px-2 py-0.5 text-[10px] font-semibold text-white">
-                        -Rp{disc.toLocaleString("id-ID")}
-                      </span>
-                    )}
-                    {p.categories?.name && (
-                      <span className="absolute right-1.5 top-1.5 max-w-[75%] truncate rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
-                        {p.categories.name}
-                      </span>
-                    )}
-                  </div>
+                  <ProductThumb
+                    p={p}
+                    discount={disc}
+                    showCategory
+                    className="aspect-[4/3] w-full rounded-none"
+                    iconClassName="size-8"
+                  />
                   <div className="flex flex-col gap-1 p-2.5">
                     <p className="text-sm font-medium text-ink line-clamp-2 min-h-10">{p.name}</p>
-                    <StockBadge stock={p.stock} min={p.min_stock} />
-                    <div className="flex items-baseline gap-1.5 flex-wrap">
-                      <p className="text-sm font-semibold text-primary">
-                        Rp{net.toLocaleString()}
-                      </p>
-                      {disc > 0 && (
-                        <p className="text-[11px] text-ink-faint line-through">
-                          Rp{p.price_sell.toLocaleString()}
-                        </p>
-                      )}
+                    <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                      <ProductPrice price={net} original={disc > 0 ? p.price_sell : undefined} />
+                      <StockBadge stock={p.stock} min={p.min_stock} />
                     </div>
                   </div>
                 </button>
@@ -600,35 +610,28 @@ export function ProductList() {
                   onClick={() => setSelected(p)}
                   className="flex min-w-0 flex-1 items-center gap-3 text-left"
                 >
-                  <div className="relative">
-                    <ProductThumb p={p} className="size-12" />
-                    {disc > 0 && (
-                      <span className="absolute -left-1 -top-1 rounded-full bg-accent-orange px-1.5 py-px text-[9px] font-semibold text-white">
-                        -Rp{disc.toLocaleString("id-ID")}
-                      </span>
-                    )}
-                  </div>
+                  <ProductThumb p={p} discount={disc} className="size-12 rounded-xl" iconClassName="size-5" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       <p className="truncate text-sm font-medium text-ink">{p.name}</p>
                       <StockBadge stock={p.stock} min={p.min_stock} />
                     </div>
                     <p className="truncate text-xs text-ink-muted">
+                      {hasVariants(p) && <span className="font-medium text-primary">Varian</span>}
+                      {hasVariants(p) &&
+                        (p.categories?.name || (p.unit && p.unit !== "pcs") || p.sku) && (
+                          <span> · </span>
+                        )}
                       {p.categories?.name ? `${p.categories.name} · ` : ""}
                       {p.unit && p.unit !== "pcs" ? `${p.unit} · ` : ""}
                       {p.sku ? `SKU ${p.sku}` : ""}
                     </p>
                   </div>
-                  <div className="shrink-0 text-right">
-                    <div className="flex items-baseline justify-end gap-1">
-                      <p className="text-sm font-semibold text-primary">Rp{net.toLocaleString()}</p>
-                      {disc > 0 && (
-                        <span className="text-[11px] text-ink-faint line-through">
-                          Rp{p.price_sell.toLocaleString()}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                  <ProductPrice
+                    price={net}
+                    original={disc > 0 ? p.price_sell : undefined}
+                    className="shrink-0"
+                  />
                 </button>
                 {canManage && (
                   <div className="flex items-center gap-1">
@@ -711,17 +714,17 @@ export function ProductList() {
                     <div>
                       <div className="flex items-baseline gap-2">
                         <p className="text-2xl font-bold text-primary">
-                          Rp{net.toLocaleString()}
+                          {fmtRp(net)}
                         </p>
                         {disc > 0 && (
                           <span className="text-sm text-ink-faint line-through">
-                            Rp{selected.price_sell.toLocaleString()}
+                            {fmtRp(selected.price_sell)}
                           </span>
                         )}
                       </div>
                       {disc > 0 && (
                         <p className="mt-1 text-xs font-semibold text-accent-orange">
-                          Diskon aktif -Rp{disc.toLocaleString("id-ID")}
+                          Diskon aktif -{fmtRp(disc)}
                         </p>
                       )}
                     </div>
@@ -740,14 +743,14 @@ export function ProductList() {
                   <div className="flex justify-between">
                     <span className="text-ink-muted">Harga Beli</span>
                     <span className="text-ink">
-                      Rp{selected.price_buy.toLocaleString()}
+                      {fmtRp(selected.price_buy)}
                     </span>
                   </div>
                   {selected.price_buy > 0 && (
                     <div className="flex justify-between">
                       <span className="text-ink-muted">Margin</span>
                       <span className="text-ink">
-                        Rp{(selected.price_sell - selected.price_buy).toLocaleString()}
+                        {fmtRp(selected.price_sell - selected.price_buy)}
                         {" · "}
                         {Math.round(((selected.price_sell - selected.price_buy) / selected.price_buy) * 100)}%
                       </span>
@@ -771,7 +774,7 @@ export function ProductList() {
                         <div key={v.id} className="flex items-center justify-between gap-2 text-sm">
                           <span className="min-w-0 truncate text-ink">{v.name}</span>
                           <span className="shrink-0 font-medium text-ink">
-                            Rp{v.price_sell.toLocaleString()}
+                            {fmtRp(v.price_sell)}
                           </span>
                         </div>
                       ))}

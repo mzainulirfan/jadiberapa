@@ -1,6 +1,7 @@
 "use client"
 
-import { Package, Plus } from "@/components/ui/icons"
+import { Plus } from "@/components/ui/icons"
+import { ProductPrice, ProductThumb, StockBadge } from "@/components/products/product-view"
 import { cn } from "@/lib/utils"
 import type { BxProduct } from "@/components/products/types"
 
@@ -32,25 +33,14 @@ export function ProductCard({
         out ? "opacity-40" : "hover:border-primary/30 active:border-primary/40"
       )}
     >
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-canvas-soft">
-        {p.image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={p.image_url} alt={p.name} className="size-full object-cover" loading="lazy" />
-        ) : (
-          <div className="flex size-full items-center justify-center text-ink-faint">
-            <Package className="size-8" />
-          </div>
-        )}
-        {out && (
-          <span className="absolute left-1.5 top-1.5 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-semibold text-white">
-            Habis
-          </span>
-        )}
-        {hasDisc && !out && (
-          <span className="absolute left-1.5 top-1.5 rounded-full bg-accent-orange px-2 py-0.5 text-[10px] font-semibold text-white">
-            -Rp{discount.toLocaleString("id-ID")}
-          </span>
-        )}
+      <div className="relative aspect-[4/3] w-full overflow-hidden">
+        <ProductThumb
+          p={p}
+          discount={discount}
+          showSoldOut
+          className="size-full"
+          iconClassName="size-8"
+        />
         {qty > 0 && (
           <span className="absolute right-1.5 top-1.5 flex size-6 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">
             {qty}
@@ -71,22 +61,13 @@ export function ProductCard({
             <span className="font-medium text-primary">Varian</span>
           )}
           {hasVariants && p.categories?.name ? " · " : ""}
-          {p.categories?.name ?? "Tanpa kategori"}
+          {p.categories?.name}
           {p.unit && p.unit !== "pcs" ? ` · ${p.unit}` : ""}
         </p>
         <div className="flex items-center justify-between gap-1 pt-0.5">
-          <div className="flex items-baseline gap-1">
-            <p className="text-sm font-semibold text-primary">
-              Rp{hasDisc ? net : p.price_sell}
-            </p>
-            {hasDisc && (
-              <span className="text-[11px] text-ink-faint line-through">
-                Rp{p.price_sell.toLocaleString()}
-              </span>
-            )}
-          </div>
-          {!out && p.stock <= 5 && (
-            <span className="text-[11px] font-medium text-accent-orange">Stok {p.stock}</span>
+          <ProductPrice price={net} original={hasDisc ? p.price_sell : undefined} />
+          {!out && p.stock <= (p.min_stock || 5) && (
+            <StockBadge stock={p.stock} min={p.min_stock || 5} />
           )}
         </div>
       </div>
@@ -124,16 +105,7 @@ export function ProductRow({
         className="flex min-w-0 flex-1 items-center gap-3 text-left"
       >
         <div className="relative size-11 shrink-0">
-          <div className="size-11 overflow-hidden rounded-lg bg-canvas-soft">
-            {p.image_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={p.image_url} alt={p.name} className="size-full object-cover" loading="lazy" />
-            ) : (
-              <div className="flex size-full items-center justify-center text-ink-faint">
-                <Package className="size-5" />
-              </div>
-            )}
-          </div>
+          <ProductThumb p={p} showSoldOut className="size-11 rounded-lg" iconClassName="size-5" />
           {qty > 0 && (
             <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
               {qty}
@@ -147,21 +119,12 @@ export function ProductRow({
               <span className="font-medium text-primary">Varian</span>
             )}
             {hasVariants && p.categories?.name ? " · " : ""}
-            {p.categories?.name ?? "Tanpa kategori"}
+            {p.categories?.name}
             {p.unit && p.unit !== "pcs" ? ` · ${p.unit}` : ""}
           </p>
-          <div className="flex items-baseline gap-1">
-            <p className="text-sm font-semibold text-primary">Rp{hasDisc ? net : p.price_sell}</p>
-            {hasDisc && (
-              <span className="text-[11px] text-ink-faint line-through">
-                Rp{p.price_sell.toLocaleString()}
-              </span>
-            )}
-          </div>
-          {out ? (
-            <p className="text-[11px] font-semibold text-destructive">Habis</p>
-          ) : (
-            p.stock <= 5 && <p className="text-[11px] font-medium text-accent-orange">Stok {p.stock}</p>
+          <ProductPrice price={net} original={hasDisc ? p.price_sell : undefined} />
+          {!out && p.stock <= (p.min_stock || 5) && (
+            <StockBadge stock={p.stock} min={p.min_stock || 5} />
           )}
         </div>
       </button>
