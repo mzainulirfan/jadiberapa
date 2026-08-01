@@ -36,9 +36,11 @@ type Props = {
   open: boolean
   onOpenChange: (v: boolean) => void
   onSaved?: () => void
+  /** false = kasir: hanya boleh stok masuk, tanpa opname & ubah harga beli. */
+  canAdjust?: boolean
 }
 
-export function StockAdjustDialog({ product, open, onOpenChange, onSaved }: Props) {
+export function StockAdjustDialog({ product, open, onOpenChange, onSaved, canAdjust = true }: Props) {
   const [mode, setMode] = useState<Mode>("in")
   const [qty, setQty] = useState("")
   const [priceBuy, setPriceBuy] = useState("")
@@ -126,19 +128,21 @@ export function StockAdjustDialog({ product, open, onOpenChange, onSaved }: Prop
             </div>
 
             <div className="grid grid-cols-2 gap-1 rounded-full bg-canvas-soft p-1">
-              {(["in", "adjust"] as Mode[]).map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => setMode(m)}
-                  className={cn(
-                    "rounded-full py-1.5 text-sm font-medium transition-colors",
-                    mode === m ? "bg-canvas text-ink shadow-sm" : "text-ink-muted"
-                  )}
-                >
-                  {m === "in" ? "Stok Masuk" : "Opname"}
-                </button>
-              ))}
+              {(["in", "adjust"] as Mode[])
+                .filter((m) => canAdjust || m === "in")
+                .map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setMode(m)}
+                    className={cn(
+                      "rounded-full py-1.5 text-sm font-medium transition-colors",
+                      mode === m ? "bg-canvas text-ink shadow-sm" : "text-ink-muted"
+                    )}
+                  >
+                    {m === "in" ? "Stok Masuk" : "Opname"}
+                  </button>
+                ))}
             </div>
 
             {mode === "in" ? (
@@ -157,22 +161,24 @@ export function StockAdjustDialog({ product, open, onOpenChange, onSaved }: Prop
                     autoFocus
                   />
                 </div>
-                <div>
-                  <label htmlFor="stock-in-buy" className="text-xs text-ink-muted mb-1 block">
-                    Harga Beli Baru <span className="text-ink-faint">(opsional)</span>
-                  </label>
-                  <InputGroup>
-                    <InputGroupAddon>Rp</InputGroupAddon>
-                    <InputGroupInput
-                      id="stock-in-buy"
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="0"
-                      value={formatThousands(priceBuy)}
-                      onChange={(e) => setPriceBuy(onlyDigits(e.target.value))}
-                    />
-                  </InputGroup>
-                </div>
+                {canAdjust && (
+                  <div>
+                    <label htmlFor="stock-in-buy" className="text-xs text-ink-muted mb-1 block">
+                      Harga Beli Baru <span className="text-ink-faint">(opsional)</span>
+                    </label>
+                    <InputGroup>
+                      <InputGroupAddon>Rp</InputGroupAddon>
+                      <InputGroupInput
+                        id="stock-in-buy"
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="0"
+                        value={formatThousands(priceBuy)}
+                        onChange={(e) => setPriceBuy(onlyDigits(e.target.value))}
+                      />
+                    </InputGroup>
+                  </div>
+                )}
               </div>
             ) : (
               <div>

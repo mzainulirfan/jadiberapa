@@ -44,6 +44,7 @@ import type { BxProduct, BxCategory } from "./types"
 import { Barcode, barcodeSvgString } from "@/components/ui/barcode"
 import { BarcodeScanner } from "@/components/cashier/barcode-scanner"
 import { useCart } from "@/components/cart/cart-provider"
+import { useRole } from "@/lib/hooks/use-role"
 
 const PAGE_SIZE = 20
 
@@ -140,6 +141,8 @@ function ProductThumb({ p, className }: { p: BxProduct; className?: string }) {
 
 export function ProductList() {
   const { discounts } = useCart()
+  const role = useRole()
+  const canManage = role === "owner"
   const [products, setProducts] = useState<BxProduct[]>([])
   const [categories, setCategories] = useState<BxCategory[]>([])
   const [loading, setLoading] = useState(true)
@@ -266,8 +269,10 @@ export function ProductList() {
     const p = await resolveCode(code)
     if (p) {
       setSelected(p)
-    } else {
+    } else if (canManage) {
       setAddBarcode(code)
+      toast.info("Barcode belum terdaftar")
+    } else {
       toast.info("Barcode belum terdaftar")
     }
   }
@@ -335,11 +340,13 @@ export function ProductList() {
             </button>
           </div>
         </div>
-        <ProductDialog product={null} onSaved={reload}>
-          <Button className="rounded-full size-9 p-0">
-            <Plus className="size-5" />
-          </Button>
-        </ProductDialog>
+        {canManage && (
+          <ProductDialog product={null} onSaved={reload}>
+            <Button className="rounded-full size-9 p-0">
+              <Plus className="size-5" />
+            </Button>
+          </ProductDialog>
+        )}
       </div>
 
       <div className="flex items-center gap-2">
@@ -498,7 +505,7 @@ export function ProductList() {
           ) : (
             <>
               <p className="text-sm">Belum ada barang</p>
-              <p className="text-xs mt-1">Tambah barang pertama</p>
+              {canManage && <p className="text-xs mt-1">Tambah barang pertama</p>}
             </>
           )}
         </div>
@@ -548,19 +555,21 @@ export function ProductList() {
                   })()}
                 </div>
               </button>
-              <div className="flex items-center justify-end gap-1 px-2.5 pb-2">
-                <ProductDialog product={p} onSaved={reload}>
-                  <button className="rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft">
-                    <Pencil className="size-4" />
+              {canManage && (
+                <div className="flex items-center justify-end gap-1 px-2.5 pb-2">
+                  <ProductDialog product={p} onSaved={reload}>
+                    <button className="rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft">
+                      <Pencil className="size-4" />
+                    </button>
+                  </ProductDialog>
+                  <button
+                    onClick={() => setDeleteTarget(p)}
+                    className="rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft"
+                  >
+                    <Trash className="size-4" />
                   </button>
-                </ProductDialog>
-                <button
-                  onClick={() => setDeleteTarget(p)}
-                  className="rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft"
-                >
-                  <Trash className="size-4" />
-                </button>
-              </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -596,19 +605,21 @@ export function ProductList() {
                   </div>
                 </div>
               </button>
-              <div className="flex items-center gap-1">
-                <ProductDialog product={p} onSaved={reload}>
-                  <button className="rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft">
-                    <Pencil className="size-4" />
+              {canManage && (
+                <div className="flex items-center gap-1">
+                  <ProductDialog product={p} onSaved={reload}>
+                    <button className="rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft">
+                      <Pencil className="size-4" />
+                    </button>
+                  </ProductDialog>
+                  <button
+                    onClick={() => setDeleteTarget(p)}
+                    className="rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft"
+                  >
+                    <Trash className="size-4" />
                   </button>
-                </ProductDialog>
-                <button
-                  onClick={() => setDeleteTarget(p)}
-                  className="rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft"
-                >
-                  <Trash className="size-4" />
-                </button>
-              </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -735,25 +746,27 @@ export function ProductList() {
                   <Package className="size-4" />
                   Kelola Stok
                 </Button>
-                <div className="flex gap-2">
-                  <ProductDialog product={selected} onSaved={reload}>
-                    <Button variant="outline" className="flex-1 rounded-full gap-1.5">
-                      <Pencil className="size-4" />
-                      Edit
+                {canManage && (
+                  <div className="flex gap-2">
+                    <ProductDialog product={selected} onSaved={reload}>
+                      <Button variant="outline" className="flex-1 rounded-full gap-1.5">
+                        <Pencil className="size-4" />
+                        Edit
+                      </Button>
+                    </ProductDialog>
+                    <Button
+                      variant="destructive"
+                      className="flex-1 rounded-full gap-1.5"
+                      onClick={() => {
+                        setDeleteTarget(selected)
+                        setSelected(null)
+                      }}
+                    >
+                      <Trash className="size-4" />
+                      Hapus
                     </Button>
-                  </ProductDialog>
-                  <Button
-                    variant="destructive"
-                    className="flex-1 rounded-full gap-1.5"
-                    onClick={() => {
-                      setDeleteTarget(selected)
-                      setSelected(null)
-                    }}
-                  >
-                    <Trash className="size-4" />
-                    Hapus
-                  </Button>
-                </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -793,6 +806,7 @@ export function ProductList() {
         onOpenChange={(v) => {
           if (!v) setStockTarget(null)
         }}
+        canAdjust={canManage}
         onSaved={reload}
       />
       <ProductDialog

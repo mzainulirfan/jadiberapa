@@ -82,6 +82,7 @@ export async function getProductsPage(params: {
 }
 
 export async function uploadProductImage(formData: FormData) {
+  if (!(await isOwner())) return { url: null, error: "Hanya pemilik toko yang bisa unggah gambar" }
   const file = formData.get("file") as File | null
   if (!file) return { url: null, error: "Tidak ada file" }
   if (!file.type.startsWith("image/")) return { url: null, error: "File harus berupa gambar" }
@@ -107,6 +108,7 @@ export async function getProduct(id: string) {
 }
 
 export async function createProduct(formData: FormData) {
+  if (!(await isOwner())) return { error: "Hanya pemilik toko yang bisa tambah barang" }
   const supabase = await createClient()
   const raw = Object.fromEntries(formData) as Record<string, string>
 
@@ -145,6 +147,7 @@ export async function createProduct(formData: FormData) {
 }
 
 export async function updateProduct(id: string, formData: FormData) {
+  if (!(await isOwner())) return { error: "Hanya pemilik toko yang bisa ubah barang" }
   const supabase = await createClient()
   const raw = Object.fromEntries(formData) as Record<string, string>
 
@@ -207,7 +210,9 @@ export async function addStock(
   const { error: incErr } = await supabase.rpc("increment_stock", { pid: productId, qty: q })
   if (incErr) return { error: incErr.message }
 
-  if (priceBuy != null && Number.isFinite(priceBuy) && priceBuy >= 0) {
+  // Harga beli baru hanya boleh diubah pemilik (kasir cukup mencatat stok masuk).
+  const canSetPrice = await isOwner()
+  if (canSetPrice && priceBuy != null && Number.isFinite(priceBuy) && priceBuy >= 0) {
     await supabase
       .from("products")
       .update({ price_buy: Math.round(priceBuy), updated_at: new Date().toISOString() })
