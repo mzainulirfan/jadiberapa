@@ -18,7 +18,11 @@ async function insertRows<T extends BackupRow>(
 ) {
   for (const part of chunk(rows)) {
     if (part.length === 0) continue
-    const payload = part.map((row) => ({ ...row, store_id: storeId }))
+    const payload = part.map((row) => {
+      const next = { ...row, store_id: storeId } as Record<string, unknown>
+      if (table === "products") delete next.is_low_stock
+      return next
+    })
     const { error } = await supabase.from(table).insert(payload)
     if (error) return error.message
   }

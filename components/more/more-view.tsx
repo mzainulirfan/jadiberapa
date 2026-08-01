@@ -38,6 +38,7 @@ import {
   Store,
   Check,
   ChartLine,
+  Copy,
 } from "@/components/ui/icons"
 
 const APP_VERSION = "Saberaha v1.0.0"
@@ -147,6 +148,16 @@ export function MoreView() {
     window.location.reload()
   }
 
+  async function copyStoreCode() {
+    if (!profile?.store_code) return
+    try {
+      await navigator.clipboard.writeText(profile.store_code)
+      toast.success("Kode toko disalin")
+    } catch {
+      toast.error("Gagal menyalin kode toko")
+    }
+  }
+
   const isOwner = role === "owner"
   const groups = role ? (isOwner ? OWNER_GROUPS : KASIR_GROUPS) : []
 
@@ -175,6 +186,9 @@ export function MoreView() {
       <div className="min-w-0 flex-1">
         <p className="truncate text-base font-bold text-ink">{storeName}</p>
         <p className="truncate text-xs text-ink-muted">{subtitle}</p>
+        {profile?.store_code && (
+          <p className="mt-1 text-[11px] font-mono text-ink-faint">Kode: {profile.store_code}</p>
+        )}
       </div>
       <ChevronRight className="size-4 shrink-0 text-ink-faint" />
     </Link>
@@ -186,6 +200,9 @@ export function MoreView() {
       <div className="min-w-0 flex-1">
         <p className="truncate text-base font-bold text-ink">{storeName}</p>
         <p className="truncate text-xs text-ink-muted">{subtitle}</p>
+        {profile?.store_code && (
+          <p className="mt-1 text-[11px] font-mono text-ink-faint">Kode: {profile.store_code}</p>
+        )}
       </div>
     </div>
   )
@@ -193,6 +210,17 @@ export function MoreView() {
   return (
     <div className="space-y-5 p-4">
       {profileCard}
+
+      {profile?.store_code && (
+        <button
+          type="button"
+          onClick={copyStoreCode}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-hairline bg-canvas p-3 text-sm font-medium text-ink transition-colors active:bg-canvas-soft"
+        >
+          <Copy className="size-4 text-ink-muted" />
+          Salin kode toko aktif
+        </button>
+      )}
 
       {role === undefined || !groups.length ? (
         <div className="space-y-2">

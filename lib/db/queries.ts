@@ -127,7 +127,7 @@ export function resolveDiscountAmount(
   return Math.min(best.amount, priceSell)
 }
 
-export type BxStoreProfile = { store_name: string; store_phone: string }
+export type BxStoreProfile = { store_name: string; store_phone: string; store_code: string }
 
 const STORE_PROFILE_TTL_MS = 60_000
 let storeProfileCache: BxStoreProfile | null = null
@@ -144,17 +144,24 @@ export function getStoreProfile(): Promise<BxStoreProfile> {
   if (!storeProfilePromise) {
     storeProfilePromise = (async () => {
       try {
-        const { data } = await supabase
-          .from("settings")
-          .select("key, value")
-          .in("key", ["store_name", "store_phone"])
+        const [{ data: settingsData }, { data: storeId }] = await Promise.all([
+          supabase
+            .from("settings")
+            .select("key, value")
+            .in("key", ["store_name", "store_phone"]),
+          supabase.rpc("current_store_id"),
+        ])
+        const { data: storeData } = storeId
+          ? await supabase.from("stores").select("code").eq("id", storeId).single()
+          : { data: null }
         const map: Record<string, string> = {}
-        for (const row of (data ?? []) as { key: string; value: string }[]) {
+        for (const row of (settingsData ?? []) as { key: string; value: string }[]) {
           map[row.key] = row.value
         }
         storeProfileCache = {
           store_name: map.store_name ?? "",
           store_phone: map.store_phone ?? "",
+          store_code: (storeData as { code?: string } | null)?.code ?? "",
         }
         storeProfileFetchedAt = Date.now()
         return storeProfileCache
