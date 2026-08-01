@@ -226,6 +226,20 @@ export async function setActiveStore(storeId: string): Promise<string | null> {
   return (data as { error?: string | null } | null)?.error ?? null
 }
 
+// Cari toko berdasarkan kode (untuk validasi saat kasir mendaftar). null = tidak ada.
+export async function getStoreByCode(code: string): Promise<{ store_id: string; name: string } | null> {
+  const { data } = await supabase.rpc("get_store_by_code", { p_code: code })
+  return (data as { store_id: string; name: string } | null) ?? null
+}
+
+// Kode toko aktif (dibagikan owner agar kasir bisa bergabung).
+export async function getCurrentStoreCode(): Promise<string> {
+  const { data: sid } = await supabase.rpc("current_store_id")
+  if (!sid) return ""
+  const { data } = await supabase.from("stores").select("code").eq("id", sid).single()
+  return (data as { code?: string } | null)?.code ?? ""
+}
+
 export type BxStaffMember = {
   user_id: string
   role: "owner" | "kasir"

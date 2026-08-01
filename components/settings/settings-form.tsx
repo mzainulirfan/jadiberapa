@@ -7,8 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
 import { updateSetting } from "@/lib/actions/settings"
-import { getSettings, invalidateSettings, invalidateStoreProfile } from "@/lib/db/queries"
-import { Store, LocationPin, Phone, Qr, Wallet } from "@/components/ui/icons"
+import { getSettings, getCurrentStoreCode, invalidateSettings, invalidateStoreProfile } from "@/lib/db/queries"
+import { Store, LocationPin, Phone, Qr, Wallet, Copy, Check } from "@/components/ui/icons"
 
 type FieldDef = {
   key: string
@@ -28,15 +28,18 @@ const STORE_FIELDS: FieldDef[] = [
 
 export function SettingsForm() {
   const [settings, setSettings] = useState<Record<string, string>>({})
+  const [code, setCode] = useState("")
+  const [copied, setCopied] = useState(false)
   const [loading, setLoading] = useState(true)
   const savedRef = useRef<Record<string, string>>({})
 
   useEffect(() => {
     let active = true
-    getSettings().then((s) => {
+    Promise.all([getSettings(), getCurrentStoreCode()]).then(([s, c]) => {
       if (!active) return
       setSettings(s)
       savedRef.current = s
+      setCode(c)
       setLoading(false)
     })
     return () => {
@@ -63,6 +66,16 @@ export function SettingsForm() {
   if (loading) {
     return (
       <div className="space-y-5 p-4">
+        <div className="space-y-1.5">
+          <Skeleton className="h-3.5 w-24 rounded-full" />
+          <div className="divide-y divide-hairline rounded-xl border border-hairline bg-canvas">
+            <div className="p-3.5">
+              <Skeleton className="h-4 w-36 rounded-full" />
+              <Skeleton className="mt-2 h-3 w-48 rounded-full" />
+            </div>
+          </div>
+        </div>
+
         <div className="space-y-1.5">
           <Skeleton className="h-3.5 w-28 rounded-full" />
           <div className="divide-y divide-hairline rounded-xl border border-hairline bg-canvas">
@@ -94,8 +107,41 @@ export function SettingsForm() {
 
   const qris = settings.qris_payload ?? ""
 
+  async function handleCopyCode() {
+    if (!code) return
+    try {
+      await navigator.clipboard.writeText(code)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      toast.error("Gagal menyalin kode toko")
+    }
+  }
+
   return (
     <div className="space-y-5 p-4">
+      <section className="space-y-1.5">
+        <p className="px-1 text-xs font-semibold tracking-wide text-ink-faint uppercase">
+          Kode Toko
+        </p>
+        <div className="rounded-xl border border-hairline bg-canvas p-3.5">
+          <div className="flex items-center gap-2">
+            <code className="flex-1 truncate text-sm font-bold tracking-wide text-ink">{code}</code>
+            <button
+              type="button"
+              onClick={handleCopyCode}
+              aria-label="Salin kode toko"
+              className="flex size-9 shrink-0 items-center justify-center rounded-full bg-black/[0.05] text-ink-muted transition-transform duration-150 active:scale-90"
+            >
+              {copied ? <Check className="size-4 text-primary" /> : <Copy className="size-4" />}
+            </button>
+          </div>
+          <p className="mt-1.5 text-[11px] text-ink-faint">
+            Bagikan kode ini agar kasir bisa bergabung saat mendaftar sebagai kasir.
+          </p>
+        </div>
+      </section>
+
       <section className="space-y-1.5">
         <p className="px-1 text-xs font-semibold tracking-wide text-ink-faint uppercase">
           Informasi Toko
