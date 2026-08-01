@@ -48,6 +48,9 @@ export function CheckoutView() {
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Transaksi sudah berhasil dibuat & sedang menuju halaman detail. Dipakai agar
+  // setelah clearCart() checkout tidak me-render layar "keranjang kosong" dulu.
+  const [done, setDone] = useState(false)
   const [method, setMethod] = useState<PaymentMethod>("cash")
   const [paid, setPaid] = useState("")
   const [discountInput, setDiscountInput] = useState("")
@@ -188,6 +191,7 @@ export function CheckoutView() {
       setError(err)
       return
     }
+    setDone(true)
     clearCart()
     router.push(`/transactions/${id}`)
   }
@@ -200,6 +204,19 @@ export function CheckoutView() {
         : method === "dana"
           ? !!danaNumber
           : !!customer?.id
+
+  // Transaksi berhasil; jangan tampilkan layar kosong selama menunggu navigasi
+  // ke halaman detail transaksi.
+  if (done) {
+    return (
+      <div className="flex h-full flex-col">
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+          <p className="text-sm text-ink-muted">Transaksi tersimpan</p>
+          <p className="text-xs text-ink-faint">Membuka detail transaksi...</p>
+        </div>
+      </div>
+    )
+  }
 
   if (items.length === 0) {
     return (
