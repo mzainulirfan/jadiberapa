@@ -33,6 +33,8 @@ import {
   Wallet,
   Dollar,
   Zap,
+  Receipt,
+  ShoppingBag,
   Store,
   Check,
 } from "@/components/ui/icons"
@@ -45,16 +47,31 @@ type Group = { title: string; items: Item[] }
 // Menu khusus pemilik toko: pengelolaan bisnis + pengaturan aplikasi.
 const OWNER_GROUPS: Group[] = [
   {
-    title: "Bisnis",
+    title: "Operasional",
     items: [
-      { href: "/customers", label: "Pembeli", desc: "Daftar & kelola pembeli", icon: UserIcon },
-      { href: "/debts", label: "Utang", desc: "Kasbon & pelunasan pembeli", icon: Wallet },
+      { href: "/shift", label: "Shift Kasir", desc: "Buka/tutup laci & selisih kas", icon: Receipt },
       { href: "/expenses", label: "Pengeluaran", desc: "Biaya operasional & laba bersih", icon: Dollar },
-      { href: "/shift", label: "Shift Kasir", desc: "Buka/tutup laci & selisih kas", icon: Wallet },
+      { href: "/reports", label: "Laporan", desc: "Laporan penjualan", icon: BarChart },
+    ],
+  },
+  {
+    title: "Pelanggan",
+    items: [
+      { href: "/customers", label: "Pembeli", desc: "Daftar & kelola pembeli", icon: ShoppingBag },
+      { href: "/debts", label: "Utang", desc: "Kasbon & pelunasan pembeli", icon: Wallet },
+    ],
+  },
+  {
+    title: "Barang & Promo",
+    items: [
       { href: "/categories", label: "Kategori", desc: "Kelola kategori barang", icon: Tag },
       { href: "/discounts", label: "Diskon", desc: "Kelola promo & harga diskon", icon: Zap },
+    ],
+  },
+  {
+    title: "Tim",
+    items: [
       { href: "/staff", label: "Kelola Kasir", desc: "Tambah/hapus kasir toko", icon: UserIcon },
-      { href: "/reports", label: "Laporan", desc: "Laporan penjualan", icon: BarChart },
     ],
   },
   {
@@ -70,9 +87,14 @@ const KASIR_GROUPS: Group[] = [
   {
     title: "Operasional",
     items: [
-      { href: "/customers", label: "Pembeli", desc: "Daftar & kelola pembeli", icon: UserIcon },
+      { href: "/shift", label: "Shift Kasir", desc: "Buka/tutup laci & selisih kas", icon: Receipt },
+    ],
+  },
+  {
+    title: "Pelanggan",
+    items: [
+      { href: "/customers", label: "Pembeli", desc: "Daftar & kelola pembeli", icon: ShoppingBag },
       { href: "/debts", label: "Utang", desc: "Kasbon & pelunasan pembeli", icon: Wallet },
-      { href: "/shift", label: "Shift Kasir", desc: "Buka/tutup laci & selisih kas", icon: Wallet },
     ],
   },
 ]
