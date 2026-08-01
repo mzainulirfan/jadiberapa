@@ -12,14 +12,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { getProducts } from "@/lib/db/queries"
+import { getProducts, resolveDiscountAmount } from "@/lib/db/queries"
 import { useCart } from "@/components/cart/cart-provider"
 import { ProductCard } from "@/components/cashier/product-card"
 import { Minus, Plus, Trash, Package } from "@/components/ui/icons"
 import type { BxProduct } from "@/components/products/types"
 
 export function CartView() {
-  const { items, addItem, updateQty, removeItem, clearCart, total, count } = useCart()
+  const { items, addItem, updateQty, removeItem, clearCart, netTotal, discounts, count } = useCart()
   const [confirmClear, setConfirmClear] = useState(false)
   const [popular, setPopular] = useState<BxProduct[]>([])
   const [pop, setPop] = useState<{ id: string; key: number } | null>(null)
@@ -78,6 +78,7 @@ export function CartView() {
                   key={p.id}
                   p={p}
                   qty={0}
+                  discount={resolveDiscountAmount(p.id, p.price_sell, discounts)}
                   popKey={pop?.id === p.id ? pop.key : 0}
                   onAdd={() => addPopular(p)}
                 />
@@ -148,9 +149,27 @@ export function CartView() {
                     >
                       <Trash className="size-4" />
                     </button>
-                    <p className="text-sm font-semibold text-ink">
-                      Rp{(product.price_sell * qty).toLocaleString()}
-                    </p>
+                    <div className="text-right">
+                      {(() => {
+                        const disc =
+                          resolveDiscountAmount(product.id, product.price_sell, discounts) * qty
+                        const subtotal = product.price_sell * qty
+                        return disc > 0 ? (
+                          <>
+                            <p className="text-xs text-ink-faint line-through">
+                              Rp{subtotal.toLocaleString()}
+                            </p>
+                            <p className="text-sm font-semibold text-primary">
+                              Rp{(subtotal - disc).toLocaleString()}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-sm font-semibold text-ink">
+                            Rp{subtotal.toLocaleString()}
+                          </p>
+                        )
+                      })()}
+                    </div>
                   </div>
                 </div>
               )
@@ -161,7 +180,7 @@ export function CartView() {
             <div className="flex items-end justify-between">
               <span className="text-ink-muted text-sm pb-1">Total ({count} item)</span>
               <span className="text-2xl font-bold tracking-tight text-ink">
-                Rp{total.toLocaleString()}
+                Rp{netTotal.toLocaleString()}
               </span>
             </div>
             <Button

@@ -170,8 +170,22 @@ export function CustomerList() {
 
       {loading ? (
         <div className="space-y-2">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-16 rounded-xl" />
+          {[1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="flex items-center gap-3 rounded-xl border border-hairline bg-canvas p-3"
+            >
+              <Skeleton className="size-9 shrink-0 rounded-full" />
+              <div className="min-w-0 flex-1">
+                <Skeleton className="h-4 w-28 rounded-full" />
+                <Skeleton className="mt-1.5 h-3 w-36 rounded-full" />
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
+                <Skeleton className="size-8 rounded-lg" />
+                <Skeleton className="size-8 rounded-lg" />
+                <Skeleton className="size-8 rounded-lg" />
+              </div>
+            </div>
           ))}
         </div>
       ) : customers.length === 0 ? (

@@ -234,7 +234,21 @@ export function TransactionsView() {
       {loading && transactions.length === 0 ? (
         <div className="space-y-2">
           {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-16 rounded-xl" />
+            <div
+              key={i}
+              className="flex items-center gap-3 rounded-xl border border-hairline bg-canvas p-3.5"
+            >
+              <Skeleton className="size-5 shrink-0 rounded-md" />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-4 w-24 rounded-full" />
+                  <Skeleton className="h-4 w-12 rounded-full" />
+                </div>
+                <Skeleton className="mt-1.5 h-3 w-32 rounded-full" />
+              </div>
+              <Skeleton className="h-4 w-14 shrink-0 rounded-md" />
+              <Skeleton className="size-4 shrink-0 rounded-sm" />
+            </div>
           ))}
         </div>
       ) : error ? (

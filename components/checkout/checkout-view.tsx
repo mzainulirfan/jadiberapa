@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { createTransaction } from "@/lib/actions/transactions"
 import { createCustomer } from "@/lib/actions/customers"
-import { getCustomers, getSettings, type BxCustomer } from "@/lib/db/queries"
+import { getCustomers, getSettings, resolveDiscountAmount, type BxCustomer } from "@/lib/db/queries"
 import { useCart } from "@/components/cart/cart-provider"
 import {
   ChevronRight,
@@ -43,7 +43,7 @@ const methods: { id: PaymentMethod; label: string; icon: typeof Dollar }[] = [
 const quickAmounts = [10000, 20000, 50000, 100000, 200000]
 
 export function CheckoutView() {
-  const { items, clearCart, total } = useCart()
+  const { items, clearCart, total, discounts } = useCart()
   const router = useRouter()
 
   const [loading, setLoading] = useState(false)
@@ -52,6 +52,7 @@ export function CheckoutView() {
   const [paid, setPaid] = useState("")
   const [discountInput, setDiscountInput] = useState("")
   const [discountType, setDiscountType] = useState<"rp" | "pct">("rp")
+  const [itemDiscounts, setItemDiscounts] = useState<Record<string, string>>({})
   const [payConfig, setPayConfig] = useState<Record<string, string>>({})
   const [copied, setCopied] = useState(false)
 
@@ -73,11 +74,25 @@ export function CheckoutView() {
 
   const paidAmount = Number(paid.replace(/[^\d]/g, "")) || 0
   const discountRaw = Number(discountInput.replace(/[^\d]/g, "")) || 0
+
+  // Diskon per baris item = diskon otomatis (promo) + diskon manual kasir,
+  // dibatasi ≤ subtotal baris (anti nilai negatif).
+  const itemDiscTotals = items.map((i) => {
+    const subtotal = i.product.price_sell * i.qty
+    const auto =
+      resolveDiscountAmount(i.product.id, i.product.price_sell, discounts) * i.qty
+    const manual =
+      Number(itemDiscounts[i.product.id]?.replace(/[^\d]/g, "") ?? "") || 0
+    return { id: i.product.id, disc: Math.min(auto + manual, subtotal), auto }
+  })
+  const itemDiscTotal = itemDiscTotals.reduce((s, x) => s + x.disc, 0)
+
+  const netBeforeNota = Math.max(0, total - itemDiscTotal)
   const discountAmount =
     discountType === "pct"
-      ? Math.round((total * Math.min(discountRaw, 100)) / 100)
-      : Math.min(discountRaw, total)
-  const netTotal = Math.max(0, total - discountAmount)
+      ? Math.round((netBeforeNota * Math.min(discountRaw, 100)) / 100)
+      : Math.min(discountRaw, netBeforeNota)
+  const netTotal = Math.max(0, netBeforeNota - discountAmount)
   const change = paidAmount - netTotal
   const qrisPayload = payConfig.qris_payload ?? ""
   const danaNumber = payConfig.dana_number ?? ""
@@ -100,6 +115,14 @@ export function CheckoutView() {
   function handlePaidChange(value: string) {
     const digits = value.replace(/[^\d]/g, "")
     setPaid(digits ? Number(digits).toLocaleString("id-ID") : "")
+  }
+
+  function handleItemDiscountChange(id: string, value: string) {
+    const digits = value.replace(/[^\d]/g, "")
+    setItemDiscounts((prev) => ({
+      ...prev,
+      [id]: digits ? Number(digits).toLocaleString("id-ID") : "",
+    }))
   }
 
   async function handleCopy() {
@@ -135,6 +158,7 @@ export function CheckoutView() {
       qty: i.qty,
       price_sell: i.product.price_sell,
       subtotal: i.product.price_sell * i.qty,
+      discount: itemDiscTotals.find((x) => x.id === i.product.id)?.disc ?? 0,
     }))
     const dp = method === "utang" ? Math.min(paidAmount, netTotal) : undefined
     const { error: err, id } = await createTransaction(
@@ -364,6 +388,57 @@ export function CheckoutView() {
         </div>
 
         <div className="rounded-xl bg-canvas border border-hairline">
+          <div className="flex items-center justify-between px-3 pt-3 pb-2">
+            <p className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
+              Barang
+            </p>
+            <span className="text-xs text-ink-faint">{items.length} item</span>
+          </div>
+          <div className="divide-y divide-hairline">
+            {items.map((i) => {
+              const line = itemDiscTotals.find((x) => x.id === i.product.id)!
+              const subtotal = i.product.price_sell * i.qty
+              const net = Math.max(0, subtotal - line.disc)
+              return (
+                <div key={i.product.id} className="flex items-center gap-3 px-3 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-ink">{i.product.name}</p>
+                    <p className="text-xs text-ink-muted">
+                      {i.qty} × Rp{i.product.price_sell.toLocaleString("id-ID")}
+                    </p>
+                    {line.auto > 0 && (
+                      <span className="mt-0.5 inline-flex items-center rounded-full bg-accent-orange/10 px-1.5 py-px text-[10px] font-semibold text-accent-orange">
+                        Promo -Rp{line.auto.toLocaleString("id-ID")}
+                      </span>
+                    )}
+                  </div>
+                  <div className="shrink-0 text-right">
+                    {line.disc > 0 && (
+                      <p className="text-xs text-ink-faint line-through">
+                        Rp{subtotal.toLocaleString("id-ID")}
+                      </p>
+                    )}
+                    <p className="text-sm font-semibold text-ink">Rp{net.toLocaleString("id-ID")}</p>
+                  </div>
+                  <div className="flex w-28 shrink-0 items-center rounded-lg border border-hairline bg-canvas-soft focus-within:border-primary">
+                    <span className="pl-2 text-xs text-ink-faint">Rp</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="0"
+                      aria-label={`Potongan ${i.product.name}`}
+                      value={itemDiscounts[i.product.id] ?? ""}
+                      onChange={(e) => handleItemDiscountChange(i.product.id, e.target.value)}
+                      className="w-full min-w-0 bg-transparent px-1.5 py-1.5 text-right text-sm font-semibold text-ink outline-none placeholder:text-ink-faint"
+                    />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="rounded-xl bg-canvas border border-hairline">
           <p className="px-3 pt-3 pb-2 text-xs font-semibold text-ink-muted uppercase tracking-wider">
             Diskon
           </p>
@@ -402,13 +477,25 @@ export function CheckoutView() {
                 />
               </div>
             </div>
-            {discountAmount > 0 && (
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-ink-muted">Potongan</span>
-                <span className="font-semibold text-accent-green">
-                  -Rp{discountAmount.toLocaleString("id-ID")}
-                </span>
-              </div>
+            {(itemDiscTotal > 0 || discountAmount > 0) && (
+              <>
+                {itemDiscTotal > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-ink-muted">Diskon Barang</span>
+                    <span className="font-semibold text-accent-green">
+                      -Rp{itemDiscTotal.toLocaleString("id-ID")}
+                    </span>
+                  </div>
+                )}
+                {discountAmount > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-ink-muted">Diskon</span>
+                    <span className="font-semibold text-accent-green">
+                      -Rp{discountAmount.toLocaleString("id-ID")}
+                    </span>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -418,7 +505,7 @@ export function CheckoutView() {
         <div className="flex items-end justify-between">
           <span className="text-ink-muted text-sm pb-1">Total Bayar</span>
           <span className="flex flex-col items-end">
-            {discountAmount > 0 && (
+            {(itemDiscTotal > 0 || discountAmount > 0) && (
               <span className="text-sm text-ink-faint line-through">
                 Rp{total.toLocaleString("id-ID")}
               </span>

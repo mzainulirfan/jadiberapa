@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { getProducts, getCategories } from "@/lib/db/queries"
+import { getProducts, getCategories, resolveDiscountAmount } from "@/lib/db/queries"
 import { useCart } from "@/components/cart/cart-provider"
 import { ProductCard, ProductRow } from "./product-card"
 import { BarcodeScanner } from "./barcode-scanner"
@@ -33,8 +33,10 @@ export function CashierPage() {
   const [reloadKey, setReloadKey] = useState(0)
   const [pop, setPop] = useState<{ id: string; key: number } | null>(null)
   const popKeyRef = useRef(0)
-  const { items, addItem, count, total } = useCart()
+  const { items, addItem, count, netTotal, discounts } = useCart()
   const router = useRouter()
+
+  const discOf = (p: BxProduct) => resolveDiscountAmount(p.id, p.price_sell, discounts)
 
   const qtyMap = useMemo(() => {
     const m: Record<string, number> = {}
@@ -132,7 +134,7 @@ export function CashierPage() {
     view === "list" ? (
       <div className="space-y-1.5">
         {products.map((p) => (
-          <ProductRow key={p.id} p={p} qty={qtyMap[p.id] ?? 0} onAdd={() => addToCart(p)} />
+          <ProductRow key={p.id} p={p} qty={qtyMap[p.id] ?? 0} discount={discOf(p)} onAdd={() => addToCart(p)} />
         ))}
       </div>
     ) : (
@@ -142,6 +144,7 @@ export function CashierPage() {
             key={p.id}
             p={p}
             qty={qtyMap[p.id] ?? 0}
+            discount={discOf(p)}
             popKey={pop?.id === p.id ? pop.key : 0}
             onAdd={() => addToCart(p)}
           />
@@ -152,14 +155,34 @@ export function CashierPage() {
   const skeleton =
     view === "list" ? (
       <div className="space-y-1.5">
-        {[1, 2, 3, 4, 5, 6].map((i) => (
-          <Skeleton key={i} className="h-[68px] rounded-xl" />
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div
+            key={i}
+            className="flex items-center gap-3 rounded-xl border border-hairline bg-canvas p-2.5"
+          >
+            <Skeleton className="size-11 shrink-0 rounded-lg" />
+            <div className="min-w-0 flex-1">
+              <Skeleton className="h-4 w-28 rounded-full" />
+              <Skeleton className="mt-1.5 h-3 w-20 rounded-full" />
+            </div>
+            <div className="shrink-0 text-right">
+              <Skeleton className="h-4 w-14 rounded-md" />
+              <Skeleton className="mt-1 ml-auto h-3 w-10 rounded-full" />
+            </div>
+          </div>
         ))}
       </div>
     ) : (
       <div className="grid grid-cols-2 gap-2">
         {[1, 2, 3, 4].map((i) => (
-          <Skeleton key={i} className="h-40 rounded-xl" />
+          <div key={i} className="overflow-hidden rounded-xl border border-hairline bg-canvas">
+            <Skeleton className="aspect-[4/3] w-full rounded-none" />
+            <div className="space-y-1.5 p-2.5">
+              <Skeleton className="h-4 w-24 rounded-full" />
+              <Skeleton className="h-3 w-16 rounded-full" />
+              <Skeleton className="h-4 w-14 rounded-md" />
+            </div>
+          </div>
         ))}
       </div>
     )
@@ -304,7 +327,7 @@ export function CashierPage() {
               <CartAlt className="size-4" />
               {count} item
             </span>
-            <span className="text-base font-bold">Rp{total.toLocaleString()}</span>
+            <span className="text-base font-bold">Rp{netTotal.toLocaleString()}</span>
           </button>
         </div>
       )}

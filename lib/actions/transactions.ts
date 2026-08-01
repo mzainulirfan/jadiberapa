@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 
 export async function createTransaction(
-  items: { product_id: string; qty: number; price_sell: number; subtotal: number }[],
+  items: { product_id: string; qty: number; price_sell: number; subtotal: number; discount?: number }[],
   payment_method: string = "cash",
   customer_id?: string | null,
   // Jumlah yang benar-benar dibayar saat checkout. Untuk metode "utang" ini bisa
@@ -14,9 +14,19 @@ export async function createTransaction(
   discount?: number
 ) {
   const supabase = await createClient()
-  const gross = items.reduce((sum, i) => sum + i.subtotal, 0)
-  const disc = Math.max(0, Math.min(gross, Math.round(discount ?? 0)))
-  const total = gross - disc
+
+  // Normalisasi item: diskon per item dibatasi ≤ subtotal baris (anti nilai negatif).
+  const normItems = items.map((i) => ({
+    product_id: i.product_id,
+    qty: i.qty,
+    price_sell: i.price_sell,
+    subtotal: i.subtotal,
+    discount: Math.max(0, Math.min(Math.round(i.discount ?? 0), i.subtotal)),
+  }))
+  const gross = normItems.reduce((sum, i) => sum + i.subtotal, 0)
+  const itemDisc = normItems.reduce((sum, i) => sum + i.discount, 0)
+  const disc = Math.max(0, Math.min(gross - itemDisc, Math.round(discount ?? 0)))
+  const total = gross - itemDisc - disc
 
   const isUtang = payment_method === "utang"
   const paid = isUtang
@@ -54,7 +64,7 @@ export async function createTransaction(
 
   // Snapshot harga beli (cost) per produk agar laba historis akurat & hitung laba
   // dashboard tak perlu join ke products.
-  const productIds = [...new Set(items.map((i) => i.product_id))]
+  const productIds = [...new Set(normItems.map((i) => i.product_id))]
   const { data: costRows } = await supabase
     .from("products")
     .select("id, price_buy")
@@ -63,7 +73,7 @@ export async function createTransaction(
     (costRows ?? []).map((p) => [p.id as string, (p.price_buy as number) ?? 0])
   )
 
-  const txItems = items.map((i) => ({
+  const txItems = normItems.map((i) => ({
     ...i,
     transaction_id: transaction.id,
     price_buy: costMap.get(i.product_id) ?? 0,
@@ -72,13 +82,13 @@ export async function createTransaction(
 
   if (itemError) return { error: itemError.message }
 
-  for (const item of items) {
+  for (const item of normItems) {
     await supabase.rpc("decrement_stock", { pid: item.product_id, qty: item.qty })
   }
 
   // Jejak audit stok keluar akibat penjualan (qty negatif = berkurang).
   await supabase.from("stock_movements").insert(
-    items.map((i) => ({
+    normItems.map((i) => ({
       product_id: i.product_id,
       type: "out" as const,
       qty: -i.qty,

@@ -3,6 +3,12 @@
 import * as React from "react"
 import type { BxProduct } from "@/components/products/types"
 import { getCart, saveCart, watchCart } from "@/lib/db/cart"
+import {
+  getDiscounts,
+  invalidateDiscounts,
+  resolveDiscountAmount,
+  type BxDiscount,
+} from "@/lib/db/queries"
 
 export type CartItem = {
   product: BxProduct
@@ -16,7 +22,10 @@ type CartContextValue = {
   removeItem: (productId: string) => void
   clearCart: () => void
   total: number
+  netTotal: number
   count: number
+  discounts: BxDiscount[]
+  reloadDiscounts: () => void
 }
 
 const CartContext = React.createContext<CartContextValue | null>(null)
@@ -36,10 +45,26 @@ function tsMs(s: string | null | undefined) {
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = React.useState<CartItem[]>([])
+  const [discounts, setDiscounts] = React.useState<BxDiscount[]>([])
   const hydratedRef = React.useRef(false)
   // updated_at (epoch ms) terakhir yang sudah kita terapkan/tulis. Echo realtime
   // yang tidak lebih baru dari ini diabaikan agar qty tidak "muter2".
   const lastTsRef = React.useRef(0)
+
+  // Aturan diskon aktif untuk auto-apply. Muat sekali saat mount; panggil
+  // reloadDiscounts() dari halaman kelola diskon setelah mutasi.
+  const loadDiscounts = React.useCallback(() => {
+    getDiscounts().then(setDiscounts)
+  }, [])
+
+  const reloadDiscounts = React.useCallback(() => {
+    invalidateDiscounts()
+    getDiscounts().then(setDiscounts)
+  }, [])
+
+  React.useEffect(() => {
+    loadDiscounts()
+  }, [loadDiscounts])
 
   React.useEffect(() => {
     let mounted = true
@@ -134,9 +159,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const total = items.reduce((sum, i) => sum + i.product.price_sell * i.qty, 0)
   const count = items.reduce((sum, i) => sum + i.qty, 0)
 
+  // Total NETO: harga jual dikurangi diskon otomatis (per unit) per baris.
+  const netTotal = React.useMemo(
+    () =>
+      items.reduce((sum, i) => {
+        const unitDisc = resolveDiscountAmount(i.product.id, i.product.price_sell, discounts)
+        return sum + (i.product.price_sell - unitDisc) * i.qty
+      }, 0),
+    [items, discounts]
+  )
+
   const value = React.useMemo(
-    () => ({ items, addItem, updateQty, removeItem, clearCart, total, count }),
-    [items, addItem, updateQty, removeItem, clearCart, total, count]
+    () => ({ items, addItem, updateQty, removeItem, clearCart, total, netTotal, count, discounts, reloadDiscounts }),
+    [items, addItem, updateQty, removeItem, clearCart, total, netTotal, count, discounts, reloadDiscounts]
   )
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>

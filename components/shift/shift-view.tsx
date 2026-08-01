@@ -123,9 +123,50 @@ export function ShiftView() {
   return (
     <div className="space-y-4 p-4">
       {loading ? (
-        <div className="space-y-3">
-          <Skeleton className="h-40 rounded-2xl" />
-          <Skeleton className="h-24 rounded-xl" />
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-hairline bg-canvas p-4">
+            <div className="flex items-center gap-2">
+              <Skeleton className="size-8 rounded-full" />
+              <div className="flex-1">
+                <Skeleton className="h-4 w-24 rounded-full" />
+                <Skeleton className="mt-1.5 h-3 w-32 rounded-full" />
+              </div>
+            </div>
+            <Skeleton className="mt-3 h-3 w-32 rounded-full" />
+            <Skeleton className="mt-2 h-8 w-44 rounded-md" />
+            <div className="mt-3 grid grid-cols-3 gap-3 border-t border-hairline pt-3">
+              {[0, 1, 2].map((i) => (
+                <div key={i}>
+                  <Skeleton className="h-2.5 w-14 rounded-full" />
+                  <Skeleton className="mt-1.5 h-4 w-16 rounded-md" />
+                </div>
+              ))}
+            </div>
+            <Skeleton className="mt-3 h-11 w-full rounded-full" />
+          </div>
+
+          <div>
+            <Skeleton className="mb-2 h-4 w-28 rounded-md" />
+            <div className="space-y-2">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="rounded-xl border border-hairline bg-canvas p-3.5">
+                  <div className="flex items-center justify-between">
+                    <Skeleton className="h-4 w-32 rounded-full" />
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                  </div>
+                  <Skeleton className="mt-2 h-3 w-40 rounded-full" />
+                  <div className="mt-2.5 grid grid-cols-3 gap-2 border-t border-hairline pt-2.5">
+                    {[0, 1, 2].map((j) => (
+                      <div key={j}>
+                        <Skeleton className="h-2.5 w-12 rounded-full" />
+                        <Skeleton className="mt-1.5 h-3.5 w-14 rounded-md" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       ) : active ? (
         <ActiveShiftCard
@@ -140,7 +181,7 @@ export function ShiftView() {
           }}
         />
       ) : (
-        <div className="rounded-2xl border border-hairline border-l-4 border-l-primary bg-canvas p-4">
+        <div className="rounded-2xl border border-hairline bg-canvas p-4">
           <div className="flex items-center gap-2">
             <span className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
               <Wallet className="size-4" />
@@ -330,7 +371,7 @@ function ActiveShiftCard({
 }) {
   const duration = useMemo(() => fmtDate(shift.opened_at), [shift.opened_at])
   return (
-    <div className="rounded-2xl border border-hairline border-l-4 border-l-accent-green bg-canvas p-4">
+    <div className="rounded-2xl border border-hairline bg-canvas p-4">
       <div className="flex items-center gap-2">
         <span className="flex size-8 items-center justify-center rounded-full bg-accent-green/10 text-accent-green">
           <Wallet className="size-4" />

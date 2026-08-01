@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { getDebts, type BxDebt } from "@/lib/db/queries"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Wallet, ChevronRight, User } from "@/components/ui/icons"
+import { Wallet, ChevronRight } from "@/components/ui/icons"
 
 const fmtRp = (n: number) => `Rp${n.toLocaleString("id-ID")}`
 
@@ -36,12 +36,14 @@ export function DebtsView() {
     }
   }, [])
 
-  const { groups, totalRemaining } = useMemo(() => {
+  const { groups, totalRemaining, totalDebt, totalPaid } = useMemo(() => {
     const map = new Map<string, Group>()
     let total = 0
+    let debt = 0
     for (const d of debts ?? []) {
       const remaining = Math.max(0, d.total - d.paid_amount)
       total += remaining
+      debt += d.total
       const key = d.customer_id ?? "umum"
       const name = d.customer_name ?? "Umum (tanpa pembeli)"
       const g = map.get(key) ?? { key, name, remaining: 0, debts: [] }
@@ -50,14 +52,32 @@ export function DebtsView() {
       map.set(key, g)
     }
     const groups = [...map.values()].sort((a, b) => b.remaining - a.remaining)
-    return { groups, totalRemaining: total }
+    return { groups, totalRemaining: total, totalDebt: debt, totalPaid: debt - total }
   }, [debts])
 
   if (debts === null) {
     return (
       <div className="space-y-3 p-4">
-        <Skeleton className="h-20 rounded-xl" />
-        <Skeleton className="h-32 rounded-xl" />
+        <div className="rounded-xl border border-hairline bg-canvas p-4">
+          <Skeleton className="h-3 w-32 rounded-full" />
+          <Skeleton className="mt-2 h-7 w-40 rounded-md" />
+          <Skeleton className="mt-2 h-3 w-32 rounded-full" />
+        </div>
+        <div className="space-y-1.5">
+          <Skeleton className="h-3.5 w-28 rounded-full" />
+          <div className="divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-canvas">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="flex items-center gap-3 p-3.5">
+                <div className="min-w-0 flex-1">
+                  <Skeleton className="h-4 w-24 rounded-full" />
+                  <Skeleton className="mt-1.5 h-3 w-28 rounded-full" />
+                </div>
+                <Skeleton className="h-4 w-14 shrink-0 rounded-md" />
+                <Skeleton className="size-4 shrink-0 rounded-sm" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     )
   }
@@ -76,56 +96,77 @@ export function DebtsView() {
   return (
     <div className="space-y-4 p-4">
       <div className="rounded-xl border border-hairline bg-canvas p-4">
-        <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">
-          Total Utang Belum Lunas
-        </p>
-        <p className="mt-1 text-2xl font-bold tracking-tight text-destructive">
+        <div className="flex items-center gap-2">
+          <span className="flex size-8 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+            <Wallet className="size-4" />
+          </span>
+          <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">
+            Total Utang Belum Lunas
+          </p>
+        </div>
+        <p className="mt-3 text-2xl font-bold tracking-tight text-destructive">
           {fmtRp(totalRemaining)}
         </p>
-        <p className="mt-0.5 text-xs text-ink-faint">
+        <div className="mt-3 h-1.5 rounded-full bg-canvas-soft">
+          <div
+            className="h-full rounded-full bg-accent-green"
+            style={{ width: `${totalDebt > 0 ? (totalPaid / totalDebt) * 100 : 0}%` }}
+          />
+        </div>
+        <p className="mt-1.5 text-xs text-ink-faint">
           {debts.length} transaksi · {groups.length} pembeli
+          {totalPaid > 0 && ` · sudah dibayar ${fmtRp(totalPaid)}`}
         </p>
       </div>
 
-      {groups.map((g) => (
-        <div key={g.key} className="space-y-1.5">
-          <div className="flex items-center justify-between px-1">
-            <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-ink-faint">
-              <User className="size-3.5" />
-              {g.name}
-            </span>
-            <span className="text-xs font-semibold text-destructive">
-              {fmtRp(g.remaining)}
-            </span>
+      {groups.map((g) => {
+        const gTotal = g.debts.reduce((s, d) => s + d.total, 0)
+        const gPaidPct = gTotal > 0 ? ((gTotal - g.remaining) / gTotal) * 100 : 0
+        return (
+          <div key={g.key} className="space-y-1.5">
+            <div className="flex items-center justify-between px-1">
+              <span className="flex min-w-0 items-center gap-1.5 text-xs font-semibold tracking-wide text-ink">
+                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-canvas-soft text-[10px] font-bold text-ink-muted">
+                  {g.name.charAt(0).toUpperCase()}
+                </span>
+                <span className="truncate">{g.name}</span>
+              </span>
+              <span className="shrink-0 text-xs font-semibold text-destructive">
+                {fmtRp(g.remaining)}
+              </span>
+            </div>
+            <div className="mx-1 h-1 rounded-full bg-canvas-soft">
+              <div className="h-full rounded-full bg-accent-green" style={{ width: `${gPaidPct}%` }} />
+            </div>
+            <div className="divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-canvas">
+              {g.debts.map((d) => {
+                const remaining = Math.max(0, d.total - d.paid_amount)
+                return (
+                  <Link
+                    key={d.id}
+                    href={`/transactions/${d.id}`}
+                    className="flex items-center gap-3 p-3.5 transition-colors active:bg-canvas-soft"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-mono text-sm font-medium text-ink">
+                        {d.number ?? d.id.slice(0, 8).toUpperCase()}
+                      </p>
+                      <p className="text-xs text-ink-faint">
+                        {fmtDate(d.created_at)}
+                        {d.paid_amount > 0 && ` · dibayar ${fmtRp(d.paid_amount)}`}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-sm font-semibold text-destructive">
+                      {fmtRp(remaining)}
+                    </span>
+                    <ChevronRight className="size-4 shrink-0 text-ink-faint" />
+                  </Link>
+                )
+              })}
+            </div>
           </div>
-          <div className="divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-canvas">
-            {g.debts.map((d) => {
-              const remaining = Math.max(0, d.total - d.paid_amount)
-              return (
-                <Link
-                  key={d.id}
-                  href={`/transactions/${d.id}`}
-                  className="flex items-center gap-3 p-3.5 transition-colors active:bg-canvas-soft"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="font-mono text-sm font-medium text-ink">
-                      {d.number ?? d.id.slice(0, 8).toUpperCase()}
-                    </p>
-                    <p className="text-xs text-ink-faint">
-                      {fmtDate(d.created_at)}
-                      {d.paid_amount > 0 && ` · dibayar ${fmtRp(d.paid_amount)}`}
-                    </p>
-                  </div>
-                  <span className="shrink-0 text-sm font-semibold text-destructive">
-                    {fmtRp(remaining)}
-                  </span>
-                  <ChevronRight className="size-4 shrink-0 text-ink-faint" />
-                </Link>
-              )
-            })}
-          </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

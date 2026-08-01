@@ -36,6 +36,97 @@ export function invalidateCategories() {
   categoriesFetchedAt = 0
 }
 
+export type BxDiscount = {
+  id: string
+  name: string
+  type: "product" | "category" | "global"
+  value_type: "percent" | "amount"
+  value: number
+  active: boolean
+  created_at: string
+  updated_at: string
+  product_ids: string[]
+}
+
+const DISCOUNT_TTL_MS = 60_000
+let discountsCache: BxDiscount[] | null = null
+let discountsFetchedAt = 0
+let discountsPromise: Promise<BxDiscount[]> | null = null
+
+// Aturan diskon + produk terdampak. Query langsung dari client + cache TTL (nyaris
+// statis). Panggil invalidateDiscounts() setelah mutasi agar kasir segera memakai
+// aturan terbaru.
+export function getDiscounts(): Promise<BxDiscount[]> {
+  const now = Date.now()
+  if (discountsCache && now - discountsFetchedAt < DISCOUNT_TTL_MS) {
+    return Promise.resolve(discountsCache)
+  }
+  if (!discountsPromise) {
+    discountsPromise = (async () => {
+      try {
+        const [{ data: rules }, { data: links }] = await Promise.all([
+          supabase
+            .from("discounts")
+            .select("id, name, type, value_type, value, active, created_at, updated_at")
+            .order("created_at", { ascending: false }),
+          supabase.from("discount_products").select("discount_id, product_id"),
+        ])
+        const byRule: Record<string, string[]> = {}
+        for (const l of (links ?? []) as { discount_id: string; product_id: string }[]) {
+          if (!byRule[l.discount_id]) byRule[l.discount_id] = []
+          byRule[l.discount_id].push(l.product_id)
+        }
+        discountsCache = ((rules ?? []) as Omit<BxDiscount, "product_ids">[]).map((r) => ({
+          ...r,
+          product_ids: byRule[r.id] ?? [],
+        }))
+        discountsFetchedAt = Date.now()
+        return discountsCache
+      } finally {
+        discountsPromise = null
+      }
+    })()
+  }
+  return discountsPromise
+}
+
+export function invalidateDiscounts() {
+  discountsCache = null
+  discountsFetchedAt = 0
+}
+
+const DISCOUNT_TYPE_ORDER: Record<BxDiscount["type"], number> = {
+  product: 0,
+  category: 1,
+  global: 2,
+}
+
+// Diskon efektif (Rp per unit) untuk satu produk: prioritas produk > kategori > global;
+// di level yang sama ambil yang terbesar. Dibatasi agar tidak melebihi harga jual.
+export function resolveDiscountAmount(
+  productId: string,
+  priceSell: number,
+  rules: BxDiscount[]
+): number {
+  const candidates: { type: BxDiscount["type"]; amount: number }[] = []
+  for (const r of rules) {
+    if (!r.active || r.value <= 0) continue
+    if (r.type !== "global" && !r.product_ids.includes(productId)) continue
+    const amount =
+      r.value_type === "percent"
+        ? Math.round((priceSell * r.value) / 100)
+        : r.value
+    if (amount > 0) candidates.push({ type: r.type, amount })
+  }
+  candidates.sort(
+    (a, b) =>
+      DISCOUNT_TYPE_ORDER[a.type] - DISCOUNT_TYPE_ORDER[b.type] || b.amount - a.amount
+  )
+  const best = candidates[0]
+  if (!best) return 0
+  return Math.min(best.amount, priceSell)
+}
+
 export type BxStoreProfile = { store_name: string; store_phone: string }
 
 const STORE_PROFILE_TTL_MS = 60_000

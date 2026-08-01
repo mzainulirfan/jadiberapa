@@ -23,6 +23,7 @@ import {
   LogOut,
   Wallet,
   Dollar,
+  Zap,
 } from "@/components/ui/icons"
 
 const APP_VERSION = "Saberaha v1.0.0"
@@ -39,6 +40,7 @@ const groups: {
       { href: "/expenses", label: "Pengeluaran", desc: "Biaya operasional & laba bersih", icon: Dollar },
       { href: "/shift", label: "Shift Kasir", desc: "Buka/tutup laci & selisih kas", icon: Wallet },
       { href: "/categories", label: "Kategori", desc: "Kelola kategori barang", icon: Tag },
+      { href: "/discounts", label: "Diskon", desc: "Kelola promo & harga diskon", icon: Zap },
       { href: "/reports", label: "Laporan", desc: "Laporan penjualan", icon: BarChart },
     ],
   },
@@ -79,7 +81,14 @@ export function MoreView() {
   return (
     <div className="space-y-5 p-4">
       {profile === null ? (
-        <Skeleton className="h-[76px] rounded-xl" />
+        <div className="flex items-center gap-3 rounded-xl border border-hairline bg-canvas p-4">
+          <Skeleton className="size-12 shrink-0 rounded-xl" />
+          <div className="min-w-0 flex-1">
+            <Skeleton className="h-4 w-32 rounded-full" />
+            <Skeleton className="mt-1.5 h-3 w-40 rounded-full" />
+          </div>
+          <Skeleton className="size-4 shrink-0 rounded-sm" />
+        </div>
       ) : (
         <Link
           href="/settings"

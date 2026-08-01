@@ -29,6 +29,7 @@ import {
   getProducts,
   getCategories,
   getInventorySummary,
+  resolveDiscountAmount,
 } from "@/lib/db/queries"
 import {
   deleteProduct,
@@ -42,6 +43,7 @@ import { id as localeId } from "date-fns/locale"
 import type { BxProduct, BxCategory } from "./types"
 import { Barcode, barcodeSvgString } from "@/components/ui/barcode"
 import { BarcodeScanner } from "@/components/cashier/barcode-scanner"
+import { useCart } from "@/components/cart/cart-provider"
 
 const PAGE_SIZE = 20
 
@@ -137,6 +139,7 @@ function ProductThumb({ p, className }: { p: BxProduct; className?: string }) {
 }
 
 export function ProductList() {
+  const { discounts } = useCart()
   const [products, setProducts] = useState<BxProduct[]>([])
   const [categories, setCategories] = useState<BxCategory[]>([])
   const [loading, setLoading] = useState(true)
@@ -156,6 +159,8 @@ export function ProductList() {
   const [scanOpen, setScanOpen] = useState(false)
   const [addBarcode, setAddBarcode] = useState<string | null>(null)
   const [summary, setSummary] = useState<{ count: number; stockValue: number; lowStock: number } | null>(null)
+
+  const discountOf = (p: BxProduct) => resolveDiscountAmount(p.id, p.price_sell, discounts)
 
   function toggleCat(id: string) {
     setCatIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
@@ -455,11 +460,37 @@ export function ProductList() {
       )}
 
       {loading ? (
-        <div className="space-y-2">
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-20 rounded-xl" />
-          ))}
-        </div>
+        view === "grid" ? (
+          <div className="grid grid-cols-2 gap-2">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="overflow-hidden rounded-xl border border-hairline bg-canvas">
+                <Skeleton className="aspect-[4/3] w-full rounded-none" />
+                <div className="space-y-1.5 p-2.5">
+                  <Skeleton className="h-4 w-24 rounded-full" />
+                  <Skeleton className="h-3 w-14 rounded-full" />
+                  <Skeleton className="h-4 w-16 rounded-md" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="flex items-center gap-3 rounded-lg border border-hairline bg-canvas p-2.5"
+              >
+                <Skeleton className="size-12 shrink-0 rounded-lg" />
+                <div className="min-w-0 flex-1">
+                  <Skeleton className="h-4 w-28 rounded-full" />
+                  <Skeleton className="mt-1.5 h-3 w-20 rounded-full" />
+                </div>
+                <Skeleton className="size-4 shrink-0 rounded-sm" />
+                <Skeleton className="size-4 shrink-0 rounded-sm" />
+              </div>
+            ))}
+          </div>
+        )
       ) : products.length === 0 ? (
         <div className="text-center py-12 text-ink-faint">
           {isFiltering ? (
@@ -492,14 +523,29 @@ export function ProductList() {
                       <span className="text-[11px] text-ink-faint truncate">{p.categories.name}</span>
                     )}
                   </div>
-                  <p className="text-sm font-semibold text-primary">
-                    Rp{p.price_sell.toLocaleString()}
-                  </p>
-                  {p.price_buy > 0 && (
-                    <p className="text-[11px] text-ink-faint">
-                      Margin: Rp{(p.price_sell - p.price_buy).toLocaleString()}
-                    </p>
-                  )}
+                  {(() => {
+                    const disc = discountOf(p)
+                    const net = p.price_sell - disc
+                    return (
+                      <>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-sm font-semibold text-primary">
+                            Rp{net.toLocaleString()}
+                          </p>
+                          {disc > 0 && (
+                            <span className="rounded-full bg-accent-orange px-1.5 py-px text-[10px] font-semibold text-white">
+                              -Rp{disc.toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                        {p.price_buy > 0 && (
+                          <p className="text-[11px] text-ink-faint">
+                            Margin: Rp{(p.price_sell - p.price_buy).toLocaleString()}
+                          </p>
+                        )}
+                      </>
+                    )
+                  })()}
                 </div>
               </button>
               <div className="flex items-center justify-end gap-1 px-2.5 pb-2">
@@ -536,10 +582,17 @@ export function ProductList() {
                     <p className="text-sm font-medium text-ink truncate">{p.name}</p>
                     <StockBadge stock={p.stock} min={p.min_stock} />
                   </div>
-                  <p className="text-xs text-ink-faint truncate">
-                    {p.categories?.name ? `${p.categories.name} · ` : ""}
-                    Rp{p.price_sell.toLocaleString()}
-                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-xs text-ink-faint truncate">
+                      {p.categories?.name ? `${p.categories.name} · ` : ""}
+                      Rp{(p.price_sell - discountOf(p)).toLocaleString()}
+                    </p>
+                    {discountOf(p) > 0 && (
+                      <span className="shrink-0 rounded-full bg-accent-orange px-1.5 py-px text-[10px] font-semibold text-white">
+                        -Rp{discountOf(p).toLocaleString()}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </button>
               <div className="flex items-center gap-1">

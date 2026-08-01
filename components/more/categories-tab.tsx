@@ -146,7 +146,16 @@ export function CategoriesTab() {
       {loading ? (
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-12 rounded-xl" />
+            <div
+              key={i}
+              className="flex items-center gap-3 rounded-xl border border-hairline bg-canvas p-3"
+            >
+              <Skeleton className="size-4 shrink-0 rounded-sm" />
+              <Skeleton className="h-4 flex-1 rounded-full" />
+              <Skeleton className="h-5 w-16 shrink-0 rounded-full" />
+              <Skeleton className="size-8 shrink-0 rounded-lg" />
+              <Skeleton className="size-8 shrink-0 rounded-lg" />
+            </div>
           ))}
         </div>
       ) : cats.length === 0 ? (

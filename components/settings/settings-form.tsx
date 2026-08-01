@@ -62,10 +62,32 @@ export function SettingsForm() {
 
   if (loading) {
     return (
-      <div className="space-y-3 p-4">
-        {[1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-16 rounded-xl" />
-        ))}
+      <div className="space-y-5 p-4">
+        <div className="space-y-1.5">
+          <Skeleton className="h-3.5 w-28 rounded-full" />
+          <div className="divide-y divide-hairline rounded-xl border border-hairline bg-canvas">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="p-3.5">
+                <Skeleton className="mb-1.5 h-3 w-20 rounded-full" />
+                <Skeleton className={i === 1 ? "h-14 w-full rounded-md" : "h-9 w-full rounded-md"} />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Skeleton className="h-3.5 w-24 rounded-full" />
+          <div className="divide-y divide-hairline rounded-xl border border-hairline bg-canvas">
+            <div className="p-3.5">
+              <Skeleton className="mb-1.5 h-3 w-20 rounded-full" />
+              <Skeleton className="h-16 w-full rounded-md" />
+            </div>
+            <div className="p-3.5">
+              <Skeleton className="mb-1.5 h-3 w-24 rounded-full" />
+              <Skeleton className="h-9 w-full rounded-md" />
+            </div>
+          </div>
+        </div>
       </div>
     )
   }

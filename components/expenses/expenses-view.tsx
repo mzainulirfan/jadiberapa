@@ -58,6 +58,22 @@ const formatThousands = (raw: string) => (raw ? Number(raw).toLocaleString("id-I
 const onlyDigits = (s: string) => s.replace(/\D/g, "")
 const fmtRp = (n: number) => `Rp${n.toLocaleString("id-ID")}`
 
+const CATEGORY_COLORS = [
+  "bg-accent-orange",
+  "bg-accent-teal",
+  "bg-accent-purple",
+  "bg-accent-sky",
+  "bg-accent-pink",
+  "bg-accent-green",
+  "bg-accent-brown",
+]
+
+function categoryColor(name: string) {
+  let h = 0
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0
+  return CATEGORY_COLORS[h % CATEGORY_COLORS.length]
+}
+
 function fromForRange(range: RangeKey): string | undefined {
   const now = new Date()
   if (range === "today") return new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
@@ -109,6 +125,12 @@ export function ExpensesView() {
 
   const total = useMemo(() => expenses.reduce((s, e) => s + e.amount, 0), [expenses])
   const periodLabel = RANGES.find((r) => r.key === range)?.label ?? ""
+
+  const byCategory = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const e of expenses) map.set(e.category, (map.get(e.category) ?? 0) + e.amount)
+    return [...map.entries()].sort((a, b) => b[1] - a[1])
+  }, [expenses])
 
   function openAdd() {
     setAmount("")
@@ -163,23 +185,67 @@ export function ExpensesView() {
         </button>
       </div>
 
-      <div className="rounded-2xl border border-hairline border-l-4 border-l-destructive bg-canvas p-4">
+      <div className="rounded-2xl border border-hairline bg-canvas p-4">
         <div className="flex items-center gap-2">
           <span className="flex size-8 items-center justify-center rounded-full bg-destructive/10 text-destructive">
             <Dollar className="size-4" />
           </span>
           <p className="text-sm font-medium text-ink-muted">Total Pengeluaran · {periodLabel}</p>
         </div>
-        <p className="mt-3 text-[30px] font-bold leading-none tracking-tight text-ink">{fmtRp(total)}</p>
+        {loading ? (
+          <Skeleton className="mt-3 h-8 w-40 rounded-md" />
+        ) : (
+          <p className="mt-3 text-[30px] font-bold leading-none tracking-tight text-ink">{fmtRp(total)}</p>
+        )}
         {!loading && (
-          <p className="mt-2 text-xs text-ink-faint">{expenses.length} catatan pengeluaran</p>
+          <p className="mt-2 text-xs text-ink-faint">
+            {expenses.length} catatan pengeluaran
+            {byCategory.length > 0 && ` · ${byCategory.length} kategori`}
+          </p>
         )}
       </div>
 
+      {!loading && byCategory.length > 0 && (
+        <div className="rounded-xl border border-hairline bg-canvas p-4">
+          <h2 className="text-sm font-semibold text-ink">Per Kategori</h2>
+          <div className="mt-3 space-y-2.5">
+            {byCategory.map(([cat, amt]) => {
+              const pct = total > 0 ? (amt / total) * 100 : 0
+              return (
+                <div key={cat}>
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="flex min-w-0 items-center gap-1.5 text-ink-muted">
+                      <span className={cn("size-2.5 shrink-0 rounded-full", categoryColor(cat))} />
+                      <span className="truncate">{cat}</span>
+                    </span>
+                    <span className="shrink-0 font-medium text-ink">
+                      {fmtRp(amt)} · {Math.round(pct)}%
+                    </span>
+                  </div>
+                  <div className="mt-1.5 h-1.5 rounded-full bg-canvas-soft">
+                    <div
+                      className="h-full rounded-full bg-destructive/70"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {loading ? (
-        <div className="space-y-2">
+        <div className="divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-canvas">
           {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-16 rounded-xl" />
+            <div key={i} className="flex items-center gap-3 p-3.5">
+              <div className="min-w-0 flex-1">
+                <Skeleton className="h-4 w-24 rounded-full" />
+                <Skeleton className="mt-1.5 h-3 w-32 rounded-full" />
+              </div>
+              <Skeleton className="h-4 w-14 shrink-0 rounded-md" />
+              <Skeleton className="size-4 shrink-0 rounded-sm" />
+            </div>
           ))}
         </div>
       ) : expenses.length === 0 ? (
@@ -191,6 +257,7 @@ export function ExpensesView() {
         <div className="divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-canvas">
           {expenses.map((e) => (
             <div key={e.id} className="flex items-center gap-3 p-3.5">
+              <span className={cn("size-2.5 shrink-0 rounded-full", categoryColor(e.category))} />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-ink">{e.category}</p>
                 <p className="truncate text-xs text-ink-faint">

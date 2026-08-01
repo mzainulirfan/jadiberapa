@@ -15,6 +15,7 @@ const ROUTES: Record<string, RouteMeta> = {
   "/more": { title: "Lainnya" },
   "/customers": { title: "Pembeli", back: "/more" },
   "/categories": { title: "Kategori", back: "/more" },
+  "/discounts": { title: "Diskon", back: "/more" },
   "/reports": { title: "Laporan", back: "/more" },
   "/debts": { title: "Utang", back: "/more" },
   "/expenses": { title: "Pengeluaran", back: "/more" },

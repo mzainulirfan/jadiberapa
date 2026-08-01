@@ -173,13 +173,79 @@ function StatCard({
 function DashboardSkeleton() {
   return (
     <div className="space-y-4">
-      <Skeleton className="h-44 rounded-2xl" />
-      <div className="grid grid-cols-2 gap-2">
-        <Skeleton className="h-24 rounded-xl" />
-        <Skeleton className="h-24 rounded-xl" />
+      <div className="rounded-2xl bg-ink p-4">
+        <Skeleton className="h-3.5 w-36 rounded-full bg-white/15" />
+        <Skeleton className="mt-3 h-8 w-44 rounded-md bg-white/15" />
+        <Skeleton className="mt-2 h-3 w-28 rounded-full bg-white/10" />
+        <div className="mt-4 grid grid-cols-3 gap-2 border-t border-white/10 pt-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i}>
+              <Skeleton className="h-2.5 w-12 rounded-full bg-white/10" />
+              <Skeleton className="mt-2 h-4 w-16 rounded-md bg-white/15" />
+              <Skeleton className="mt-1.5 h-3 w-8 rounded-full bg-white/10" />
+            </div>
+          ))}
+        </div>
       </div>
-      <Skeleton className="h-48 rounded-xl" />
-      <Skeleton className="h-40 rounded-xl" />
+
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-xl border border-hairline bg-canvas p-3.5">
+          <Skeleton className="h-3 w-24 rounded-full" />
+          <Skeleton className="mt-2 h-5 w-20 rounded-md" />
+        </div>
+        <div className="rounded-xl border border-hairline bg-canvas p-3.5">
+          <Skeleton className="h-3 w-24 rounded-full" />
+          <Skeleton className="mt-2 h-5 w-16 rounded-md" />
+          <Skeleton className="mt-1.5 h-2.5 w-20 rounded-full" />
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-hairline bg-canvas p-4">
+        <Skeleton className="h-4 w-32 rounded-md" />
+        <div className="mt-4 flex h-32 items-end gap-1.5">
+          {[...Array(12)].map((_, i) => (
+            <Skeleton
+              key={i}
+              className="flex-1 rounded-t"
+              style={{ height: `${20 + ((i * 37) % 70)}%` }}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-hairline bg-canvas">
+        <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
+          <Skeleton className="h-4 w-36 rounded-md" />
+          <Skeleton className="h-3 w-16 rounded-full" />
+        </div>
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="flex items-center justify-between border-t border-hairline px-4 py-3">
+            <div className="flex items-center gap-2.5">
+              <Skeleton className="size-8 rounded-lg" />
+              <div>
+                <Skeleton className="h-3.5 w-24 rounded-full" />
+                <Skeleton className="mt-1.5 h-3 w-32 rounded-full" />
+              </div>
+            </div>
+            <Skeleton className="h-4 w-16 rounded-md" />
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-xl border border-hairline bg-canvas p-4">
+        <Skeleton className="h-4 w-32 rounded-md" />
+        <div className="mt-3 space-y-3">
+          {[...Array(4)].map((_, i) => (
+            <div key={i}>
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-3.5 w-32 rounded-full" />
+                <Skeleton className="h-3 w-12 rounded-full" />
+              </div>
+              <Skeleton className="mt-1.5 h-1.5 w-full rounded-full" />
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }

@@ -34,6 +34,7 @@ type TxItem = {
   id: string
   qty: number
   subtotal: number
+  discount?: number
   products?: { name?: string } | null
 }
 
@@ -109,13 +110,18 @@ function buildStrukLines(tx: Transaction, settings: Record<string, string>): str
   lines.push(sep)
   for (const item of tx.transaction_items as TxItem[]) {
     lines.push(`${item.qty} x ${item.products?.name ?? "Produk dihapus"}`)
-    lines.push(right(fmtRp(item.subtotal)))
+    lines.push(right(fmtRp(item.subtotal - (item.discount ?? 0))))
   }
   lines.push(sep)
   const disc = discountOf(tx)
-  if (disc > 0) {
-    lines.push(`Subtotal${right(fmtRp(tx.total + disc))}`)
-    lines.push(`Diskon${right("-" + fmtRp(disc))}`)
+  const itemDisc = (tx.transaction_items as TxItem[]).reduce(
+    (s, it) => s + (it.discount ?? 0),
+    0
+  )
+  if (itemDisc > 0 || disc > 0) {
+    lines.push(`Subtotal${right(fmtRp(tx.total + itemDisc + disc))}`)
+    if (itemDisc > 0) lines.push(`Diskon Barang${right("-" + fmtRp(itemDisc))}`)
+    if (disc > 0) lines.push(`Diskon${right("-" + fmtRp(disc))}`)
   }
   lines.push(`Total${right(fmtRp(tx.total))}`)
   lines.push(`Bayar: ${methodLabel[tx.payment_method] ?? tx.payment_method}`)
@@ -206,25 +212,43 @@ function StrukSheet({
                     <p className="text-xs text-ink">
                       {item.qty} x {item.products?.name ?? "Produk dihapus"}
                     </p>
-                    <p className="text-xs text-ink-muted text-right">{fmtRp(item.subtotal)}</p>
+                    <p className="text-xs text-ink-muted text-right">
+                      {fmtRp(item.subtotal - (item.discount ?? 0))}
+                    </p>
                   </div>
                 ))}
               </div>
 
               <div className="my-3 border-t border-dashed border-hairline" />
 
-              {discountOf(tx) > 0 && (
-                <>
-                  <div className="flex items-center justify-between text-xs text-ink-muted">
-                    <span>Subtotal</span>
-                    <span>{fmtRp(tx.total + discountOf(tx))}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-ink-muted">
-                    <span>Diskon</span>
-                    <span>-{fmtRp(discountOf(tx))}</span>
-                  </div>
-                </>
-              )}
+              {(() => {
+                const itemDisc = (tx.transaction_items as TxItem[]).reduce(
+                  (s, it) => s + (it.discount ?? 0),
+                  0
+                )
+                const notaDisc = discountOf(tx)
+                if (itemDisc === 0 && notaDisc === 0) return null
+                return (
+                  <>
+                    <div className="flex items-center justify-between text-xs text-ink-muted">
+                      <span>Subtotal</span>
+                      <span>{fmtRp(tx.total + itemDisc + notaDisc)}</span>
+                    </div>
+                    {itemDisc > 0 && (
+                      <div className="flex items-center justify-between text-xs text-ink-muted">
+                        <span>Diskon Barang</span>
+                        <span>-{fmtRp(itemDisc)}</span>
+                      </div>
+                    )}
+                    {notaDisc > 0 && (
+                      <div className="flex items-center justify-between text-xs text-ink-muted">
+                        <span>Diskon</span>
+                        <span>-{fmtRp(notaDisc)}</span>
+                      </div>
+                    )}
+                  </>
+                )
+              })()}
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold">Total</span>
                 <span className="text-sm font-bold">{fmtRp(tx.total)}</span>
@@ -283,12 +307,8 @@ export function TransactionDetail({ id }: { id: string }) {
   const [showPay, setShowPay] = useState(false)
   const [payInput, setPayInput] = useState("")
   const [saving, setSaving] = useState(false)
-  const [btSupported, setBtSupported] = useState(false)
+  const [btSupported] = useState(() => isBluetoothPrintSupported())
   const [btBusy, setBtBusy] = useState(false)
-
-  useEffect(() => {
-    setBtSupported(isBluetoothPrintSupported())
-  }, [])
 
   useEffect(() => {
     getSettings().then(setSettings)
@@ -377,10 +397,23 @@ ${formatDate(new Date(tx.created_at))}
 No. ${notaNo(tx)}
 ${buyerName(tx) ? `Pembeli: ${buyerName(tx)}\n` : ""}----------------
 ${(tx.transaction_items as TxItem[])
-  .map((item) => `${item.qty} x ${item.products?.name ?? "Produk dihapus"} = ${fmtRp(item.subtotal)}`)
+  .map(
+    (item) =>
+      `${item.qty} x ${item.products?.name ?? "Produk dihapus"} = ${fmtRp(item.subtotal - (item.discount ?? 0))}`
+  )
   .join("\n")}
 ----------------
-${discountOf(tx) > 0 ? `Subtotal: ${fmtRp(tx.total + discountOf(tx))}\nDiskon: -${fmtRp(discountOf(tx))}\n` : ""}Total: ${fmtRp(tx.total)}
+${(() => {
+  const itemDisc = (tx.transaction_items as TxItem[]).reduce(
+    (s, it) => s + (it.discount ?? 0),
+    0
+  )
+  const notaDisc = discountOf(tx)
+  if (itemDisc === 0 && notaDisc === 0) return ""
+  return `Subtotal: ${fmtRp(tx.total + itemDisc + notaDisc)}\n${
+    itemDisc > 0 ? `Diskon Barang: -${fmtRp(itemDisc)}\n` : ""
+  }${notaDisc > 0 ? `Diskon: -${fmtRp(notaDisc)}\n` : ""}`
+})()}Total: ${fmtRp(tx.total)}
 Bayar: ${methodLabel[tx.payment_method] ?? tx.payment_method}
 ================
 Terima kasih`
@@ -407,8 +440,41 @@ Terima kasih`
       <div className="flex-1 overflow-y-auto p-4">
         {loading ? (
           <div className="space-y-3">
-            <Skeleton className="h-28 rounded-xl" />
-            <Skeleton className="h-48 rounded-xl" />
+            <div className="rounded-xl border border-hairline bg-canvas p-4">
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-3.5 w-16 rounded-full" />
+                <Skeleton className="h-5 w-20 rounded-md" />
+              </div>
+              <div className="mt-3 space-y-2.5 border-t border-hairline pt-3">
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <Skeleton className="h-3 w-20 rounded-full" />
+                    <Skeleton className="h-3 w-16 rounded-full" />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-hairline bg-canvas">
+              <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
+                <Skeleton className="h-4 w-12 rounded-md" />
+                <Skeleton className="h-3 w-14 rounded-full" />
+              </div>
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="flex items-center gap-3 border-t border-hairline px-4 py-3">
+                  <Skeleton className="size-8 shrink-0 rounded-lg" />
+                  <div className="min-w-0 flex-1">
+                    <Skeleton className="h-4 w-32 rounded-full" />
+                    <Skeleton className="mt-1.5 h-3 w-20 rounded-full" />
+                  </div>
+                  <Skeleton className="h-4 w-14 shrink-0 rounded-md" />
+                </div>
+              ))}
+              <div className="flex items-center justify-between border-t border-hairline px-4 py-3">
+                <Skeleton className="h-4 w-16 rounded-md" />
+                <Skeleton className="h-5 w-20 rounded-md" />
+              </div>
+            </div>
           </div>
         ) : error || !tx ? (
           <p className="text-destructive text-sm">{error ?? "Transaksi tidak ditemukan"}</p>
@@ -420,18 +486,37 @@ Terima kasih`
                 <span className="text-lg font-bold text-ink">{fmtRp(tx.total)}</span>
               </div>
               <div className="mt-3 space-y-2 border-t border-hairline pt-3 text-sm">
-                {discountOf(tx) > 0 && (
-                  <>
-                    <div className="flex items-center justify-between">
-                      <span className="text-ink-muted">Subtotal</span>
-                      <span className="font-medium text-ink">{fmtRp(tx.total + discountOf(tx))}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-ink-muted">Diskon</span>
-                      <span className="font-medium text-accent-green">-{fmtRp(discountOf(tx))}</span>
-                    </div>
-                  </>
-                )}
+                {(() => {
+                  const itemDisc = items.reduce((s, it) => s + (it.discount ?? 0), 0)
+                  const notaDisc = discountOf(tx)
+                  if (itemDisc === 0 && notaDisc === 0) return null
+                  return (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <span className="text-ink-muted">Subtotal</span>
+                        <span className="font-medium text-ink">
+                          {fmtRp(tx.total + itemDisc + notaDisc)}
+                        </span>
+                      </div>
+                      {itemDisc > 0 && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-ink-muted">Diskon Barang</span>
+                          <span className="font-medium text-accent-green">
+                            -{fmtRp(itemDisc)}
+                          </span>
+                        </div>
+                      )}
+                      {notaDisc > 0 && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-ink-muted">Diskon</span>
+                          <span className="font-medium text-accent-green">
+                            -{fmtRp(notaDisc)}
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  )
+                })()}
                 <div className="flex items-center justify-between">
                   <span className="text-ink-muted">Pembayaran</span>
                   <span className="font-medium text-ink capitalize">
@@ -508,9 +593,20 @@ Terima kasih`
                           {item.qty} × {fmtRp(item.subtotal / item.qty)}
                         </p>
                       </div>
-                      <p className="shrink-0 text-sm font-semibold text-ink">
-                        {fmtRp(item.subtotal)}
-                      </p>
+                      <div className="shrink-0 text-right">
+                        {(item.discount ?? 0) > 0 ? (
+                          <>
+                            <p className="text-xs text-ink-faint line-through">
+                              {fmtRp(item.subtotal)}
+                            </p>
+                            <p className="text-sm font-semibold text-ink">
+                              {fmtRp(item.subtotal - (item.discount ?? 0))}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-sm font-semibold text-ink">{fmtRp(item.subtotal)}</p>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
