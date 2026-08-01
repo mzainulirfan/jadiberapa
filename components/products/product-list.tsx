@@ -519,44 +519,44 @@ export function ProductList() {
               <button
                 type="button"
                 onClick={() => setSelected(p)}
-                className="flex flex-col gap-1 text-left"
+                className="flex flex-col text-left"
               >
-                <ProductThumb p={p} className="aspect-[4/3] w-full rounded-none" />
-                <div className="flex flex-col gap-1 px-2.5 pb-1">
+                <div className="relative">
+                  <ProductThumb p={p} className="aspect-[4/3] w-full rounded-none" />
+                  {p.categories?.name && (
+                    <span className="absolute right-1.5 top-1.5 max-w-[75%] truncate rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
+                      {p.categories.name}
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-col gap-1 p-2.5">
                   <p className="text-sm font-medium text-ink line-clamp-2 min-h-10">{p.name}</p>
-                  <div className="flex items-center gap-1 flex-wrap">
-                    <StockBadge stock={p.stock} min={p.min_stock} />
-                    {p.categories?.name && (
-                      <span className="text-[11px] text-ink-faint truncate">{p.categories.name}</span>
-                    )}
-                  </div>
+                  <StockBadge stock={p.stock} min={p.min_stock} />
                   {(() => {
                     const disc = discountOf(p)
                     const net = p.price_sell - disc
                     return (
-                      <>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <p className="text-sm font-semibold text-primary">
-                            Rp{net.toLocaleString()}
-                          </p>
-                          {disc > 0 && (
+                      <div className="flex items-baseline gap-1.5 flex-wrap">
+                        <p className="text-sm font-semibold text-primary">
+                          Rp{net.toLocaleString()}
+                        </p>
+                        {disc > 0 && (
+                          <>
+                            <p className="text-[11px] text-ink-faint line-through">
+                              Rp{p.price_sell.toLocaleString()}
+                            </p>
                             <span className="rounded-full bg-accent-orange px-1.5 py-px text-[10px] font-semibold text-white">
                               -Rp{disc.toLocaleString()}
                             </span>
-                          )}
-                        </div>
-                        {p.price_buy > 0 && (
-                          <p className="text-[11px] text-ink-faint">
-                            Margin: Rp{(p.price_sell - p.price_buy).toLocaleString()}
-                          </p>
+                          </>
                         )}
-                      </>
+                      </div>
                     )
                   })()}
                 </div>
               </button>
               {canManage && (
-                <div className="flex items-center justify-end gap-1 px-2.5 pb-2">
+                <div className="flex items-center justify-end gap-1 px-2.5 pb-2.5">
                   <ProductDialog product={p} onSaved={reload}>
                     <button className="rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft">
                       <Pencil className="size-4" />
