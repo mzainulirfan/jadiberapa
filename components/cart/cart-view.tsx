@@ -189,12 +189,21 @@ export function CartView() {
                 Rp{netTotal.toLocaleString()}
               </span>
             </div>
-            <Button
-              onClick={() => router.push("/checkout")}
-              className="w-full rounded-full h-12 text-base"
-            >
-              Lanjut ke Pembayaran
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => router.push("/cashier")}
+                className="w-36 rounded-full h-12 text-base shrink-0"
+              >
+                Belanja Lagi
+              </Button>
+              <Button
+                onClick={() => router.push("/checkout")}
+                className="flex-1 rounded-full h-12 text-base"
+              >
+                Lanjut ke Pembayaran
+              </Button>
+            </div>
           </div>
         </>
       )}
