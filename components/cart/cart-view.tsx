@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   Dialog,
   DialogContent,
@@ -14,17 +15,47 @@ import {
 } from "@/components/ui/dialog"
 import { getProducts, resolveDiscountAmount } from "@/lib/db/queries"
 import { cartKey, priceOf, useCart } from "@/components/cart/cart-provider"
+import {
+  getHeldCarts,
+  getHeldCart,
+  saveHeldCart,
+  deleteHeldCart,
+  type HeldCart,
+} from "@/lib/db/held-carts"
 import { ProductCard } from "@/components/cashier/product-card"
-import { Minus, Plus, Trash, Package } from "@/components/ui/icons"
+import { Minus, Plus, Trash, Package, ChevronRight } from "@/components/ui/icons"
 import type { BxProduct } from "@/components/products/types"
 
+const heldDateFmt = new Intl.DateTimeFormat("id-ID", {
+  day: "numeric",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+})
+
 export function CartView() {
-  const { items, addItem, updateQty, removeItem, clearCart, netTotal, discounts, count } = useCart()
+  const { items, addItem, updateQty, removeItem, clearCart, replaceCart, netTotal, discounts, count } = useCart()
   const [confirmClear, setConfirmClear] = useState(false)
   const [popular, setPopular] = useState<BxProduct[]>([])
   const [pop, setPop] = useState<{ id: string; key: number } | null>(null)
   const popKeyRef = useRef(0)
   const router = useRouter()
+
+  const [heldCarts, setHeldCarts] = useState<HeldCart[]>([])
+  const [heldOpen, setHeldOpen] = useState(false)
+  const [holdOpen, setHoldOpen] = useState(false)
+  const [holdLabel, setHoldLabel] = useState("")
+  const [holding, setHolding] = useState(false)
+  const [resumeTarget, setResumeTarget] = useState<HeldCart | null>(null)
+  const [resuming, setResuming] = useState(false)
+
+  const loadHeld = useCallback(() => {
+    getHeldCarts().then(setHeldCarts)
+  }, [])
+
+  useEffect(() => {
+    loadHeld()
+  }, [loadHeld])
 
   useEffect(() => {
     if (items.length === 0) {
@@ -48,19 +79,106 @@ export function CartView() {
     toast.success("Keranjang dikosongkan")
   }
 
+  async function handleHold() {
+    if (items.length === 0) return
+    setHolding(true)
+    const label = holdLabel.trim() || `Pesanan ${heldCarts.length + 1}`
+    const id = await saveHeldCart(label, items)
+    setHolding(false)
+    if (!id) {
+      toast.error("Gagal menahan pesanan")
+      return
+    }
+    setHoldOpen(false)
+    setHoldLabel("")
+    clearCart()
+    loadHeld()
+    toast.success(`Pesanan "${label}" ditahan`)
+  }
+
+  async function handleResume(h: HeldCart) {
+    setHeldOpen(false)
+    const held = await getHeldCart(h.id)
+    if (!held || held.length === 0) {
+      toast.error("Pesanan sudah tidak tersedia")
+      loadHeld()
+      return
+    }
+    // Kalau keranjang aktif masih berisi, minta konfirmasi dulu (akan diganti).
+    if (items.length > 0) {
+      setResumeTarget(h)
+      return
+    }
+    replaceCart(held)
+    await deleteHeldCart(h.id)
+    loadHeld()
+    toast.success(`Pesanan "${h.label}" dilanjutkan`)
+  }
+
+  async function handleConfirmResume() {
+    if (!resumeTarget) return
+    setResuming(true)
+    const held = await getHeldCart(resumeTarget.id)
+    if (!held || held.length === 0) {
+      toast.error("Pesanan sudah tidak tersedia")
+      setResuming(false)
+      setResumeTarget(null)
+      loadHeld()
+      return
+    }
+    replaceCart(held)
+    await deleteHeldCart(resumeTarget.id)
+    setResuming(false)
+    setResumeTarget(null)
+    loadHeld()
+    toast.success(`Pesanan "${resumeTarget.label}" dilanjutkan`)
+  }
+
+  async function handleDeleteHeld(h: HeldCart) {
+    await deleteHeldCart(h.id)
+    loadHeld()
+    toast.success("Pesanan ditahan dihapus")
+  }
+
   return (
     <div className="flex h-full flex-col">
+      {heldCarts.length > 0 && (
+        <div className="p-4 pb-0">
+          <button
+            type="button"
+            onClick={() => setHeldOpen(true)}
+            className="flex w-full items-center gap-2 rounded-xl border border-dashed border-hairline bg-canvas p-3 text-left transition-colors active:bg-canvas-soft"
+          >
+            <Package className="size-4 shrink-0 text-ink-muted" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-ink">Pesanan Ditahan</p>
+              <p className="text-xs text-ink-faint">{heldCarts.length} pesanan menunggu dilanjutkan</p>
+            </div>
+            <ChevronRight className="size-4 shrink-0 text-ink-faint" />
+          </button>
+        </div>
+      )}
+
       {items.length > 0 && (
         <div className="flex items-center justify-between p-4 pb-2">
           <span className="text-ink-muted text-sm">{count} item</span>
-          <button
-            type="button"
-            onClick={() => setConfirmClear(true)}
-            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium text-destructive hover:bg-canvas-soft"
-          >
-            <Trash className="size-4" />
-            Hapus Semua
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setHoldOpen(true)}
+              className="rounded-full px-3 py-1.5 text-sm font-medium text-ink-muted hover:bg-canvas-soft"
+            >
+              Tahan
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmClear(true)}
+              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium text-destructive hover:bg-canvas-soft"
+            >
+              <Trash className="size-4" />
+              Hapus Semua
+            </button>
+          </div>
         </div>
       )}
 
@@ -207,6 +325,98 @@ export function CartView() {
           </div>
         </>
       )}
+
+      {/* Daftar pesanan ditahan */}
+      <Dialog open={heldOpen} onOpenChange={(o) => !o && setHeldOpen(false)}>
+        <DialogContent className="rounded-xl">
+          <DialogHeader>
+            <DialogTitle>Pesanan Ditahan</DialogTitle>
+            <DialogDescription>
+              Pilih pesanan untuk dilanjutkan atau hapus.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[50dvh] space-y-2 overflow-y-auto">
+            {heldCarts.map((h) => (
+              <div
+                key={h.id}
+                className="flex items-center gap-3 rounded-xl border border-hairline bg-canvas p-3"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-ink">{h.label}</p>
+                  <p className="text-xs text-ink-faint">
+                    {h.item_count} barang · {heldDateFmt.format(new Date(h.created_at))}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleResume(h)}
+                  className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground active:bg-primary-active"
+                >
+                  Lanjutkan
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteHeld(h)}
+                  aria-label={`Hapus ${h.label}`}
+                  className="shrink-0 rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft"
+                >
+                  <Trash className="size-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setHeldOpen(false)}>
+              Tutup
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog menahan keranjang aktif */}
+      <Dialog open={holdOpen} onOpenChange={(o) => !o && !holding && setHoldOpen(false)}>
+        <DialogContent className="rounded-xl">
+          <DialogHeader>
+            <DialogTitle>Tahan Pesanan</DialogTitle>
+            <DialogDescription>
+              Keranjang ({count} item) disimpan dan bisa dilanjutkan nanti.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            value={holdLabel}
+            onChange={(e) => setHoldLabel(e.target.value)}
+            placeholder="Nama pembeli / catatan (opsional)"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setHoldOpen(false)} disabled={holding}>
+              Batal
+            </Button>
+            <Button onClick={handleHold} disabled={holding}>
+              {holding ? "Menyimpan..." : "Tahan & Mulai Baru"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Konfirmasi melanjutkan saat keranjang masih berisi */}
+      <Dialog open={resumeTarget !== null} onOpenChange={(o) => !o && !resuming && setResumeTarget(null)}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Lanjutkan Pesanan?</DialogTitle>
+            <DialogDescription>
+              Isi keranjang saat ini akan diganti dengan pesanan &quot;{resumeTarget?.label}&quot;.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResumeTarget(null)} disabled={resuming}>
+              Batal
+            </Button>
+            <Button onClick={handleConfirmResume} disabled={resuming}>
+              {resuming ? "Meneruskan..." : "Lanjutkan"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={confirmClear} onOpenChange={(o) => !o && setConfirmClear(false)}>
         <DialogContent showCloseButton={false}>
