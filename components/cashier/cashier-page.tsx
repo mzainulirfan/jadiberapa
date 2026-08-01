@@ -5,24 +5,32 @@ import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { getProducts, getCategories, resolveDiscountAmount } from "@/lib/db/queries"
+import { getProducts, getCategories, resolveDiscountAmount, getProductVariants } from "@/lib/db/queries"
 import { useCart } from "@/components/cart/cart-provider"
 import { ProductCard, ProductRow } from "./product-card"
 import { BarcodeScanner } from "./barcode-scanner"
 import { ProductDialog } from "@/components/products/product-dialog"
 import { toast } from "sonner"
-import { Search, Filter, Barcode, X, Check, CartAlt, Grid, List, Star } from "@/components/ui/icons"
+import { Search, Filter, Barcode, X, Check, CartAlt, Grid, List, Star, Package } from "@/components/ui/icons"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
-import type { BxProduct, BxCategory } from "@/components/products/types"
+import type { BxProduct, BxCategory, BxVariant } from "@/components/products/types"
 
 export function CashierPage() {
   const [products, setProducts] = useState<BxProduct[]>([])
   const [categories, setCategories] = useState<BxCategory[]>([])
+  const [variantsMap, setVariantsMap] = useState<Record<string, BxVariant[]>>({})
+  const [pickProduct, setPickProduct] = useState<BxProduct | null>(null)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [catIds, setCatIds] = useState<string[]>([])
@@ -41,19 +49,36 @@ export function CashierPage() {
 
   const qtyMap = useMemo(() => {
     const m: Record<string, number> = {}
-    for (const i of items) m[i.product.id] = i.qty
+    for (const i of items) m[i.product.id] = (m[i.product.id] ?? 0) + i.qty
     return m
   }, [items])
 
-  function addToCart(p: BxProduct) {
-    const inCart = items.find((i) => i.product.id === p.id)
-    if (inCart && inCart.qty >= p.stock) {
+  function addToCart(p: BxProduct, variant?: BxVariant) {
+    const inCartQty = items
+      .filter((i) => i.product.id === p.id)
+      .reduce((sum, i) => sum + i.qty, 0)
+    if (inCartQty >= p.stock) {
       toast.info(`Stok ${p.name} maksimal`)
       return
     }
-    addItem(p)
+    addItem(p, variant)
     popKeyRef.current += 1
     setPop({ id: p.id, key: popKeyRef.current })
+  }
+
+  function handleAdd(p: BxProduct) {
+    const variants = variantsMap[p.id]
+    if (variants && variants.length > 0) {
+      setPickProduct(p)
+      return
+    }
+    addToCart(p)
+  }
+
+  function handlePickVariant(v: BxVariant) {
+    if (!pickProduct) return
+    addToCart(pickProduct, v)
+    setPickProduct(null)
   }
 
   async function resolveCode(term: string): Promise<BxProduct | null> {
@@ -130,13 +155,40 @@ export function CashierPage() {
     }
   }, [search, catIds, favOnly, reloadKey])
 
+  // Muat daftar varian untuk semua produk yang tampil, agar kartu bisa
+  // membuka pemilih varian saat produk punya varian.
+  useEffect(() => {
+    if (products.length === 0) return
+    let cancelled = false
+    getProductVariants(products.map((p) => p.id)).then((vs) => {
+      if (cancelled) return
+      const m: Record<string, BxVariant[]> = {}
+      for (const v of vs) {
+        ;(m[v.product_id] ??= []).push(v)
+      }
+      setVariantsMap(m)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [products])
+
+  const hasVariants = (p: BxProduct) => (variantsMap[p.id]?.length ?? 0) > 0
+
   const activeCats = categories.filter((c) => catIds.includes(c.id))
 
   const productGrid =
     view === "list" ? (
       <div className="space-y-1.5">
         {products.map((p) => (
-          <ProductRow key={p.id} p={p} qty={qtyMap[p.id] ?? 0} discount={discOf(p)} onAdd={() => addToCart(p)} />
+          <ProductRow
+            key={p.id}
+            p={p}
+            qty={qtyMap[p.id] ?? 0}
+            discount={discOf(p)}
+            hasVariants={hasVariants(p)}
+            onAdd={() => handleAdd(p)}
+          />
         ))}
       </div>
     ) : (
@@ -147,8 +199,9 @@ export function CashierPage() {
             p={p}
             qty={qtyMap[p.id] ?? 0}
             discount={discOf(p)}
+            hasVariants={hasVariants(p)}
             popKey={pop?.id === p.id ? pop.key : 0}
-            onAdd={() => addToCart(p)}
+            onAdd={() => handleAdd(p)}
           />
         ))}
       </div>
@@ -353,6 +406,45 @@ export function CashierPage() {
         onDetect={handleScan}
         continuous
       />
+
+      <Dialog open={pickProduct !== null} onOpenChange={(v) => !v && setPickProduct(null)}>
+        <DialogContent showCloseButton={false} className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Pilih Varian</DialogTitle>
+          </DialogHeader>
+          {pickProduct && (
+            <div className="flex flex-col gap-2">
+              <p className="px-1 text-sm text-ink-muted">
+                {pickProduct.name}
+              </p>
+              {variantsMap[pickProduct.id]?.map((v) => (
+                <button
+                  key={v.id}
+                  type="button"
+                  onClick={() => handlePickVariant(v)}
+                  className="flex w-full items-center justify-between rounded-xl border border-hairline bg-canvas px-4 py-3 text-left active:bg-canvas-soft"
+                >
+                  <span className="flex items-center gap-2 text-sm font-medium text-ink">
+                    <Package className="size-4 text-ink-faint" />
+                    {v.name}
+                  </span>
+                  <span className="text-sm font-semibold text-primary">
+                    Rp{v.price_sell.toLocaleString()}
+                  </span>
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setPickProduct(null)}
+                className="mt-1 rounded-xl px-4 py-2.5 text-sm font-medium text-ink-muted active:bg-canvas-soft"
+              >
+                Batal
+              </button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <ProductDialog
         open={unknownCode !== null}
         onOpenChange={(v) => {

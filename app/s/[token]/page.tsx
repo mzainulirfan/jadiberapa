@@ -11,10 +11,18 @@ type PublicReceipt = {
   payment_method: string
   total: number
   discount: number
+  fee: number
   paid_amount: number
   status: string
   customer: { name: string } | null
-  items: { name: string; qty: number; price_sell: number; subtotal: number; discount: number }[]
+  items: {
+    name: string
+    variant_name?: string | null
+    qty: number
+    price_sell: number
+    subtotal: number
+    discount: number
+  }[]
   payments: { amount: number; method: string; created_at: string }[]
 }
 
@@ -59,6 +67,7 @@ export default async function PublicReceiptPage({
   const storeName = r.store.name || "Toko Saya"
   const itemDisc = r.items.reduce((s, it) => s + (it.discount ?? 0), 0)
   const notaDisc = r.discount || 0
+  const fee = r.fee || 0
   const isUtang = r.status === "utang"
 
   return (
@@ -89,7 +98,10 @@ export default async function PublicReceiptPage({
             <div className="space-y-1.5">
               {r.items.map((it, i) => (
                 <div key={i}>
-                  <p className="text-xs">{it.qty} x {it.name}</p>
+                  <p className="text-xs">
+                    {it.qty} x {it.name}
+                    {it.variant_name ? ` (${it.variant_name})` : ""}
+                  </p>
                   <p className="text-xs text-ink-muted text-right">
                     {fmtRp(it.subtotal - (it.discount ?? 0))}
                   </p>
@@ -99,11 +111,11 @@ export default async function PublicReceiptPage({
 
             <div className="my-3 border-t border-dashed border-hairline" />
 
-            {(itemDisc > 0 || notaDisc > 0) && (
+            {(itemDisc > 0 || notaDisc > 0 || fee > 0) && (
               <>
                 <div className="flex items-center justify-between text-xs text-ink-muted">
                   <span>Subtotal</span>
-                  <span>{fmtRp(r.total + itemDisc + notaDisc)}</span>
+                  <span>{fmtRp(r.total + itemDisc + notaDisc - fee)}</span>
                 </div>
                 {itemDisc > 0 && (
                   <div className="flex items-center justify-between text-xs text-ink-muted">
@@ -115,6 +127,12 @@ export default async function PublicReceiptPage({
                   <div className="flex items-center justify-between text-xs text-ink-muted">
                     <span>Diskon</span>
                     <span>-{fmtRp(notaDisc)}</span>
+                  </div>
+                )}
+                {fee > 0 && (
+                  <div className="flex items-center justify-between text-xs text-ink-muted">
+                    <span>Biaya Layanan</span>
+                    <span>+{fmtRp(fee)}</span>
                   </div>
                 )}
               </>

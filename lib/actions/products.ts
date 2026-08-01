@@ -7,6 +7,25 @@ export type ProductSort = "name-asc" | "price-asc" | "price-desc" | "stock-asc" 
 
 const PAGE_SIZE = 20
 
+// Parsing JSON daftar varian dari field tersembunyi form produk.
+function parseVariants(json?: string) {
+  if (!json) return []
+  try {
+    const arr = JSON.parse(json)
+    if (!Array.isArray(arr)) return []
+    return arr
+      .map((v) => ({
+        name: String(v.name ?? "").trim(),
+        sku: v.sku ? String(v.sku).trim() || null : null,
+        price_buy: Number(v.price_buy) || 0,
+        price_sell: Number(v.price_sell) || 0,
+      }))
+      .filter((v) => v.name && v.price_sell > 0)
+  } catch {
+    return []
+  }
+}
+
 export async function getProducts(search?: string, categoryIds?: string[], limit?: number) {
   const supabase = await createClient()
   let query = supabase.from("products").select("*, categories(name)").order("name")
@@ -90,20 +109,36 @@ export async function createProduct(formData: FormData) {
   const supabase = await createClient()
   const raw = Object.fromEntries(formData) as Record<string, string>
 
-  const { error } = await supabase.from("products").insert({
-    name: raw.name,
-    category_id: raw.category_id || null,
-    price_buy: Number(raw.price_buy) || 0,
-    price_sell: Number(raw.price_sell) || 0,
-    stock: Number(raw.stock) || 0,
-    min_stock: Number(raw.min_stock) || 0,
-    is_favorite: raw.is_favorite === "1",
-    sku: raw.sku || null,
-    barcode: raw.barcode || null,
-    image_url: raw.image_url || null,
-  })
+  const variants = parseVariants(raw.variants)
+
+  const { data: product, error } = await supabase
+    .from("products")
+    .insert({
+      name: raw.name,
+      category_id: raw.category_id || null,
+      price_buy: Number(raw.price_buy) || 0,
+      price_sell: Number(raw.price_sell) || 0,
+      stock: Number(raw.stock) || 0,
+      min_stock: Number(raw.min_stock) || 0,
+      is_favorite: raw.is_favorite === "1",
+      unit: raw.unit || "pcs",
+      sku: raw.sku || null,
+      barcode: raw.barcode || null,
+      image_url: raw.image_url || null,
+    })
+    .select("id")
+    .single()
 
   if (error) return { error: error.message }
+  if (!product) return { error: "Gagal membuat barang" }
+
+  if (variants.length > 0) {
+    const { error: vErr } = await supabase.from("product_variants").insert(
+      variants.map((v) => ({ product_id: product.id as string, ...v }))
+    )
+    if (vErr) return { error: vErr.message }
+  }
+
   revalidatePath("/products")
   return { error: null }
 }
@@ -112,21 +147,37 @@ export async function updateProduct(id: string, formData: FormData) {
   const supabase = await createClient()
   const raw = Object.fromEntries(formData) as Record<string, string>
 
-  const { error } = await supabase.from("products").update({
-    name: raw.name,
-    category_id: raw.category_id || null,
-    price_buy: Number(raw.price_buy) || 0,
-    price_sell: Number(raw.price_sell) || 0,
-    stock: Number(raw.stock) || 0,
-    min_stock: Number(raw.min_stock) || 0,
-    is_favorite: raw.is_favorite === "1",
-    sku: raw.sku || null,
-    barcode: raw.barcode || null,
-    image_url: raw.image_url || null,
-    updated_at: new Date().toISOString(),
-  }).eq("id", id)
+  const variants = parseVariants(raw.variants)
+
+  const { error } = await supabase
+    .from("products")
+    .update({
+      name: raw.name,
+      category_id: raw.category_id || null,
+      price_buy: Number(raw.price_buy) || 0,
+      price_sell: Number(raw.price_sell) || 0,
+      stock: Number(raw.stock) || 0,
+      min_stock: Number(raw.min_stock) || 0,
+      is_favorite: raw.is_favorite === "1",
+      unit: raw.unit || "pcs",
+      sku: raw.sku || null,
+      barcode: raw.barcode || null,
+      image_url: raw.image_url || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
 
   if (error) return { error: error.message }
+
+  // Ganti seluruh daftar varian: hapus lama, tulis ulang yang baru.
+  await supabase.from("product_variants").delete().eq("product_id", id)
+  if (variants.length > 0) {
+    const { error: vErr } = await supabase.from("product_variants").insert(
+      variants.map((v) => ({ product_id: id, ...v }))
+    )
+    if (vErr) return { error: vErr.message }
+  }
+
   revalidatePath("/products")
   return { error: null }
 }

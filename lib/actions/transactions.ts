@@ -4,14 +4,24 @@ import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 
 export async function createTransaction(
-  items: { product_id: string; qty: number; price_sell: number; subtotal: number; discount?: number }[],
+  items: {
+    product_id: string
+    qty: number
+    price_sell: number
+    subtotal: number
+    discount?: number
+    variant_id?: string | null
+    variant_name?: string | null
+  }[],
   payment_method: string = "cash",
   customer_id?: string | null,
   // Jumlah yang benar-benar dibayar saat checkout. Untuk metode "utang" ini bisa
   // 0 (murni utang) atau sebagian (DP). Undefined = dianggap lunas penuh.
   paid_amount?: number,
   // Diskon per nota (nominal rupiah). total disimpan sebagai nilai neto (setelah diskon).
-  discount?: number
+  discount?: number,
+  // Biaya layanan / pajak per nota (nominal rupiah). Masuk ke total yang dibayar.
+  fee?: number
 ) {
   const supabase = await createClient()
 
@@ -22,11 +32,14 @@ export async function createTransaction(
     price_sell: i.price_sell,
     subtotal: i.subtotal,
     discount: Math.max(0, Math.min(Math.round(i.discount ?? 0), i.subtotal)),
+    variant_id: i.variant_id || null,
+    variant_name: i.variant_name || null,
   }))
   const gross = normItems.reduce((sum, i) => sum + i.subtotal, 0)
   const itemDisc = normItems.reduce((sum, i) => sum + i.discount, 0)
   const disc = Math.max(0, Math.min(gross - itemDisc, Math.round(discount ?? 0)))
-  const total = gross - itemDisc - disc
+  const feeAmount = Math.max(0, Math.round(fee ?? 0))
+  const total = gross - itemDisc - disc + feeAmount
 
   const isUtang = payment_method === "utang"
   const paid = isUtang
@@ -39,6 +52,7 @@ export async function createTransaction(
     .insert({
       total,
       discount: disc,
+      fee: feeAmount,
       payment_method,
       customer_id: customer_id || null,
       paid_amount: paid,
@@ -62,21 +76,31 @@ export async function createTransaction(
     .update({ number: transaction.id.slice(0, 8).toUpperCase() })
     .eq("id", transaction.id)
 
-  // Snapshot harga beli (cost) per produk agar laba historis akurat & hitung laba
-  // dashboard tak perlu join ke products.
+  // Snapshot harga beli (cost) agar laba historis akurat & hitung laba
+  // dashboard tak perlu join ke products. Untuk item bervarian pakai harga beli
+  // varian (jika ada); kalau tidak, pakai harga beli produk.
   const productIds = [...new Set(normItems.map((i) => i.product_id))]
-  const { data: costRows } = await supabase
-    .from("products")
-    .select("id, price_buy")
-    .in("id", productIds)
+  const variantIds = [...new Set(normItems.map((i) => i.variant_id).filter(Boolean))]
+
+  const [productRes, variantRes] = await Promise.all([
+    supabase.from("products").select("id, price_buy").in("id", productIds),
+    variantIds.length > 0
+      ? supabase.from("product_variants").select("id, price_buy").in("id", variantIds)
+      : Promise.resolve({ data: [] }),
+  ])
+
   const costMap = new Map(
-    (costRows ?? []).map((p) => [p.id as string, (p.price_buy as number) ?? 0])
+    (productRes.data ?? []).map((p) => [p.id as string, (p.price_buy as number) ?? 0])
+  )
+  const variantCostMap = new Map(
+    (variantRes.data ?? []).map((v) => [v.id as string, (v.price_buy as number) ?? 0])
   )
 
   const txItems = normItems.map((i) => ({
     ...i,
     transaction_id: transaction.id,
-    price_buy: costMap.get(i.product_id) ?? 0,
+    price_buy:
+      (i.variant_id && variantCostMap.get(i.variant_id)) ?? costMap.get(i.product_id) ?? 0,
   }))
   const { error: itemError } = await supabase.from("transaction_items").insert(txItems)
 

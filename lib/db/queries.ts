@@ -1,7 +1,7 @@
 "use client"
 
 import { createClient } from "@/lib/supabase/client"
-import type { BxProduct, BxCategory } from "@/components/products/types"
+import type { BxProduct, BxCategory, BxVariant } from "@/components/products/types"
 import type { ProductSort } from "@/lib/actions/products"
 
 const supabase = createClient()
@@ -361,7 +361,7 @@ export async function getProducts(params: {
   let query = supabase
     .from("products")
     .select(
-      "id, name, category_id, price_buy, price_sell, stock, min_stock, is_favorite, sku, barcode, image_url, created_at, updated_at, categories(name)",
+      "id, name, category_id, price_buy, price_sell, stock, min_stock, is_favorite, unit, sku, barcode, image_url, created_at, updated_at, categories(name)",
       withCount ? { count: "exact" } : undefined
     )
 
@@ -393,6 +393,20 @@ export async function getProducts(params: {
 
   const { data, count } = await query
   return { data: (data ?? []) as unknown as BxProduct[], total: count ?? 0 }
+}
+
+export async function getProductVariants(productIds: string[]): Promise<BxVariant[]> {
+  if (productIds.length === 0) return []
+  const { data } = await supabase
+    .from("product_variants")
+    .select("*")
+    .in("product_id", productIds)
+    .order("created_at", { ascending: true })
+  return (data ?? []) as unknown as BxVariant[]
+}
+
+export async function getProductVariantsByProduct(productId: string): Promise<BxVariant[]> {
+  return getProductVariants([productId])
 }
 
 export async function getInventorySummary(): Promise<{

@@ -585,6 +585,7 @@ export function ProductList() {
                   <div className="flex items-center gap-1.5">
                     <p className="text-xs text-ink-faint truncate">
                       {p.categories?.name ? `${p.categories.name} · ` : ""}
+                      {p.unit && p.unit !== "pcs" ? `${p.unit} · ` : ""}
                       Rp{(p.price_sell - discountOf(p)).toLocaleString()}
                     </p>
                     {discountOf(p) > 0 && (

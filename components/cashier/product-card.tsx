@@ -9,12 +9,14 @@ export function ProductCard({
   qty,
   popKey,
   discount = 0,
+  hasVariants = false,
   onAdd,
 }: {
   p: BxProduct
   qty: number
   popKey: number
   discount?: number
+  hasVariants?: boolean
   onAdd: () => void
 }) {
   const out = p.stock <= 0
@@ -64,7 +66,14 @@ export function ProductCard({
       </div>
       <div className="space-y-0.5 p-2.5">
         <p className="truncate text-sm font-medium text-ink">{p.name}</p>
-        <p className="truncate text-xs text-ink-muted">{p.categories?.name ?? "Tanpa kategori"}</p>
+        <p className="truncate text-xs text-ink-muted">
+          {hasVariants && (
+            <span className="font-medium text-primary">Varian</span>
+          )}
+          {hasVariants && p.categories?.name ? " · " : ""}
+          {p.categories?.name ?? "Tanpa kategori"}
+          {p.unit && p.unit !== "pcs" ? ` · ${p.unit}` : ""}
+        </p>
         <div className="flex items-center justify-between gap-1 pt-0.5">
           <div className="flex items-baseline gap-1">
             <p className="text-sm font-semibold text-primary">
@@ -89,11 +98,13 @@ export function ProductRow({
   p,
   qty,
   discount = 0,
+  hasVariants = false,
   onAdd,
 }: {
   p: BxProduct
   qty: number
   discount?: number
+  hasVariants?: boolean
   onAdd: () => void
 }) {
   const out = p.stock <= 0
@@ -131,7 +142,14 @@ export function ProductRow({
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-ink">{p.name}</p>
-        <p className="truncate text-xs text-ink-muted">{p.categories?.name ?? "Tanpa kategori"}</p>
+        <p className="truncate text-xs text-ink-muted">
+          {hasVariants && (
+            <span className="font-medium text-primary">Varian</span>
+          )}
+          {hasVariants && p.categories?.name ? " · " : ""}
+          {p.categories?.name ?? "Tanpa kategori"}
+          {p.unit && p.unit !== "pcs" ? ` · ${p.unit}` : ""}
+        </p>
       </div>
       <div className="shrink-0 text-right">
         <div className="flex items-baseline justify-end gap-1">

@@ -13,7 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { getProducts, resolveDiscountAmount } from "@/lib/db/queries"
-import { useCart } from "@/components/cart/cart-provider"
+import { cartKey, priceOf, useCart } from "@/components/cart/cart-provider"
 import { ProductCard } from "@/components/cashier/product-card"
 import { Minus, Plus, Trash, Package } from "@/components/ui/icons"
 import type { BxProduct } from "@/components/products/types"
@@ -33,8 +33,10 @@ export function CartView() {
   }, [items.length])
 
   function addPopular(p: BxProduct) {
-    const inCart = items.find((i) => i.product.id === p.id)
-    if (inCart && inCart.qty >= p.stock) return
+    const inCartQty = items
+      .filter((i) => i.product.id === p.id)
+      .reduce((sum, i) => sum + i.qty, 0)
+    if (inCartQty >= p.stock) return
     addItem(p)
     popKeyRef.current += 1
     setPop({ id: p.id, key: popKeyRef.current })
@@ -99,10 +101,12 @@ export function CartView() {
           <div className="flex-1 overflow-y-auto p-4 pt-0 space-y-1">
             {items.map((item) => {
               const { product, qty } = item
+              const key = cartKey(item)
+              const price = priceOf(item)
               const atMax = qty >= product.stock
               return (
                 <div
-                  key={product.id}
+                  key={key}
                   className="flex items-center gap-3 rounded-xl bg-canvas border border-hairline p-3"
                 >
                   <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-canvas-soft text-ink-faint">
@@ -119,12 +123,15 @@ export function CartView() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-ink truncate">{product.name}</p>
+                    {item.variant && (
+                      <p className="text-xs text-ink-muted mt-0.5">Varian: {item.variant.name}</p>
+                    )}
                     <p className="text-xs text-ink-muted mt-0.5">
-                      Rp{product.price_sell.toLocaleString()}
+                      Rp{price.toLocaleString()}
                     </p>
                     <div className="flex items-center gap-1.5 mt-2">
                       <button
-                        onClick={() => updateQty(product.id, qty - 1)}
+                        onClick={() => updateQty(key, qty - 1)}
                         className="flex size-7 items-center justify-center rounded-md border border-hairline text-ink-muted active:bg-canvas-soft"
                         aria-label="Kurangi"
                       >
@@ -132,7 +139,7 @@ export function CartView() {
                       </button>
                       <span className="w-7 text-center text-sm font-semibold text-ink">{qty}</span>
                       <button
-                        onClick={() => updateQty(product.id, qty + 1)}
+                        onClick={() => updateQty(key, qty + 1)}
                         disabled={atMax}
                         className="flex size-7 items-center justify-center rounded-md border border-hairline text-ink-muted active:bg-canvas-soft disabled:opacity-40"
                         aria-label="Tambah"
@@ -143,7 +150,7 @@ export function CartView() {
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-2">
                     <button
-                      onClick={() => removeItem(product.id)}
+                      onClick={() => removeItem(key)}
                       className="rounded-md p-1 text-ink-muted active:bg-canvas-soft"
                       aria-label="Hapus"
                     >
@@ -151,9 +158,8 @@ export function CartView() {
                     </button>
                     <div className="text-right">
                       {(() => {
-                        const disc =
-                          resolveDiscountAmount(product.id, product.price_sell, discounts) * qty
-                        const subtotal = product.price_sell * qty
+                        const disc = resolveDiscountAmount(product.id, price, discounts) * qty
+                        const subtotal = price * qty
                         return disc > 0 ? (
                           <>
                             <p className="text-xs text-ink-faint line-through">

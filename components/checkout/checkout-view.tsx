@@ -16,7 +16,7 @@ import {
 import { createTransaction } from "@/lib/actions/transactions"
 import { createCustomer } from "@/lib/actions/customers"
 import { getCustomers, getSettings, resolveDiscountAmount, type BxCustomer } from "@/lib/db/queries"
-import { useCart } from "@/components/cart/cart-provider"
+import { useCart, cartKey, priceOf } from "@/components/cart/cart-provider"
 import {
   ChevronRight,
   Dollar,
@@ -52,6 +52,8 @@ export function CheckoutView() {
   const [paid, setPaid] = useState("")
   const [discountInput, setDiscountInput] = useState("")
   const [discountType, setDiscountType] = useState<"rp" | "pct">("rp")
+  const [feeInput, setFeeInput] = useState("")
+  const [feeType, setFeeType] = useState<"rp" | "pct">("rp")
   const [itemDiscounts, setItemDiscounts] = useState<Record<string, string>>({})
   const [payConfig, setPayConfig] = useState<Record<string, string>>({})
   const [copied, setCopied] = useState(false)
@@ -74,16 +76,18 @@ export function CheckoutView() {
 
   const paidAmount = Number(paid.replace(/[^\d]/g, "")) || 0
   const discountRaw = Number(discountInput.replace(/[^\d]/g, "")) || 0
+  const feeRaw = Number(feeInput.replace(/[^\d]/g, "")) || 0
 
   // Diskon per baris item = diskon otomatis (promo) + diskon manual kasir,
-  // dibatasi ≤ subtotal baris (anti nilai negatif).
+  // dibatasi ≤ subtotal baris (anti nilai negatif). Kunci baris = produk+varian.
   const itemDiscTotals = items.map((i) => {
-    const subtotal = i.product.price_sell * i.qty
-    const auto =
-      resolveDiscountAmount(i.product.id, i.product.price_sell, discounts) * i.qty
+    const key = cartKey(i)
+    const price = priceOf(i)
+    const subtotal = price * i.qty
+    const auto = resolveDiscountAmount(i.product.id, price, discounts) * i.qty
     const manual =
-      Number(itemDiscounts[i.product.id]?.replace(/[^\d]/g, "") ?? "") || 0
-    return { id: i.product.id, disc: Math.min(auto + manual, subtotal), auto }
+      Number(itemDiscounts[key]?.replace(/[^\d]/g, "") ?? "") || 0
+    return { key, id: i.product.id, subtotal, disc: Math.min(auto + manual, subtotal), auto }
   })
   const itemDiscTotal = itemDiscTotals.reduce((s, x) => s + x.disc, 0)
 
@@ -92,7 +96,13 @@ export function CheckoutView() {
     discountType === "pct"
       ? Math.round((netBeforeNota * Math.min(discountRaw, 100)) / 100)
       : Math.min(discountRaw, netBeforeNota)
-  const netTotal = Math.max(0, netBeforeNota - discountAmount)
+  // Biaya layanan/pajak: % dihitung dari total setelah diskon nota.
+  const feeBase = Math.max(0, netBeforeNota - discountAmount)
+  const feeAmount =
+    feeType === "pct"
+      ? Math.round((feeBase * Math.min(feeRaw, 100)) / 100)
+      : feeRaw
+  const netTotal = Math.max(0, feeBase + feeAmount)
   const change = paidAmount - netTotal
   const qrisPayload = payConfig.qris_payload ?? ""
   const danaNumber = payConfig.dana_number ?? ""
@@ -117,11 +127,11 @@ export function CheckoutView() {
     setPaid(digits ? Number(digits).toLocaleString("id-ID") : "")
   }
 
-  function handleItemDiscountChange(id: string, value: string) {
+  function handleItemDiscountChange(key: string, value: string) {
     const digits = value.replace(/[^\d]/g, "")
     setItemDiscounts((prev) => ({
       ...prev,
-      [id]: digits ? Number(digits).toLocaleString("id-ID") : "",
+      [key]: digits ? Number(digits).toLocaleString("id-ID") : "",
     }))
   }
 
@@ -153,20 +163,26 @@ export function CheckoutView() {
   async function handleCheckout() {
     setLoading(true)
     setError(null)
-    const payload = items.map((i) => ({
-      product_id: i.product.id,
-      qty: i.qty,
-      price_sell: i.product.price_sell,
-      subtotal: i.product.price_sell * i.qty,
-      discount: itemDiscTotals.find((x) => x.id === i.product.id)?.disc ?? 0,
-    }))
+    const payload = items.map((i) => {
+      const price = priceOf(i)
+      return {
+        product_id: i.product.id,
+        qty: i.qty,
+        price_sell: price,
+        subtotal: price * i.qty,
+        discount: itemDiscTotals.find((x) => x.key === cartKey(i))?.disc ?? 0,
+        variant_id: i.variant?.id ?? null,
+        variant_name: i.variant?.name ?? null,
+      }
+    })
     const dp = method === "utang" ? Math.min(paidAmount, netTotal) : undefined
     const { error: err, id } = await createTransaction(
       payload,
       method,
       customer?.id ?? null,
       dp,
-      discountAmount
+      discountAmount,
+      feeAmount
     )
     setLoading(false)
     if (err) {
@@ -396,15 +412,20 @@ export function CheckoutView() {
           </div>
           <div className="divide-y divide-hairline">
             {items.map((i) => {
-              const line = itemDiscTotals.find((x) => x.id === i.product.id)!
-              const subtotal = i.product.price_sell * i.qty
+              const key = cartKey(i)
+              const price = priceOf(i)
+              const line = itemDiscTotals.find((x) => x.key === key)!
+              const subtotal = price * i.qty
               const net = Math.max(0, subtotal - line.disc)
               return (
-                <div key={i.product.id} className="flex items-center gap-3 px-3 py-3">
+                <div key={key} className="flex items-center gap-3 px-3 py-3">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-ink">{i.product.name}</p>
+                    {i.variant && (
+                      <p className="text-xs text-ink-muted">Varian: {i.variant.name}</p>
+                    )}
                     <p className="text-xs text-ink-muted">
-                      {i.qty} × Rp{i.product.price_sell.toLocaleString("id-ID")}
+                      {i.qty} × Rp{price.toLocaleString("id-ID")}
                     </p>
                     {line.auto > 0 && (
                       <span className="mt-0.5 inline-flex items-center rounded-full bg-accent-orange/10 px-1.5 py-px text-[10px] font-semibold text-accent-orange">
@@ -427,8 +448,8 @@ export function CheckoutView() {
                       inputMode="numeric"
                       placeholder="0"
                       aria-label={`Potongan ${i.product.name}`}
-                      value={itemDiscounts[i.product.id] ?? ""}
-                      onChange={(e) => handleItemDiscountChange(i.product.id, e.target.value)}
+                      value={itemDiscounts[key] ?? ""}
+                      onChange={(e) => handleItemDiscountChange(key, e.target.value)}
                       className="w-full min-w-0 bg-transparent px-1.5 py-1.5 text-right text-sm font-semibold text-ink outline-none placeholder:text-ink-faint"
                     />
                   </div>
@@ -440,7 +461,7 @@ export function CheckoutView() {
 
         <div className="rounded-xl bg-canvas border border-hairline">
           <p className="px-3 pt-3 pb-2 text-xs font-semibold text-ink-muted uppercase tracking-wider">
-            Diskon
+            Diskon & Biaya Layanan
           </p>
           <div className="p-3 pt-0 space-y-3">
             <div className="flex items-center gap-2">
@@ -477,7 +498,44 @@ export function CheckoutView() {
                 />
               </div>
             </div>
-            {(itemDiscTotal > 0 || discountAmount > 0) && (
+            <div className="flex items-center gap-2">
+              <div className="flex overflow-hidden rounded-full border border-hairline">
+                {(["rp", "pct"] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setFeeType(t)}
+                    className={cn(
+                      "px-3.5 py-2 text-sm font-medium transition-colors",
+                      feeType === t
+                        ? "bg-primary/10 text-primary"
+                        : "bg-canvas-soft text-ink-muted"
+                    )}
+                  >
+                    {t === "rp" ? "Rp" : "%"}
+                  </button>
+                ))}
+              </div>
+              <div className="flex-1">
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder={feeType === "pct" ? "0%" : "Biaya (Rp)"}
+                  value={feeInput}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/[^\d]/g, "")
+                    setFeeInput(
+                      digits ? Number(digits).toLocaleString("id-ID") : ""
+                    )
+                  }}
+                  className="text-base font-semibold"
+                />
+              </div>
+            </div>
+            <p className="text-[11px] text-ink-faint">
+              Biaya layanan/pajak persen dihitung dari total setelah diskon.
+            </p>
+            {(itemDiscTotal > 0 || discountAmount > 0 || feeAmount > 0) && (
               <>
                 {itemDiscTotal > 0 && (
                   <div className="flex items-center justify-between text-sm">
@@ -492,6 +550,14 @@ export function CheckoutView() {
                     <span className="text-ink-muted">Diskon</span>
                     <span className="font-semibold text-accent-green">
                       -Rp{discountAmount.toLocaleString("id-ID")}
+                    </span>
+                  </div>
+                )}
+                {feeAmount > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-ink-muted">Biaya Layanan</span>
+                    <span className="font-semibold text-ink">
+                      +Rp{feeAmount.toLocaleString("id-ID")}
                     </span>
                   </div>
                 )}

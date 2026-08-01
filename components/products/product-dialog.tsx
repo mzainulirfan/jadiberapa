@@ -20,9 +20,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { createProduct, updateProduct, uploadProductImage } from "@/lib/actions/products"
-import { getCategories } from "@/lib/db/queries"
+import { getCategories, getProductVariantsByProduct } from "@/lib/db/queries"
 import type { BxCategory, BxProduct } from "./types"
-import { Trash, X, Camera } from "@/components/ui/icons"
+import { Trash, X, Camera, Plus } from "@/components/ui/icons"
 import { toast } from "sonner"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
 import { BarcodeScanner } from "@/components/cashier/barcode-scanner"
@@ -39,6 +39,13 @@ type Props = {
   open?: boolean
   onOpenChange?: (v: boolean) => void
   initialBarcode?: string
+}
+
+type VariantDraft = {
+  name: string
+  sku: string
+  price_buy: string
+  price_sell: string
 }
 
 export function ProductDialog({
@@ -71,6 +78,7 @@ export function ProductDialog({
   const [priceSell, setPriceSell] = useState(product?.price_sell ? String(product.price_sell) : "")
   const [dirty, setDirty] = useState(false)
   const [discardOpen, setDiscardOpen] = useState(false)
+  const [variants, setVariants] = useState<VariantDraft[]>([])
   const [fieldErrors, setFieldErrors] = useState<{ name?: string; price_sell?: string }>({})
   const action = product ? updateProduct.bind(null, product.id) : createProduct
   const submittedRef = useRef(false)
@@ -106,6 +114,24 @@ export function ProductDialog({
     // eslint-disable-next-line react-hooks/set-state-in-effect -- sinkron nilai awal barcode saat drawer dibuka
     setBarcode(initialBarcode ?? product?.barcode ?? "")
   }, [open, initialBarcode, product])
+
+  useEffect(() => {
+    if (!open) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- muat varian saat mengedit
+    setVariants([])
+    if (product?.id) {
+      getProductVariantsByProduct(product.id).then((vs) => {
+        setVariants(
+          vs.map((x) => ({
+            name: x.name,
+            sku: x.sku ?? "",
+            price_buy: x.price_buy ? String(x.price_buy) : "",
+            price_sell: x.price_sell ? String(x.price_sell) : "",
+          }))
+        )
+      })
+    }
+  }, [open, product])
 
   useEffect(() => {
     if (state?.error === null && !pending && submittedRef.current) {
@@ -174,6 +200,30 @@ export function ProductDialog({
   const marginRp = sell - buy
   const marginPct = buy > 0 ? (marginRp / buy) * 100 : null
 
+  function updateVariant(idx: number, patch: Partial<VariantDraft>) {
+    setVariants((prev) => prev.map((v, i) => (i === idx ? { ...v, ...patch } : v)))
+    setDirty(true)
+  }
+
+  function removeVariant(idx: number) {
+    setVariants((prev) => prev.filter((_, i) => i !== idx))
+    setDirty(true)
+  }
+
+  function addVariant() {
+    setVariants((prev) => [...prev, { name: "", sku: "", price_buy: "", price_sell: "" }])
+    setDirty(true)
+  }
+
+  const variantsJson = JSON.stringify(
+    variants.map((v) => ({
+      name: v.name.trim(),
+      sku: v.sku.trim() || null,
+      price_buy: Number(v.price_buy) || 0,
+      price_sell: Number(v.price_sell) || 0,
+    }))
+  )
+
   return (
     <>
     <Drawer
@@ -222,6 +272,7 @@ export function ProductDialog({
         >
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
             <input type="hidden" name="image_url" value={imageUrl} />
+            <input type="hidden" name="variants" value={variantsJson} />
             <div className="rounded-xl bg-canvas-soft p-3 space-y-3">
               <p className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Gambar</p>
               <div className="flex items-center gap-3">
@@ -292,6 +343,11 @@ export function ProductDialog({
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label htmlFor="unit" className="text-xs text-ink-muted mb-1 block">Satuan</label>
+                <Input id="unit" name="unit" placeholder="pcs, lusin, kg, liter..." defaultValue={product?.unit ?? "pcs"} />
+                <p className="mt-1 text-[11px] text-ink-faint">Ditampilkan di kasir & struk. Kosongkan untuk default “pcs”.</p>
               </div>
               <label className="flex items-center justify-between rounded-lg border border-hairline bg-canvas px-3 py-2.5">
                 <span className="flex-1">
@@ -385,6 +441,68 @@ export function ProductDialog({
                 </div>
               </div>
               <p className="text-[11px] text-ink-faint">Peringatan “stok menipis” muncul saat stok ≤ stok minimum.</p>
+            </div>
+
+            <div className="rounded-xl bg-canvas-soft p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Varian</p>
+                <button
+                  type="button"
+                  onClick={addVariant}
+                  className="flex items-center gap-1 text-xs font-medium text-primary active:opacity-70"
+                >
+                  <Plus className="size-3.5" /> Tambah Varian
+                </button>
+              </div>
+              <p className="text-[11px] text-ink-faint">
+                Opsional. Jika ada varian, kasir meminta memilih varian saat menambahkan barang.
+                Stok tetap dihitung per barang.
+              </p>
+              {variants.length === 0 ? (
+                <p className="text-xs text-ink-muted">Belum ada varian.</p>
+              ) : (
+                <div className="space-y-2">
+                  {variants.map((v, idx) => (
+                    <div key={idx} className="rounded-lg border border-hairline bg-canvas p-2.5 space-y-2">
+                      <div className="flex gap-2">
+                        <Input
+                          className="flex-1"
+                          placeholder="Nama varian (mis. Ukuran M)"
+                          value={v.name}
+                          onChange={(e) => updateVariant(idx, { name: e.target.value })}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeVariant(idx)}
+                          aria-label="Hapus varian"
+                          className="flex size-8 shrink-0 items-center justify-center rounded-lg text-ink-muted active:bg-canvas-soft"
+                        >
+                          <Trash className="size-4" />
+                        </button>
+                      </div>
+                      <Input
+                        placeholder="SKU (opsional)"
+                        value={v.sku}
+                        onChange={(e) => updateVariant(idx, { sku: e.target.value })}
+                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input
+                          placeholder="Harga beli"
+                          inputMode="numeric"
+                          value={formatThousands(v.price_buy)}
+                          onChange={(e) => updateVariant(idx, { price_buy: onlyDigits(e.target.value) })}
+                        />
+                        <Input
+                          placeholder="Harga jual"
+                          inputMode="numeric"
+                          value={formatThousands(v.price_sell)}
+                          onChange={(e) => updateVariant(idx, { price_sell: onlyDigits(e.target.value) })}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="rounded-xl bg-canvas-soft p-3 space-y-3">

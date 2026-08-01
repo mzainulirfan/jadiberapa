@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import type { BxProduct } from "@/components/products/types"
+import type { BxProduct, BxVariant } from "@/components/products/types"
 import { getCart, saveCart, watchCart } from "@/lib/db/cart"
 import {
   getDiscounts,
@@ -12,14 +12,26 @@ import {
 
 export type CartItem = {
   product: BxProduct
+  variant?: BxVariant
   qty: number
+}
+
+// Kunci identitas baris keranjang: produk + varian. Produk yang sama dengan
+// varian berbeda dihitung sebagai baris terpisah.
+export function cartKey(i: { product: BxProduct; variant?: BxVariant | null }) {
+  return `${i.product.id}::${i.variant?.id ?? ""}`
+}
+
+// Harga efektif baris: harga varian jika ada, kalau tidak harga produk.
+export function priceOf(i: CartItem) {
+  return i.variant?.price_sell ?? i.product.price_sell
 }
 
 type CartContextValue = {
   items: CartItem[]
-  addItem: (product: BxProduct) => void
-  updateQty: (productId: string, qty: number) => void
-  removeItem: (productId: string) => void
+  addItem: (product: BxProduct, variant?: BxVariant | null) => void
+  updateQty: (key: string, qty: number) => void
+  removeItem: (key: string) => void
   clearCart: () => void
   total: number
   netTotal: number
@@ -30,10 +42,10 @@ type CartContextValue = {
 
 const CartContext = React.createContext<CartContextValue | null>(null)
 
-// Signatur kanonik keranjang: hanya id produk + qty, urutan-independen.
+// Signatur kanonik keranjang: hanya id produk + varian + qty, urutan-independen.
 // jsonb menyusun ulang urutan key, jadi JSON.stringify tidak andal untuk pembandingan.
 function cartSig(items: CartItem[]) {
-  return items.map((i) => `${i.product.id}:${i.qty}`).join("|")
+  return items.map((i) => `${i.product.id}:${i.variant?.id ?? ""}:${i.qty}`).join("|")
 }
 
 // timestamptz bisa diserialkan beda format (offset/precision) antara yang kita
@@ -122,49 +134,49 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(t)
   }, [items])
 
-  const addItem = React.useCallback((product: BxProduct) => {
+  const addItem = React.useCallback((product: BxProduct, variant?: BxVariant | null) => {
     setItems((prev) => {
-      const existing = prev.find((i) => i.product.id === product.id)
+      const key = cartKey({ product, variant })
+      const existing = prev.find((i) => cartKey(i) === key)
       if (existing) {
         return prev.map((i) =>
-          i.product.id === product.id
+          cartKey(i) === key
             ? { ...i, qty: Math.min(i.qty + 1, i.product.stock) }
             : i
         )
       }
-      return [...prev, { product, qty: 1 }]
+      return [...prev, { product, variant: variant || undefined, qty: 1 }]
     })
   }, [])
 
-  const updateQty = React.useCallback((productId: string, qty: number) => {
+  const updateQty = React.useCallback((key: string, qty: number) => {
     setItems((prev) =>
       qty <= 0
-        ? prev.filter((i) => i.product.id !== productId)
+        ? prev.filter((i) => cartKey(i) !== key)
         : prev.map((i) =>
-            i.product.id === productId
-              ? { ...i, qty: Math.min(qty, i.product.stock) }
-              : i
+            cartKey(i) === key ? { ...i, qty: Math.min(qty, i.product.stock) } : i
           )
     )
   }, [])
 
-  const removeItem = React.useCallback((productId: string) => {
-    setItems((prev) => prev.filter((i) => i.product.id !== productId))
+  const removeItem = React.useCallback((key: string) => {
+    setItems((prev) => prev.filter((i) => cartKey(i) !== key))
   }, [])
 
   const clearCart = React.useCallback(() => {
     setItems([])
   }, [])
 
-  const total = items.reduce((sum, i) => sum + i.product.price_sell * i.qty, 0)
+  const total = items.reduce((sum, i) => sum + priceOf(i) * i.qty, 0)
   const count = items.reduce((sum, i) => sum + i.qty, 0)
 
-  // Total NETO: harga jual dikurangi diskon otomatis (per unit) per baris.
+  // Total NETO: harga jual (varian jika ada) dikurangi diskon otomatis per unit.
   const netTotal = React.useMemo(
     () =>
       items.reduce((sum, i) => {
-        const unitDisc = resolveDiscountAmount(i.product.id, i.product.price_sell, discounts)
-        return sum + (i.product.price_sell - unitDisc) * i.qty
+        const price = priceOf(i)
+        const unitDisc = resolveDiscountAmount(i.product.id, price, discounts)
+        return sum + (price - unitDisc) * i.qty
       }, 0),
     [items, discounts]
   )
