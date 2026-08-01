@@ -29,6 +29,7 @@ import {
   getProducts,
   getCategories,
   getInventorySummary,
+  getProductVariantsByProduct,
   resolveDiscountAmount,
 } from "@/lib/db/queries"
 import {
@@ -40,7 +41,7 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { id as localeId } from "date-fns/locale"
-import type { BxProduct, BxCategory } from "./types"
+import type { BxProduct, BxCategory, BxVariant } from "./types"
 import { Barcode, barcodeSvgString } from "@/components/ui/barcode"
 import { BarcodeScanner } from "@/components/cashier/barcode-scanner"
 import { useCart } from "@/components/cart/cart-provider"
@@ -162,6 +163,10 @@ export function ProductList() {
   const [scanOpen, setScanOpen] = useState(false)
   const [addBarcode, setAddBarcode] = useState<string | null>(null)
   const [summary, setSummary] = useState<{ count: number; stockValue: number; lowStock: number } | null>(null)
+  const [variants, setVariants] = useState<BxVariant[]>([])
+  // Varian di-render hanya jika cocok dengan produk yang sedang dibuka, agar
+  // tidak tampil data varian produk lama saat drawer baru saja berpindah.
+  const [variantsProductId, setVariantsProductId] = useState<string | null>(null)
 
   const discountOf = (p: BxProduct) => resolveDiscountAmount(p.id, p.price_sell, discounts)
 
@@ -176,6 +181,14 @@ export function ProductList() {
   useEffect(() => {
     getInventorySummary().then(setSummary)
   }, [])
+
+  useEffect(() => {
+    if (!selected) return
+    getProductVariantsByProduct(selected.id).then((data) => {
+      setVariants(data)
+      setVariantsProductId(selected.id)
+    })
+  }, [selected])
 
   useEffect(() => {
     const v = localStorage.getItem("products_view")
@@ -689,9 +702,29 @@ export function ProductList() {
                   </div>
                 </div>
 
-                <p className="text-2xl font-bold text-primary">
-                  Rp{selected.price_sell.toLocaleString()}
-                </p>
+                {(() => {
+                  const disc = discountOf(selected)
+                  const net = selected.price_sell - disc
+                  return (
+                    <div>
+                      <div className="flex items-baseline gap-2">
+                        <p className="text-2xl font-bold text-primary">
+                          Rp{net.toLocaleString()}
+                        </p>
+                        {disc > 0 && (
+                          <span className="text-sm text-ink-faint line-through">
+                            Rp{selected.price_sell.toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                      {disc > 0 && (
+                        <p className="mt-1 text-xs font-semibold text-accent-orange">
+                          Diskon aktif -Rp{disc.toLocaleString("id-ID")}
+                        </p>
+                      )}
+                    </div>
+                  )
+                })()}
 
                 <div className="rounded-xl bg-canvas-soft p-3 space-y-1.5 text-sm">
                   <div className="flex justify-between">
@@ -725,6 +758,24 @@ export function ProductList() {
                     </span>
                   </div>
                 </div>
+
+                {variantsProductId === selected.id && variants.length > 0 && (
+                  <div className="rounded-xl bg-canvas-soft p-3">
+                    <p className="mb-2 text-xs font-semibold text-ink-muted uppercase tracking-wider">
+                      Varian
+                    </p>
+                    <div className="space-y-1.5">
+                      {variants.map((v) => (
+                        <div key={v.id} className="flex items-center justify-between gap-2 text-sm">
+                          <span className="min-w-0 truncate text-ink">{v.name}</span>
+                          <span className="shrink-0 font-medium text-ink">
+                            Rp{v.price_sell.toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {selected.barcode && (
                   <div className="flex flex-col items-center gap-2 rounded-xl border border-hairline bg-canvas p-3">

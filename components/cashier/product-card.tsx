@@ -1,6 +1,6 @@
 "use client"
 
-import { Package } from "@/components/ui/icons"
+import { Package, Plus } from "@/components/ui/icons"
 import { cn } from "@/lib/utils"
 import type { BxProduct } from "@/components/products/types"
 
@@ -111,63 +111,69 @@ export function ProductRow({
   const hasDisc = discount > 0
   const net = p.price_sell - discount
   return (
-    <button
-      type="button"
-      onClick={onAdd}
-      disabled={out}
+    <div
       className={cn(
-        "flex w-full items-center gap-3 rounded-xl border border-hairline bg-canvas p-2.5 text-left transition-colors",
-        out ? "opacity-40" : "active:border-primary/40"
+        "flex w-full items-center gap-2 rounded-xl border border-hairline bg-canvas p-2.5",
+        out && "opacity-40"
       )}
     >
-      <div className="relative size-11 shrink-0">
-        <div className="size-11 overflow-hidden rounded-lg bg-canvas-soft">
-          {p.image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={p.image_url} alt={p.name} className="size-full object-cover" loading="lazy" />
-          ) : (
-            <div className="flex size-full items-center justify-center text-ink-faint">
-              <Package className="size-5" />
-            </div>
-          )}
-        </div>
-        {hasDisc && (
-          <span className="absolute -left-1 -top-1 rounded-full bg-accent-orange px-1.5 py-px text-[9px] font-semibold text-white">
-            -Rp{discount.toLocaleString("id-ID")}
-          </span>
-        )}
-        {qty > 0 && (
-          <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-            {qty}
-          </span>
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-ink">{p.name}</p>
-        <p className="truncate text-xs text-ink-muted">
-          {hasVariants && (
-            <span className="font-medium text-primary">Varian</span>
-          )}
-          {hasVariants && p.categories?.name ? " · " : ""}
-          {p.categories?.name ?? "Tanpa kategori"}
-          {p.unit && p.unit !== "pcs" ? ` · ${p.unit}` : ""}
-        </p>
-      </div>
-      <div className="shrink-0 text-right">
-        <div className="flex items-baseline justify-end gap-1">
-          <p className="text-sm font-semibold text-primary">Rp{hasDisc ? net : p.price_sell}</p>
-          {hasDisc && (
-            <span className="text-[11px] text-ink-faint line-through">
-              Rp{p.price_sell.toLocaleString()}
+      <button
+        type="button"
+        onClick={onAdd}
+        disabled={out}
+        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+      >
+        <div className="relative size-11 shrink-0">
+          <div className="size-11 overflow-hidden rounded-lg bg-canvas-soft">
+            {p.image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={p.image_url} alt={p.name} className="size-full object-cover" loading="lazy" />
+            ) : (
+              <div className="flex size-full items-center justify-center text-ink-faint">
+                <Package className="size-5" />
+              </div>
+            )}
+          </div>
+          {qty > 0 && (
+            <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+              {qty}
             </span>
           )}
         </div>
-        {out ? (
-          <span className="text-[11px] font-semibold text-destructive">Habis</span>
-        ) : (
-          p.stock <= 5 && <span className="text-[11px] font-medium text-accent-orange">Stok {p.stock}</span>
-        )}
-      </div>
-    </button>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-ink">{p.name}</p>
+          <p className="truncate text-xs text-ink-muted">
+            {hasVariants && (
+              <span className="font-medium text-primary">Varian</span>
+            )}
+            {hasVariants && p.categories?.name ? " · " : ""}
+            {p.categories?.name ?? "Tanpa kategori"}
+            {p.unit && p.unit !== "pcs" ? ` · ${p.unit}` : ""}
+          </p>
+          <div className="flex items-baseline gap-1">
+            <p className="text-sm font-semibold text-primary">Rp{hasDisc ? net : p.price_sell}</p>
+            {hasDisc && (
+              <span className="text-[11px] text-ink-faint line-through">
+                Rp{p.price_sell.toLocaleString()}
+              </span>
+            )}
+          </div>
+          {out ? (
+            <p className="text-[11px] font-semibold text-destructive">Habis</p>
+          ) : (
+            p.stock <= 5 && <p className="text-[11px] font-medium text-accent-orange">Stok {p.stock}</p>
+          )}
+        </div>
+      </button>
+      <button
+        type="button"
+        onClick={onAdd}
+        disabled={out}
+        aria-label={`Tambah ${p.name} ke keranjang`}
+        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground active:bg-primary-active disabled:opacity-40"
+      >
+        <Plus className="size-5" />
+      </button>
+    </div>
   )
 }
