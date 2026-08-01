@@ -195,6 +195,22 @@ const Tag = forwardRef<SVGSVGElement, React.SVGProps<SVGSVGElement>>(
 )
 Tag.displayName = "Tag"
 
+const Star = forwardRef<SVGSVGElement, React.SVGProps<SVGSVGElement>>(
+  ({ className, ...props }, ref) => (
+    <svg
+      ref={ref}
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+      {...props}
+      dangerouslySetInnerHTML={{ __html: "<path d=\"M12 2l2.92 6.26 6.86.72-5.18 4.55 1.5 6.73L12 16.56 5.9 20.26l1.5-6.73L2.22 8.98l6.86-.72z\"/>" }}
+    />
+  )
+)
+Star.displayName = "Star"
+
 const Receipt = forwardRef<SVGSVGElement, React.SVGProps<SVGSVGElement>>(
   ({ className, ...props }, ref) => (
     <svg
@@ -732,6 +748,7 @@ export {
   Check,
   X,
   Tag,
+  Star,
   Receipt,
   Dollar,
   TrendingUp,

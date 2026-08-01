@@ -25,7 +25,7 @@ import {
   type BxPayment,
 } from "@/lib/db/queries"
 import { recordPayment } from "@/lib/actions/transactions"
-import { Printer, Share, X, Receipt } from "@/components/ui/icons"
+import { Printer, Share, X, Receipt, Copy } from "@/components/ui/icons"
 import { Barcode, barcodeSvgString } from "@/components/ui/barcode"
 import { isBluetoothPrintSupported, printReceiptBluetooth } from "@/lib/bluetooth-printer"
 
@@ -165,6 +165,7 @@ function StrukSheet({
   settings,
   onPrint,
   onShare,
+  onCopyLink,
   onBluetooth,
   bluetoothSupported,
   bluetoothBusy,
@@ -173,6 +174,7 @@ function StrukSheet({
   settings: Record<string, string>
   onPrint: () => void
   onShare: () => void
+  onCopyLink: () => void
   onBluetooth: () => void
   bluetoothSupported: boolean
   bluetoothBusy: boolean
@@ -269,6 +271,14 @@ function StrukSheet({
         </div>
 
         <div className="flex shrink-0 flex-col gap-2 border-t border-hairline p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <Button
+            variant="outline"
+            className="w-full rounded-full gap-1.5"
+            onClick={onCopyLink}
+          >
+            <Copy className="size-4" />
+            Salin Link Struk
+          </Button>
           {bluetoothSupported && (
             <Button
               variant="outline"
@@ -430,6 +440,21 @@ Terima kasih`
       toast.success("Struk disalin")
     } catch {
       toast.error("Gagal menyalin struk")
+    }
+  }
+
+  async function doCopyLink() {
+    if (!tx) return
+    const token = (tx as Transaction & { share_token?: string }).share_token
+    if (!token) {
+      toast.error("Link struk belum tersedia")
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/s/${token}`)
+      toast.success("Link struk disalin")
+    } catch {
+      toast.error("Gagal menyalin link")
     }
   }
 
@@ -731,6 +756,7 @@ Terima kasih`
             settings={settings}
             onPrint={doPrint}
             onShare={doShare}
+            onCopyLink={doCopyLink}
             onBluetooth={doBluetooth}
             bluetoothSupported={btSupported}
             bluetoothBusy={btBusy}

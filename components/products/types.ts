@@ -6,6 +6,7 @@ export type BxProduct = {
   price_sell: number
   stock: number
   min_stock: number
+  is_favorite: boolean
   sku: string | null
   barcode: string | null
   image_url: string | null

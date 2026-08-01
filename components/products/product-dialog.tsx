@@ -64,6 +64,7 @@ export function ProductDialog({
   const [photoOpen, setPhotoOpen] = useState(false)
   const [categories, setCategories] = useState<BxCategory[]>([])
   const [categoryId, setCategoryId] = useState(product?.category_id ?? "")
+  const [fav, setFav] = useState(product?.is_favorite ?? false)
   const [imageUrl, setImageUrl] = useState("")
   const [uploading, setUploading] = useState(false)
   const [priceBuy, setPriceBuy] = useState(product?.price_buy ? String(product.price_buy) : "")
@@ -183,6 +184,7 @@ export function ProductDialog({
           setOpen(true)
           setImageUrl(product?.image_url ?? "")
           setCategoryId(product?.category_id ?? "")
+          setFav(product?.is_favorite ?? false)
           setPriceBuy(product?.price_buy ? String(product.price_buy) : "")
           setPriceSell(product?.price_sell ? String(product.price_sell) : "")
           setDirty(false)
@@ -291,6 +293,35 @@ export function ProductDialog({
                   ))}
                 </select>
               </div>
+              <label className="flex items-center justify-between rounded-lg border border-hairline bg-canvas px-3 py-2.5">
+                <span className="flex-1">
+                  <span className="block text-sm font-medium text-ink">Barang Favorit</span>
+                  <span className="block text-[11px] text-ink-faint">Tampil di kasir untuk tambah cepat</span>
+                </span>
+                <span
+                  role="switch"
+                  aria-checked={fav}
+                  className={cn(
+                    "relative h-6 w-11 shrink-0 rounded-full transition-colors",
+                    fav ? "bg-primary" : "bg-ink/20"
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    name="is_favorite"
+                    value="1"
+                    checked={fav}
+                    onChange={(e) => setFav(e.target.checked)}
+                    className="peer sr-only"
+                  />
+                  <span
+                    className={cn(
+                      "pointer-events-none absolute left-0.5 top-0.5 size-5 rounded-full bg-white shadow transition-transform",
+                      fav && "translate-x-5"
+                    )}
+                  />
+                </span>
+              </label>
             </div>
 
             <div className="rounded-xl bg-canvas-soft p-3 space-y-3">

@@ -31,7 +31,8 @@ export async function updateSession(request: NextRequest) {
 
   const isPublicPage =
     request.nextUrl.pathname === "/login" ||
-    request.nextUrl.pathname === "/register"
+    request.nextUrl.pathname === "/register" ||
+    request.nextUrl.pathname.startsWith("/s/")
   const isAuthPage = request.nextUrl.pathname.startsWith("/_next") || request.nextUrl.pathname === "/"
 
   if (!user && !isPublicPage && !isAuthPage) {

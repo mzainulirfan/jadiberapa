@@ -11,7 +11,7 @@ import { ProductCard, ProductRow } from "./product-card"
 import { BarcodeScanner } from "./barcode-scanner"
 import { ProductDialog } from "@/components/products/product-dialog"
 import { toast } from "sonner"
-import { Search, Filter, Barcode, X, Check, CartAlt, Grid, List } from "@/components/ui/icons"
+import { Search, Filter, Barcode, X, Check, CartAlt, Grid, List, Star } from "@/components/ui/icons"
 import {
   Popover,
   PopoverContent,
@@ -26,6 +26,7 @@ export function CashierPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [catIds, setCatIds] = useState<string[]>([])
+  const [favOnly, setFavOnly] = useState(false)
   const [catOpen, setCatOpen] = useState(false)
   const [view, setView] = useState<"grid" | "list">("grid")
   const [scanOpen, setScanOpen] = useState(false)
@@ -85,7 +86,7 @@ export function CashierPage() {
     }
   }
 
-  const isIdle = !search.trim() && catIds.length === 0
+  const isIdle = !search.trim() && catIds.length === 0 && !favOnly
 
   function toggleCat(id: string) {
     setCatIds((prev) =>
@@ -109,12 +110,13 @@ export function CashierPage() {
 
   useEffect(() => {
     let cancelled = false
-    const idle = !search.trim() && catIds.length === 0
+    const idle = !search.trim() && catIds.length === 0 && !favOnly
     const t = setTimeout(async () => {
       setLoading(true)
       const { data } = await getProducts({
         search: idle ? undefined : search.trim() || undefined,
         categoryIds: idle ? undefined : catIds.length > 0 ? catIds : undefined,
+        isFavorite: favOnly ? true : undefined,
         limit: idle ? 8 : undefined,
       })
       if (!cancelled) {
@@ -126,7 +128,7 @@ export function CashierPage() {
       cancelled = true
       clearTimeout(t)
     }
-  }, [search, catIds, reloadKey])
+  }, [search, catIds, favOnly, reloadKey])
 
   const activeCats = categories.filter((c) => catIds.includes(c.id))
 
@@ -232,6 +234,19 @@ export function CashierPage() {
             className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-hairline bg-canvas-soft text-ink-muted transition-colors active:bg-canvas"
           >
             {view === "grid" ? <List className="size-4" /> : <Grid className="size-4" />}
+          </button>
+          <button
+            type="button"
+            onClick={() => setFavOnly((v) => !v)}
+            aria-label="Tampilkan barang favorit"
+            className={cn(
+              "flex size-8 shrink-0 items-center justify-center rounded-lg border transition-colors",
+              favOnly
+                ? "border-accent-orange bg-accent-orange/10 text-accent-orange"
+                : "border-hairline bg-canvas-soft text-ink-muted"
+            )}
+          >
+            <Star className="size-4" />
           </button>
           <Popover open={catOpen} onOpenChange={setCatOpen}>
             <PopoverTrigger
