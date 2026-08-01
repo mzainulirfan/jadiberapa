@@ -10,15 +10,16 @@ import { getStoreByCode } from "@/lib/db/queries"
 
 type Mode = "owner" | "kasir"
 
-export function RegisterForm() {
+export function RegisterForm({ initialCode }: { initialCode?: string }) {
   const router = useRouter()
   const supabase = createClient()
-  const [mode, setMode] = useState<Mode>("owner")
+  const invited = Boolean(initialCode?.trim())
+  const [mode, setMode] = useState<Mode>(invited ? "kasir" : "owner")
   const [username, setUsername] = useState("")
   const [passcode, setPasscode] = useState("")
   const [showPass, setShowPass] = useState(false)
   const [storeName, setStoreName] = useState("")
-  const [storeCode, setStoreCode] = useState("")
+  const [storeCode, setStoreCode] = useState(initialCode ?? "")
   const [foundStore, setFoundStore] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -90,6 +91,13 @@ export function RegisterForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {invited && (
+        <div className="rounded-xl border border-hairline bg-canvas p-3 text-sm text-ink-muted">
+          Anda diundang bergabung sebagai <span className="font-semibold text-ink">kasir</span>. Kode
+          toko sudah terisi — lengkapi akun Anda di bawah.
+        </div>
+      )}
+
       <div className="flex rounded-full bg-canvas-soft p-1">
         <button
           type="button"
