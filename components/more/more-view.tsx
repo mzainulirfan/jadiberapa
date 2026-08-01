@@ -225,22 +225,23 @@ export function MoreView() {
                     </Link>
                   )
                 })}
-                {g.title === "Aplikasi" && (
-                  <button
-                    type="button"
-                    onClick={() => setConfirmLogout(true)}
-                    className="flex w-full items-center gap-3 p-3.5 text-left transition-colors active:bg-canvas-soft"
-                  >
-                    <LogOut className="size-5 shrink-0 text-destructive" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-destructive">Keluar</p>
-                      <p className="text-xs text-ink-faint">Keluar dari akun ini</p>
-                    </div>
-                  </button>
-                )}
               </div>
             </div>
           ))}
+
+          <div className="divide-y divide-hairline rounded-xl border border-hairline bg-canvas">
+            <button
+              type="button"
+              onClick={() => setConfirmLogout(true)}
+              className="flex w-full items-center gap-3 p-3.5 text-left transition-colors active:bg-canvas-soft"
+            >
+              <LogOut className="size-5 shrink-0 text-destructive" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-destructive">Keluar</p>
+                <p className="text-xs text-ink-faint">Keluar dari akun ini</p>
+              </div>
+            </button>
+          </div>
         </>
       )}
 
