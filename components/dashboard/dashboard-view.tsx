@@ -27,6 +27,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/lib/hooks/use-auth"
+import { useRole } from "@/lib/hooks/use-role"
 
 const greeting = (() => {
   const h = new Date().getHours()
@@ -457,6 +459,11 @@ function DashboardContent({ data }: { data: BxDashboardSummary }) {
 }
 
 export function DashboardView() {
+  const { user } = useAuth()
+  const role = useRole()
+  const username = user?.email?.split("@")[0] ?? ""
+  const name = username.charAt(0).toUpperCase() + username.slice(1)
+  const roleLabel = role === "owner" ? "Pemilik" : role === "kasir" ? "Kasir" : null
   const [period, setPeriod] = useState<BxPeriod>("today")
   const [data, setData] = useState<BxDashboardSummary | null>(null)
   const [loading, setLoading] = useState(true)
@@ -507,8 +514,18 @@ export function DashboardView() {
     <div className="space-y-4 p-4">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-lg font-bold tracking-tight text-ink">{greeting} 👋</p>
-          <p className="truncate text-sm text-ink-muted">{dateLabel}</p>
+          <p className="truncate text-lg font-bold tracking-tight text-ink">
+            {greeting}
+            {name ? `, ${name}` : ""} 👋
+          </p>
+          <div className="flex items-center gap-1.5">
+            <p className="truncate text-sm text-ink-muted">{dateLabel}</p>
+            {roleLabel && (
+              <span className="shrink-0 rounded-full bg-canvas-soft px-2 py-0.5 text-[11px] font-semibold text-ink-muted">
+                {roleLabel}
+              </span>
+            )}
+          </div>
         </div>
         <PeriodDropdown value={period} onChange={changePeriod} />
       </div>
