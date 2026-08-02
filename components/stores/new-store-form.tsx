@@ -9,6 +9,7 @@ import { getStoreTemplate } from "@/lib/templates"
 import { storeTemplateOptions } from "@/lib/templates/options"
 import { invalidateAllDataCaches } from "@/lib/db/queries"
 import { createStoreForCurrentUser } from "@/lib/actions/stores"
+import { createClient } from "@/lib/supabase/client"
 
 export function NewStoreForm() {
   const [storeName, setStoreName] = useState("")
@@ -18,6 +19,11 @@ export function NewStoreForm() {
 
   const selectedTemplate = getStoreTemplate(templateKey)
   const selectedOption = storeTemplateOptions.find((option) => option.key === templateKey)
+
+  async function handleLogout() {
+    await createClient().auth.signOut()
+    window.location.assign("/login")
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -101,6 +107,16 @@ export function NewStoreForm() {
       <Button type="submit" className="w-full rounded-full" disabled={loading}>
         {loading ? "Membuat toko..." : "Buat Toko"}
       </Button>
+
+      <div className="text-center">
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="text-xs font-medium text-ink-faint transition-colors hover:text-ink"
+        >
+          Keluar dari akun
+        </button>
+      </div>
     </form>
   )
 }
