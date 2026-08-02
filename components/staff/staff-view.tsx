@@ -20,6 +20,7 @@ import {
   getStoreMembers,
   getCurrentStoreCode,
   inviteKasir,
+  approveMember,
   removeMember,
   type BxStaffMember,
 } from "@/lib/db/queries"
@@ -86,6 +87,7 @@ export function StaffView() {
   const [copied, setCopied] = useState(false)
   const [removeTarget, setRemoveTarget] = useState<BxStaffMember | null>(null)
   const [removing, setRemoving] = useState(false)
+  const [approvingId, setApprovingId] = useState<string | null>(null)
   const [resetTarget, setResetTarget] = useState<BxStaffMember | null>(null)
   const [resetPasscode, setResetPasscode] = useState("")
   const [resetError, setResetError] = useState<string | null>(null)
@@ -160,6 +162,18 @@ export function StaffView() {
     }
     setRemoveTarget(null)
     toast.success("Kasir dihapus dari toko")
+    load()
+  }
+
+  async function handleApprove(member: BxStaffMember) {
+    setApprovingId(member.user_id)
+    const err = await approveMember(member.user_id)
+    setApprovingId(null)
+    if (err) {
+      toast.error(err)
+      return
+    }
+    toast.success(`@${member.username} disetujui`)
     load()
   }
 
@@ -279,32 +293,61 @@ export function StaffView() {
               </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-ink">@{m.username}</p>
-                <span className="rounded-full bg-canvas-soft px-2 py-0.5 text-[11px] text-ink-muted">
-                  {m.role === "owner" ? "Pemilik" : "Kasir"}
-                </span>
+                {m.role === "owner" ? (
+                  <span className="rounded-full bg-canvas-soft px-2 py-0.5 text-[11px] text-ink-muted">
+                    Pemilik
+                  </span>
+                ) : m.approved ? (
+                  <span className="rounded-full bg-canvas-soft px-2 py-0.5 text-[11px] text-ink-muted">
+                    Kasir
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                    Menunggu persetujuan
+                  </span>
+                )}
               </div>
-              {m.role !== "owner" && (
-                <>
-                  <button
-                    onClick={() => {
-                      setResetTarget(m)
-                      setResetPasscode("")
-                      setResetError(null)
-                    }}
-                    aria-label={`Reset passcode ${m.username}`}
-                    className="flex size-8 shrink-0 items-center justify-center rounded-lg text-ink-muted active:bg-canvas-soft"
-                  >
-                    <KeyRound className="size-4" />
-                  </button>
-                  <button
-                    onClick={() => setRemoveTarget(m)}
-                    aria-label={`Hapus ${m.username}`}
-                    className="flex size-8 shrink-0 items-center justify-center rounded-lg text-ink-muted active:bg-canvas-soft"
-                  >
-                    <Trash className="size-4" />
-                  </button>
-                </>
-              )}
+              {m.role !== "owner" &&
+                (m.approved ? (
+                  <>
+                    <button
+                      onClick={() => {
+                        setResetTarget(m)
+                        setResetPasscode("")
+                        setResetError(null)
+                      }}
+                      aria-label={`Reset passcode ${m.username}`}
+                      className="flex size-8 shrink-0 items-center justify-center rounded-lg text-ink-muted active:bg-canvas-soft"
+                    >
+                      <KeyRound className="size-4" />
+                    </button>
+                    <button
+                      onClick={() => setRemoveTarget(m)}
+                      aria-label={`Hapus ${m.username}`}
+                      className="flex size-8 shrink-0 items-center justify-center rounded-lg text-ink-muted active:bg-canvas-soft"
+                    >
+                      <Trash className="size-4" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => handleApprove(m)}
+                      disabled={approvingId === m.user_id}
+                      aria-label={`Setujui ${m.username}`}
+                      className="flex size-8 shrink-0 items-center justify-center rounded-lg text-primary active:bg-primary/10 disabled:opacity-50"
+                    >
+                      <Check className="size-4" />
+                    </button>
+                    <button
+                      onClick={() => setRemoveTarget(m)}
+                      aria-label={`Tolak ${m.username}`}
+                      className="flex size-8 shrink-0 items-center justify-center rounded-lg text-ink-muted active:bg-canvas-soft"
+                    >
+                      <Trash className="size-4" />
+                    </button>
+                  </>
+                ))}
             </div>
           ))}
         </div>

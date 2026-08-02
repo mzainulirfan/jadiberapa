@@ -5,16 +5,18 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
-import { Store } from "@/components/ui/icons"
+import { Store, Refresh } from "@/components/ui/icons"
 
 // Mengunci halaman utama saat user login tapi tidak punya toko aktif.
 // - Owner tanpa toko -> modal pilihan: "Buat Toko" atau "Keluar".
+// - Kasir pending (belum disetujui pemilik) -> layar "Menunggu Persetujuan".
 // - Kasir tanpa toko -> tokonya telah dihapus: beri tahu lalu auto-logout.
-type Status = "loading" | "ready" | "no-store"
+type Status = "loading" | "ready" | "no-store" | "pending"
 
 export function NoStoreGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const [status, setStatus] = useState<Status>("loading")
+  const [retry, setRetry] = useState(0)
 
   useEffect(() => {
     let active = true
@@ -38,7 +40,22 @@ export function NoStoreGuard({ children }: { children: React.ReactNode }) {
         return
       }
 
-      // Tidak ada toko aktif. Bedakan kasir (punya store_code) vs owner.
+      // Belum punya toko aktif. Cek dulu apakah ada permintaan gabung yang pending.
+      const { data: pending } = await supabase
+        .from("store_members")
+        .select("store_id")
+        .eq("user_id", user.id)
+        .eq("approved", false)
+        .limit(1)
+        .maybeSingle()
+      if (!active) return
+
+      if (pending) {
+        setStatus("pending")
+        return
+      }
+
+      // Tidak ada keanggotaan sama sekali. Bedakan kasir (punya store_code) vs owner.
       const isKasir = Boolean(user.user_metadata?.store_code)
       if (isKasir) {
         toast.error("Toko tempat Anda bekerja telah dihapus. Anda akan keluar.")
@@ -54,7 +71,7 @@ export function NoStoreGuard({ children }: { children: React.ReactNode }) {
     return () => {
       active = false
     }
-  }, [router])
+  }, [router, retry])
 
   async function handleLogout() {
     await createClient().auth.signOut()
@@ -62,7 +79,32 @@ export function NoStoreGuard({ children }: { children: React.ReactNode }) {
   }
 
   if (status === "ready") return <>{children}</>
-  if (status !== "no-store") return null
+  if (status !== "no-store" && status !== "pending") return null
+
+  if (status === "pending") {
+    return (
+      <div className="fixed inset-0 z-[70] flex items-center justify-center bg-canvas-soft/95 p-4">
+        <div className="w-full max-w-sm rounded-[20px] border border-hairline bg-canvas p-6 text-center shadow-[0_10px_30px_rgba(0,0,0,0.08)]">
+          <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-amber-500/15 text-amber-600">
+            <Refresh className="size-6" />
+          </span>
+          <h2 className="mt-4 text-lg font-bold tracking-[-0.3px] text-ink">Menunggu Persetujuan</h2>
+          <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">
+            Permintaan Anda bergabung sebagai kasir belum disetujui pemilik toko. Setelah disetujui,
+            Anda bisa langsung masuk. Muat ulang halaman ini sesekali untuk memeriksa statusnya.
+          </p>
+          <div className="mt-5 space-y-2">
+            <Button className="w-full" onClick={() => setRetry((r) => r + 1)}>
+              Muat Ulang
+            </Button>
+            <Button variant="outline" className="w-full" onClick={handleLogout}>
+              Keluar
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-canvas-soft/95 p-4">

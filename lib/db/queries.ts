@@ -252,6 +252,7 @@ export type BxStaffMember = {
   role: "owner" | "kasir"
   username: string
   created_at: string
+  approved: boolean
 }
 
 export async function getStoreMembers(): Promise<{
@@ -265,6 +266,12 @@ export async function getStoreMembers(): Promise<{
 
 export async function inviteKasir(username: string): Promise<string | null> {
   const { data } = await supabase.rpc("invite_kasir", { p_username: username })
+  return (data as { error?: string | null } | null)?.error ?? null
+}
+
+// Setujui kasir yang mendaftar sendiri (via link/kode toko). Pemilik saja.
+export async function approveMember(userId: string): Promise<string | null> {
+  const { data } = await supabase.rpc("approve_member", { p_user_id: userId })
   return (data as { error?: string | null } | null)?.error ?? null
 }
 
