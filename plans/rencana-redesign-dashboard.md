@@ -35,12 +35,11 @@ Urutan Dashboard:
 | # | Seksi |
 | --- | --- |
 | 1 | Sapaan + [onboarding owner baru] |
-| 2 | **Hero Card** ringkas: Penjualan (revenue) + delta saja |
-| 3 | **CTA "Mulai Transaksi"** → `/cashier` |
-| 4 | **Aksi Cepat** (section terpisah, kartu terang) |
-| 5 | **KPI Utama** (4): Laba, Pengeluaran, Transaksi, Produk Terjual |
-| 6 | Grafik Penjualan |
-| 7 | Stok Menipis, Transaksi Terbaru, Produk Terlaris |
+| 2 | **Hero Card** penuh: baris "Penjualan · {periode}" + **tombol Mulai Transaksi** (kanan), revenue + delta, 3 sub-metrik (Laba Bersih, Transaksi, Barang Terjual) |
+| 3 | **Aksi Cepat** (section terpisah, kartu terang) |
+| 4 | **Stat 2×2**: Laba kotor, Pengeluaran, Rata-rata/transaksi, Item/transaksi |
+| 5 | Grafik Penjualan |
+| 6 | Stok Menipis, Transaksi Terbaru, Produk Terlaris |
 
 ## 4. Aksi Cepat — section terpisah
 
@@ -49,20 +48,18 @@ Urutan Dashboard:
   maks 6 (owner) / 4 (kasir). Kosong → teks "Belum ada aksi cepat.".
 - Logika localStorage, preset peran, & `QuickActionsSheet` tidak berubah.
 
-## 5. Perubahan komponen (High — selesai)
+## 5. Perubahan komponen (selesai)
 
 1. **`components/dashboard/dashboard-view.tsx`**
-   - Hero dikurangi: hanya "Penjualan · {periode}" + revenue + delta (sub-metrik
-     & strip QA dihapus dari kartu gelap).
-   - Tambah CTA **Mulai Transaksi** (Link → `/cashier`, primary full-width).
-   - `<QuickActions role={role} />` diletakkan di antara CTA dan KPI.
-   - 2×2 kartu lama (Laba kotor, Rata-rata/transaksi, Item/transaksi) diganti 4
-     KPI: **Laba** (bersih), **Pengeluaran**, **Transaksi**, **Produk Terjual**
-     (ikon aksen: hijau/merah/biru/oranye). Metrik analitis sudah ada di Laporan.
-   - Hapus `HeroStat` & `fmtShort` (tak terpakai).
-2. **`components/dashboard/quick-actions.tsx`**
-   - Tampilan luar dikembalikan jadi kartu terang (section terpisah).
-   - Logika data/sheet tidak berubah.
+   - Hero: baris header = "Penjualan · {periode}" (kiri) + **Mulai Transaksi**
+     (kanan, primary kompak → `/cashier`); revenue + delta; **3 sub-metrik
+     dipulihkan** (Laba Bersih, Transaksi, Barang Terjual) via `HeroStat`.
+   - `QuickActions` tetap section terpisah di antara hero dan stat.
+   - Stat kembali ke **grid 2×2 orisinal** (Laba kotor, Pengeluaran,
+     Rata-rata/transaksi, Item/transaksi) — tanpa duplikasi dengan hero.
+   - Pulihkan `HeroStat` & `fmtShort`.
+2. **`components/dashboard/quick-actions.tsx`** — kartu terang (section
+   terpisah); logika data/sheet tidak berubah.
 3. **Fase lanjut (belum dikerjakan):** greeting ringkas, chip filter menonjol,
    evaluasi bottom nav, white space, copywriting ("Kelola Kasir"→"Kasir" dsb.).
 
@@ -76,9 +73,9 @@ Urutan Dashboard:
 ## 7. Pengujian (checklist)
 
 1. `npm run lint`, `npm run build`, `npm run test` lolos.
-2. Urutan seksi: Hero ringkas → CTA → Aksi Cepat → KPI → Grafik (owner & kasir).
-3. Hero hanya menampilkan Penjualan + delta (tanpa sub-metrik/strip).
-4. Tombol **Mulai Transaksi** menuju `/cashier`.
-5. KPI 4 kartu: Laba, Pengeluaran, Transaksi, Produk Terjual dengan ikon aksen.
-6. Aksi Cepat tampil section terpisah; Atur/toggle/urutkan/reset berfungsi & tersimpan.
-7. Periode dropdown tetap mengontrol hero/KPI/grafik.
+2. Hero: "Penjualan · {periode}" kiri + **Mulai Transaksi** kanan (satu garis),
+   revenue + delta, lalu 3 sub-metrik (Laba Bersih, Transaksi, Barang Terjual).
+3. Tombol **Mulai Transaksi** menuju `/cashier`.
+4. Aksi Cepat tampil section terpisah di bawah hero; Atur/toggle/urutkan/reset berfungsi.
+5. Stat grid 2×2: Laba kotor, Pengeluaran, Rata-rata/transaksi, Item/transaksi.
+6. Periode dropdown tetap mengontrol hero/stat/grafik.

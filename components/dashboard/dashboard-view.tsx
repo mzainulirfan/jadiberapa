@@ -19,6 +19,7 @@ import {
   Dollar,
   AlertTriangle,
   CartAlt,
+  Wallet,
 } from "@/components/ui/icons"
 import {
   DropdownMenu,
@@ -54,6 +55,14 @@ const timeFormat = new Intl.DateTimeFormat("id-ID", {
 })
 
 const fmtRp = (n: number) => `Rp${n.toLocaleString("id-ID")}`
+
+const fmtShort = (n: number) => {
+  const sign = n < 0 ? "-" : ""
+  const a = Math.abs(n)
+  if (a >= 1_000_000) return `${sign}${(a / 1_000_000).toFixed(a % 1_000_000 === 0 ? 0 : 1)}jt`
+  if (a >= 1_000) return `${sign}${Math.round(a / 1_000)}rb`
+  return `${sign}${a}`
+}
 
 const PERIODS: { key: BxPeriod; label: string }[] = [
   { key: "today", label: "Hari Ini" },
@@ -120,6 +129,26 @@ function PeriodDropdown({
         </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>
+  )
+}
+
+function HeroStat({
+  label,
+  value,
+  stat,
+}: {
+  label: string
+  value: string
+  stat: BxStat
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[11px] text-white/50">{label}</p>
+      <p className="mt-0.5 truncate text-sm font-semibold leading-tight text-white">{value}</p>
+      <div className="mt-1 h-[18px]">
+        <DeltaBadge stat={stat} dark />
+      </div>
+    </div>
   )
 }
 
@@ -238,33 +267,39 @@ function DashboardContent({ data, role }: { data: BxDashboardSummary; role: User
   return (
     <div className="space-y-4">
       <div className="rounded-2xl bg-ink p-4 text-white">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-medium text-white/60">Penjualan · {PERIOD_TITLE[period]}</p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="min-w-0 truncate text-sm font-medium text-white/60">
+            Penjualan · {PERIOD_TITLE[period]}
+          </p>
+          <Link
+            href="/cashier"
+            className="flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-colors active:bg-primary-active"
+          >
+            <CartAlt className="size-4" />
+            Mulai Transaksi
+          </Link>
         </div>
-        <p className="mt-1 text-[30px] font-bold leading-none tracking-tight text-white">
+        <p className="mt-2 text-[30px] font-bold leading-none tracking-tight text-white">
           {fmtRp(data.revenue.value)}
         </p>
         <div className="mt-2.5 flex items-center gap-2 text-xs text-white/50">
           <DeltaBadge stat={data.revenue} dark />
           <span>{COMPARE_LABEL[period]}</span>
         </div>
+        <div className="mt-4 grid grid-cols-3 gap-2 border-t border-white/10 pt-3">
+          <HeroStat label="Laba Bersih" value={`Rp${fmtShort(data.profit.value)}`} stat={data.profit} />
+          <HeroStat label="Transaksi" value={String(data.count.value)} stat={data.count} />
+          <HeroStat label="Barang Terjual" value={String(data.items.value)} stat={data.items} />
+        </div>
       </div>
-
-      <Link
-        href="/cashier"
-        className="flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3.5 text-sm font-semibold text-primary-foreground transition-colors active:bg-primary-active"
-      >
-        <CartAlt className="size-5" />
-        Mulai Transaksi
-      </Link>
 
       <QuickActions role={role} />
 
       <div className="grid grid-cols-2 gap-2">
         <StatCard
-          label="Laba"
-          value={fmtRp(data.profit.value)}
-          hint="laba bersih"
+          label="Laba kotor"
+          value={fmtRp(data.grossProfit.value)}
+          hint="sebelum pengeluaran"
           icon={TrendingUp}
           tone="text-accent-green"
         />
@@ -276,14 +311,15 @@ function DashboardContent({ data, role }: { data: BxDashboardSummary; role: User
           tone="text-destructive"
         />
         <StatCard
-          label="Transaksi"
-          value={String(data.count.value)}
-          icon={Receipt}
-          tone="text-accent-sky"
+          label="Rata-rata / transaksi"
+          value={fmtRp(data.avgOrder)}
+          icon={Wallet}
+          tone="text-accent-teal"
         />
         <StatCard
-          label="Produk Terjual"
-          value={String(data.items.value)}
+          label="Item / transaksi"
+          value={data.itemsPerTx.toFixed(1)}
+          hint="rata-rata barang"
           icon={Package}
           tone="text-accent-orange"
         />
