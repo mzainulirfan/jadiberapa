@@ -50,3 +50,20 @@ export async function resetMemberPasscode(userId: string, newPasscode: string) {
   revalidatePath("/staff")
   return { error: null }
 }
+
+// Hapus akun sendiri (user yang sudah tidak punya keanggotaan toko aktif).
+// Memakai service role agar bisa menghapus pengguna dari Supabase Auth.
+export async function deleteAccount() {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user?.id) return { error: "Sesi tidak ditemukan" }
+
+  const admin = createAdminClient()
+  const { error } = await admin.auth.admin.deleteUser(user.id)
+  if (error) return { error: error.message }
+
+  revalidatePath("/", "layout")
+  return { error: null }
+}
