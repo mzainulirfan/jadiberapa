@@ -15,6 +15,15 @@ type AuthContext = {
 
 const AuthContext = createContext<AuthContext | null>(null)
 
+function translateAuthError(message: string): string {
+  const lower = message.toLowerCase()
+  if (lower.includes("invalid login credentials")) return "Username atau passcode salah"
+  if (lower.includes("user not found")) return "Username atau passcode salah"
+  if (lower.includes("email not confirmed")) return "Akun belum dikonfirmasi"
+  if (lower.includes("too many requests")) return "Terlalu banyak percobaan. Tunggu sebentar, lalu coba lagi"
+  return message
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
@@ -43,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email,
       password: passcode,
     })
-    if (error) return error.message
+    if (error) return translateAuthError(error.message)
     router.push("/dashboard")
     return null
   }
@@ -61,7 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email: user.email,
       password: passcode,
     })
-    return error ? error.message : null
+    return error ? translateAuthError(error.message) : null
   }
 
   return (

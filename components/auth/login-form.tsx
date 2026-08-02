@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useAuth } from "@/lib/hooks/use-auth"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -13,6 +13,7 @@ export function LoginForm() {
   const [showPass, setShowPass] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const passcodeRef = useRef<HTMLInputElement>(null)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -25,43 +26,63 @@ export function LoginForm() {
 
     setLoading(true)
     const err = await login(username, passcode)
-    if (err) setError(err)
+    if (err) {
+      setError(err)
+      setPasscode("")
+      passcodeRef.current?.focus()
+    }
     setLoading(false)
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-1.5">
-        <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Akun</p>
+        <label
+          htmlFor="username"
+          className="text-xs font-semibold uppercase tracking-wide text-ink-faint"
+        >
+          Username
+        </label>
         <Input
+          id="username"
           placeholder="Username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           autoComplete="username"
+          autoFocus
           required
         />
       </div>
       <div className="space-y-1.5">
-        <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Passcode</p>
-        <div className="relative">
-        <Input
-          type={showPass ? "text" : "password"}
-          placeholder="Passcode"
-          value={passcode}
-          onChange={(e) => setPasscode(e.target.value)}
-          autoComplete="current-password"
-          maxLength={6}
-          required
-          className="pr-10"
-        />
-        <button
-          type="button"
-          onClick={() => setShowPass((v) => !v)}
-          aria-label={showPass ? "Sembunyikan passcode" : "Tampilkan passcode"}
-          className="absolute inset-y-0 right-1 flex w-9 items-center justify-center text-ink-muted active:text-ink"
+        <label
+          htmlFor="passcode"
+          className="text-xs font-semibold uppercase tracking-wide text-ink-faint"
         >
-          {showPass ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-        </button>
+          Passcode
+        </label>
+        <div className="relative">
+          <Input
+            id="passcode"
+            type={showPass ? "text" : "password"}
+            placeholder="4-6 digit"
+            value={passcode}
+            onChange={(e) => setPasscode(e.target.value)}
+            autoComplete="current-password"
+            inputMode="numeric"
+            minLength={4}
+            maxLength={6}
+            required
+            className="pr-10"
+            ref={passcodeRef}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPass((v) => !v)}
+            aria-label={showPass ? "Sembunyikan passcode" : "Tampilkan passcode"}
+            className="absolute inset-y-0 right-1 flex w-9 items-center justify-center text-ink-muted active:text-ink"
+          >
+            {showPass ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          </button>
         </div>
       </div>
       {error && (
@@ -70,7 +91,7 @@ export function LoginForm() {
         </p>
       )}
       <Button type="submit" className="w-full rounded-full" disabled={loading}>
-        {loading ? "Masuk..." : "Masuk ke Kasir"}
+        {loading ? "Masuk..." : "Masuk"}
       </Button>
     </form>
   )
