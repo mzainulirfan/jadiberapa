@@ -32,6 +32,7 @@ import { useAuth } from "@/lib/hooks/use-auth"
 import { useRole } from "@/lib/hooks/use-role"
 import { TemplateOnboarding } from "@/components/templates/template-onboarding"
 import { WelcomeChecklist } from "@/components/dashboard/welcome-checklist"
+import { QuickActions } from "@/components/dashboard/quick-actions"
 
 const greeting = (() => {
   const h = new Date().getHours()
@@ -549,6 +550,8 @@ export function DashboardView() {
         </div>
         <PeriodDropdown value={period} onChange={changePeriod} />
       </div>
+
+      <QuickActions role={role} />
 
       <TemplateOnboarding enabled={role === "owner"} pendingTemplateKey={pendingTemplateKey} />
 

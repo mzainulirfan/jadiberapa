@@ -27,102 +27,10 @@ import { useRole } from "@/lib/hooks/use-role"
 import { useLock } from "@/components/lock/screen-lock"
 import { ChangePasscodeDialog } from "@/components/auth/change-passcode"
 import { PwaInstallButton } from "@/components/pwa/pwa-install-button"
-import {
-  User as UserIcon,
-  BarChart,
-  Tag,
-  Cog,
-  ChevronRight,
-  LogOut,
-  Wallet,
-  Dollar,
-  Zap,
-  Receipt,
-  ShoppingBag,
-  Check,
-  ChartLine,
-  Package,
-  Lock,
-  KeyRound,
-  HelpCircle,
-  Plus,
-  Refresh,
-} from "@/components/ui/icons"
+import { ChevronRight, LogOut, Check, Lock, KeyRound, Plus, Refresh } from "@/components/ui/icons"
+import { OWNER_GROUPS, KASIR_GROUPS } from "@/lib/quick-actions"
 
 const APP_VERSION = "Saberaha v1.0.0"
-
-type Item = { href: string; label: string; desc: string; icon: React.ComponentType<{ className?: string }> }
-type Group = { title: string; items: Item[] }
-
-// Menu khusus pemilik toko: pengelolaan bisnis + pengaturan aplikasi.
-const OWNER_GROUPS: Group[] = [
-  {
-    title: "Barang & Promo",
-    items: [
-      { href: "/categories", label: "Kategori", desc: "Kelola kategori barang", icon: Tag },
-      { href: "/discounts", label: "Diskon", desc: "Kelola promo & harga diskon", icon: Zap },
-    ],
-  },
-  {
-    title: "Stok & Beli",
-    items: [
-      { href: "/suppliers", label: "Supplier", desc: "Daftar & kelola pemasok", icon: Package },
-      { href: "/purchases", label: "Pembelian", desc: "Nota beli & utang supplier", icon: Receipt },
-    ],
-  },
-  {
-    title: "Pelanggan",
-    items: [
-      { href: "/customers", label: "Pembeli", desc: "Daftar & kelola pembeli", icon: ShoppingBag },
-      { href: "/debts", label: "Utang", desc: "Kasbon & pelunasan pembeli", icon: Wallet },
-    ],
-  },
-  {
-    title: "Operasional",
-    items: [
-      { href: "/shift", label: "Shift Kasir", desc: "Buka/tutup laci & selisih kas", icon: Receipt },
-      { href: "/expenses", label: "Pengeluaran", desc: "Biaya operasional & laba bersih", icon: Dollar },
-      { href: "/reports", label: "Laporan", desc: "Laporan penjualan", icon: BarChart },
-    ],
-  },
-  {
-    title: "Tim",
-    items: [
-      { href: "/staff", label: "Kelola Kasir", desc: "Tambah/hapus kasir toko", icon: UserIcon },
-    ],
-  },
-  {
-    title: "Aplikasi",
-    items: [
-      { href: "/settings", label: "Pengaturan", desc: "Info toko & pembayaran", icon: Cog },
-      { href: "/backup", label: "Cadangan Data", desc: "Export / pulihkan data toko", icon: ChartLine },
-      { href: "/bantuan", label: "Bantuan & FAQ", desc: "Panduan pakai aplikasi", icon: HelpCircle },
-    ],
-  },
-]
-
-// Menu yang tetap boleh dilihat kasir: operasional kasir sehari-hari.
-const KASIR_GROUPS: Group[] = [
-  {
-    title: "Operasional",
-    items: [
-      { href: "/shift", label: "Shift Kasir", desc: "Buka/tutup laci & selisih kas", icon: Receipt },
-    ],
-  },
-  {
-    title: "Pelanggan",
-    items: [
-      { href: "/customers", label: "Pembeli", desc: "Daftar & kelola pembeli", icon: ShoppingBag },
-      { href: "/debts", label: "Utang", desc: "Kasbon & pelunasan pembeli", icon: Wallet },
-    ],
-  },
-  {
-    title: "Aplikasi",
-    items: [
-      { href: "/bantuan", label: "Bantuan & FAQ", desc: "Panduan pakai aplikasi", icon: HelpCircle },
-    ],
-  },
-]
 
 // Avatar logo/initial toko yang juga berfungsi membuka dialog ganti toko.
 function StoreAvatarButton({ name, onClick }: { name: string; onClick: () => void }) {
