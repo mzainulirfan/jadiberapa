@@ -57,11 +57,10 @@ type Group = { title: string; items: Item[] }
 // Menu khusus pemilik toko: pengelolaan bisnis + pengaturan aplikasi.
 const OWNER_GROUPS: Group[] = [
   {
-    title: "Operasional",
+    title: "Barang & Promo",
     items: [
-      { href: "/shift", label: "Shift Kasir", desc: "Buka/tutup laci & selisih kas", icon: Receipt },
-      { href: "/expenses", label: "Pengeluaran", desc: "Biaya operasional & laba bersih", icon: Dollar },
-      { href: "/reports", label: "Laporan", desc: "Laporan penjualan", icon: BarChart },
+      { href: "/categories", label: "Kategori", desc: "Kelola kategori barang", icon: Tag },
+      { href: "/discounts", label: "Diskon", desc: "Kelola promo & harga diskon", icon: Zap },
     ],
   },
   {
@@ -79,10 +78,11 @@ const OWNER_GROUPS: Group[] = [
     ],
   },
   {
-    title: "Barang & Promo",
+    title: "Operasional",
     items: [
-      { href: "/categories", label: "Kategori", desc: "Kelola kategori barang", icon: Tag },
-      { href: "/discounts", label: "Diskon", desc: "Kelola promo & harga diskon", icon: Zap },
+      { href: "/shift", label: "Shift Kasir", desc: "Buka/tutup laci & selisih kas", icon: Receipt },
+      { href: "/expenses", label: "Pengeluaran", desc: "Biaya operasional & laba bersih", icon: Dollar },
+      { href: "/reports", label: "Laporan", desc: "Laporan penjualan", icon: BarChart },
     ],
   },
   {
@@ -91,15 +91,15 @@ const OWNER_GROUPS: Group[] = [
       { href: "/staff", label: "Kelola Kasir", desc: "Tambah/hapus kasir toko", icon: UserIcon },
     ],
   },
-    {
-      title: "Aplikasi",
-      items: [
-        { href: "/settings", label: "Pengaturan", desc: "Info toko & pembayaran", icon: Cog },
-        { href: "/backup", label: "Cadangan Data", desc: "Export / pulihkan data toko", icon: ChartLine },
-        { href: "/bantuan", label: "Bantuan & FAQ", desc: "Panduan pakai aplikasi", icon: HelpCircle },
-      ],
-    },
-  ]
+  {
+    title: "Aplikasi",
+    items: [
+      { href: "/settings", label: "Pengaturan", desc: "Info toko & pembayaran", icon: Cog },
+      { href: "/backup", label: "Cadangan Data", desc: "Export / pulihkan data toko", icon: ChartLine },
+      { href: "/bantuan", label: "Bantuan & FAQ", desc: "Panduan pakai aplikasi", icon: HelpCircle },
+    ],
+  },
+]
 
 // Menu yang tetap boleh dilihat kasir: operasional kasir sehari-hari.
 const KASIR_GROUPS: Group[] = [
