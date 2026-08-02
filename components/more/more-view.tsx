@@ -26,6 +26,7 @@ import { useAuth } from "@/lib/hooks/use-auth"
 import { useRole } from "@/lib/hooks/use-role"
 import { useLock } from "@/components/lock/screen-lock"
 import { ChangePasscodeDialog } from "@/components/auth/change-passcode"
+import { PwaInstallButton } from "@/components/pwa/pwa-install-button"
 import {
   User as UserIcon,
   BarChart,
@@ -246,6 +247,8 @@ export function MoreView() {
           Salin kode toko aktif
         </button>
       )}
+
+      <PwaInstallButton />
 
       {role === undefined || !groups.length ? (
         <div className="space-y-2">

@@ -34,7 +34,13 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname === "/register" ||
     request.nextUrl.pathname.startsWith("/s/")
   // Halaman yang boleh diakses siapa pun: publik baik login maupun tidak.
-  const isAlwaysPublicPage = request.nextUrl.pathname === "/bantuan"
+  // File PWA (/sw.js, /manifest.webmanifest, /offline.html) wajib publik agar
+  // browser bisa menilai installability & mendaftarkan service worker.
+  const isAlwaysPublicPage =
+    request.nextUrl.pathname === "/bantuan" ||
+    request.nextUrl.pathname === "/sw.js" ||
+    request.nextUrl.pathname === "/manifest.webmanifest" ||
+    request.nextUrl.pathname === "/offline.html"
   const isAuthPage = request.nextUrl.pathname.startsWith("/_next") || request.nextUrl.pathname === "/"
 
   if (!user && !isPublicPage && !isAuthPage && !isAlwaysPublicPage) {
