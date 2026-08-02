@@ -15,16 +15,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Search, Pencil, Trash, Plus, User, Phone, LocationPin, Whatsapp, X } from "@/components/ui/icons"
+import { Search, Pencil, Trash, Plus, User, Phone, LocationPin, Whatsapp, X, Zap } from "@/components/ui/icons"
 import { createCustomer, updateCustomer, deleteCustomer } from "@/lib/actions/customers"
-import { getCustomers } from "@/lib/db/queries"
+import { getCustomers, getSettings } from "@/lib/db/queries"
 
-type Customer = { id: string; name: string; phone: string | null; address: string | null }
+type Customer = { id: string; name: string; phone: string | null; address: string | null; points: number }
 
-function waLink(phone: string) {
+function waLink(phone: string, text?: string) {
   const digits = phone.replace(/\D/g, "")
   const normalized = digits.startsWith("0") ? `62${digits.slice(1)}` : digits
-  return `https://wa.me/${normalized}`
+  return text ? `https://wa.me/${normalized}?text=${encodeURIComponent(text)}` : `https://wa.me/${normalized}`
 }
 
 function CustomerForm({ customer, onDone }: { customer?: Customer | null; onDone: () => void }) {
@@ -81,6 +81,7 @@ function CustomerForm({ customer, onDone }: { customer?: Customer | null; onDone
 
 export function CustomerList() {
   const [customers, setCustomers] = useState<Customer[]>([])
+  const [storeName, setStoreName] = useState("Toko")
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [edit, setEdit] = useState<Customer | null>(null)
@@ -92,6 +93,17 @@ export function CustomerList() {
     setCustomers(await getCustomers(search || undefined))
     setLoading(false)
   }
+
+  function promoText(c: Customer) {
+    const greeting = `Halo ${c.name}! Terima kasih sudah berbelanja di ${storeName}.`
+    return c.points > 0
+      ? `${greeting} Kamu punya ${c.points} poin yang bisa ditukar diskon saat checkout lho.`
+      : `${greeting} Kapan-kapan mampir lagi ya.`
+  }
+
+  useEffect(() => {
+    getSettings().then((s) => setStoreName(s.store_name?.trim() || "Toko"))
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -209,15 +221,22 @@ export function CustomerList() {
               </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-ink">{c.name}</p>
-                <p className="truncate text-xs text-ink-faint">
-                  {[c.phone, c.address].filter(Boolean).join(" · ") || "Tanpa kontak"}
-                </p>
+                <div className="flex items-center gap-1.5">
+                  <p className="truncate text-xs text-ink-faint">
+                    {[c.phone, c.address].filter(Boolean).join(" · ") || "Tanpa kontak"}
+                  </p>
+                  {c.points > 0 && (
+                    <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-px text-[10px] font-semibold text-primary">
+                      <Zap className="size-3" /> {c.points}
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="flex shrink-0 items-center gap-1">
                 {c.phone && (
                   <>
                     <a
-                      href={waLink(c.phone)}
+                      href={waLink(c.phone, promoText(c))}
                       target="_blank"
                       rel="noopener noreferrer"
                       aria-label={`WhatsApp ${c.name}`}

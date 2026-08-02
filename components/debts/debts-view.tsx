@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { getDebts, type BxDebt } from "@/lib/db/queries"
+import { getDebts, getSettings, type BxDebt } from "@/lib/db/queries"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Wallet, ChevronRight } from "@/components/ui/icons"
+import { Wallet, ChevronRight, Whatsapp } from "@/components/ui/icons"
 
 const fmtRp = (n: number) => `Rp${n.toLocaleString("id-ID")}`
 
@@ -16,15 +16,27 @@ function fmtDate(iso: string) {
   })
 }
 
+function waLink(phone: string, text: string) {
+  const digits = phone.replace(/\D/g, "")
+  const normalized = digits.startsWith("0") ? `62${digits.slice(1)}` : digits
+  return `https://wa.me/${normalized}?text=${encodeURIComponent(text)}`
+}
+
 type Group = {
   key: string
   name: string
+  phone: string | null
   remaining: number
   debts: BxDebt[]
 }
 
 export function DebtsView() {
   const [debts, setDebts] = useState<BxDebt[] | null>(null)
+  const [storeName, setStoreName] = useState("Toko")
+
+  useEffect(() => {
+    getSettings().then((s) => setStoreName(s.store_name?.trim() || "Toko"))
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -46,7 +58,8 @@ export function DebtsView() {
       debt += d.total
       const key = d.customer_id ?? "umum"
       const name = d.customer_name ?? "Umum (tanpa pembeli)"
-      const g = map.get(key) ?? { key, name, remaining: 0, debts: [] }
+      const g = map.get(key) ?? { key, name, phone: null, remaining: 0, debts: [] }
+      g.phone = d.customer_phone ?? g.phone
       g.remaining += remaining
       g.debts.push(d)
       map.set(key, g)
@@ -54,6 +67,10 @@ export function DebtsView() {
     const groups = [...map.values()].sort((a, b) => b.remaining - a.remaining)
     return { groups, totalRemaining: total, totalDebt: debt, totalPaid: debt - total }
   }, [debts])
+
+  function reminderText(g: Group) {
+    return `Halo ${g.name}, kami dari ${storeName}. Anda masih memiliki tagihan utang sebesar ${fmtRp(g.remaining)}. Mohon konfirmasi kapan bisa melunasi ya. Terima kasih.`
+  }
 
   if (debts === null) {
     return (
@@ -131,8 +148,19 @@ export function DebtsView() {
                 </span>
                 <span className="truncate">{g.name}</span>
               </span>
-              <span className="shrink-0 text-xs font-semibold text-destructive">
-                {fmtRp(g.remaining)}
+              <span className="flex shrink-0 items-center gap-2">
+                {g.phone && (
+                  <a
+                    href={waLink(g.phone, reminderText(g))}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`WhatsApp ${g.name}`}
+                    className="flex size-6 items-center justify-center rounded-lg text-accent-green active:bg-canvas-soft"
+                  >
+                    <Whatsapp className="size-3.5" />
+                  </a>
+                )}
+                <span className="text-xs font-semibold text-destructive">{fmtRp(g.remaining)}</span>
               </span>
             </div>
             <div className="mx-1 h-1 rounded-full bg-canvas-soft">

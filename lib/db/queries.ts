@@ -339,14 +339,31 @@ export type BxCustomer = {
   name: string
   phone: string | null
   address: string | null
+  points: number
 }
 
 export async function getCustomers(search?: string): Promise<BxCustomer[]> {
-  let query = supabase.from("customers").select("id, name, phone, address").order("name")
+  let query = supabase.from("customers").select("id, name, phone, address, points").order("name")
   const s = search?.trim()
   if (s) query = query.ilike("name", `%${s}%`)
   const { data } = await query
   return (data ?? []) as unknown as BxCustomer[]
+}
+
+// Rasio loyalitas dari settings per toko (default diterapkan bila kosong).
+export type BxLoyaltyConfig = {
+  enabled: boolean
+  earnPer: number
+  redeemValue: number
+}
+
+export async function getLoyaltyConfig(): Promise<BxLoyaltyConfig> {
+  const settings = await getSettings()
+  return {
+    enabled: settings.loyalty_enabled !== "0",
+    earnPer: Number(settings.loyalty_earn_per) || 1000,
+    redeemValue: Number(settings.loyalty_redeem_value) || 100,
+  }
 }
 
 export type BxTransaction = {
@@ -413,13 +430,14 @@ export type BxDebt = {
   created_at: string
   customer_id: string | null
   customer_name: string | null
+  customer_phone: string | null
 }
 
 // Daftar transaksi yang masih berutang (status = 'utang'), tertua dulu.
 export async function getDebts(): Promise<BxDebt[]> {
   const { data } = await supabase
     .from("transactions")
-    .select("id, number, total, paid_amount, created_at, customer_id, customers(name)")
+    .select("id, number, total, paid_amount, created_at, customer_id, customers(name, phone)")
     .eq("status", "utang")
     .order("created_at", { ascending: true })
 
@@ -430,7 +448,7 @@ export async function getDebts(): Promise<BxDebt[]> {
     paid_amount: number
     created_at: string
     customer_id: string | null
-    customers: { name: string } | null
+    customers: { name: string; phone: string | null } | null
   }
   return ((data ?? []) as unknown as Row[]).map((r) => ({
     id: r.id,
@@ -440,6 +458,7 @@ export async function getDebts(): Promise<BxDebt[]> {
     created_at: r.created_at,
     customer_id: r.customer_id,
     customer_name: r.customers?.name ?? null,
+    customer_phone: r.customers?.phone ?? null,
   }))
 }
 

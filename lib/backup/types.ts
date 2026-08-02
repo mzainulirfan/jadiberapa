@@ -28,6 +28,7 @@ export type StoreBackupBundle = {
   transaction_items: BackupRow[]
   payments: BackupRow[]
   stock_movements: BackupRow[]
+  loyalty_ledger: BackupRow[]
 }
 
 export type StoreBackupCounts = {
@@ -48,4 +49,5 @@ export type StoreBackupCounts = {
   transaction_items: number
   payments: number
   stock_movements: number
+  loyalty_ledger: number
 }

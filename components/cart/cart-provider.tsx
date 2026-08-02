@@ -17,8 +17,9 @@ export type CartItem = {
 }
 
 // Pembeli terpilih untuk transaksi yang sedang dibuat. Disimpan bersama keranjang
-// agar tidak hilang saat kasir keluar-masuk halaman checkout.
-export type BxCartCustomer = { id: string | null; name: string }
+// agar tidak hilang saat kasir keluar-masuk halaman checkout. `points` hanya
+// penanda awal dari daftar pembeli; saldo otoritatif dibaca ulang di server.
+export type BxCartCustomer = { id: string | null; name: string; points?: number }
 
 // Kunci identitas baris keranjang: produk + varian. Produk yang sama dengan
 // varian berbeda dihitung sebagai baris terpisah.

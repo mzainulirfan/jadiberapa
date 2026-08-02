@@ -21,7 +21,9 @@ export async function createTransaction(
   // Diskon per nota (nominal rupiah). total disimpan sebagai nilai neto (setelah diskon).
   discount?: number,
   // Biaya layanan / pajak per nota (nominal rupiah). Masuk ke total yang dibayar.
-  fee?: number
+  fee?: number,
+  // Jumlah poin loyalitas yang ditukar jadi diskon nota (nominal dihitung server).
+  points_redeemed?: number
 ) {
   const supabase = await createClient()
 
@@ -48,7 +50,34 @@ export async function createTransaction(
   const itemDisc = normItems.reduce((sum, i) => sum + i.discount, 0)
   const disc = Math.max(0, Math.min(gross - itemDisc, Math.round(discount ?? 0)))
   const feeAmount = Math.max(0, Math.round(fee ?? 0))
-  const total = gross - itemDisc - disc + feeAmount
+
+  // Loyalitas: baca rasio poin & saldo pembeli (server-authoritative), lalu hitung
+  // nilai tukar poin yang dipotong dari total. Klausa dibatasi saldo & sisa tagihan.
+  let loyaltyConfig = { earnPer: 1000, redeemValue: 100, enabled: true }
+  let pointsUsed = 0
+  let pointsValue = 0
+  if (customer_id) {
+    const [settingsRes, custRes] = await Promise.all([
+      supabase.from("settings").select("key, value"),
+      supabase.from("customers").select("points").eq("id", customer_id).maybeSingle(),
+    ])
+    const map: Record<string, string> = {}
+    for (const row of (settingsRes.data ?? []) as { key: string; value: string }[]) map[row.key] = row.value
+    loyaltyConfig = {
+      earnPer: Number(map.loyalty_earn_per) || 1000,
+      redeemValue: Number(map.loyalty_redeem_value) || 100,
+      enabled: map.loyalty_enabled !== "0",
+    }
+    if (loyaltyConfig.enabled && points_redeemed) {
+      const balance = Number((custRes.data as { points?: number } | null)?.points) || 0
+      const remaining = Math.max(0, gross - itemDisc - disc)
+      const affordable = Math.floor(remaining / loyaltyConfig.redeemValue)
+      pointsUsed = Math.max(0, Math.min(Math.round(points_redeemed), balance, affordable))
+      pointsValue = pointsUsed * loyaltyConfig.redeemValue
+    }
+  }
+
+  const total = Math.max(0, gross - itemDisc - disc - pointsValue + feeAmount)
 
   const isUtang = payment_method === "utang"
   const paid = isUtang
@@ -131,10 +160,30 @@ export async function createTransaction(
     }))
   )
 
+  // Loyalitas: potong poin yang ditukar, lalu beri poin baru dari total belanja.
+  if (customer_id) {
+    if (pointsUsed > 0) {
+      await supabase.rpc("redeem_loyalty_points", {
+        p_customer_id: customer_id,
+        p_points: pointsUsed,
+        p_transaction_id: transaction.id,
+      })
+    }
+    const earned = Math.min(1000, Math.floor(total / loyaltyConfig.earnPer))
+    if (loyaltyConfig.enabled && earned > 0) {
+      await supabase.rpc("award_loyalty_points", {
+        p_customer_id: customer_id,
+        p_points: earned,
+        p_transaction_id: transaction.id,
+      })
+    }
+  }
+
   revalidatePath("/cashier")
   revalidatePath("/dashboard")
   revalidatePath("/reports")
   revalidatePath("/debts")
+  revalidatePath("/customers")
   return { error: null, id: transaction.id }
 }
 

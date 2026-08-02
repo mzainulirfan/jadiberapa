@@ -32,6 +32,7 @@ function emptyCounts(): StoreBackupCounts {
     transaction_items: 0,
     payments: 0,
     stock_movements: 0,
+    loyalty_ledger: 0,
   }
 }
 
@@ -54,6 +55,7 @@ function countBundle(bundle: StoreBackupBundle): StoreBackupCounts {
     transaction_items: bundle.transaction_items.length,
     payments: bundle.payments.length,
     stock_movements: bundle.stock_movements.length,
+    loyalty_ledger: (bundle.loyalty_ledger ?? []).length,
   }
 }
 
@@ -79,7 +81,7 @@ function downloadJson(bundle: StoreBackupBundle) {
 
 async function loadCurrentBundle(): Promise<StoreBackupBundle> {
   const supabase = createClient()
-  const [settings, categories, products, productVariants, customers, suppliers, purchases, purchaseItems, supplierPayments, expenses, discounts, discountProducts, cashSessions, transactions, transactionItems, payments, stockMovements] = await Promise.all([
+  const [settings, categories, products, productVariants, customers, suppliers, purchases, purchaseItems, supplierPayments, expenses, discounts, discountProducts, cashSessions, transactions, transactionItems, payments, stockMovements, loyaltyLedger] = await Promise.all([
     supabase.from("settings").select("key, value").order("key"),
     supabase.from("categories").select("*").order("created_at", { ascending: true }),
     supabase.from("products").select("*").order("created_at", { ascending: true }),
@@ -97,6 +99,7 @@ async function loadCurrentBundle(): Promise<StoreBackupBundle> {
     supabase.from("transaction_items").select("*").order("created_at", { ascending: true }),
     supabase.from("payments").select("*").order("created_at", { ascending: true }),
     supabase.from("stock_movements").select("*").order("created_at", { ascending: true }),
+    supabase.from("loyalty_ledger").select("*").order("created_at", { ascending: true }),
   ])
 
   const errors = [
@@ -117,6 +120,7 @@ async function loadCurrentBundle(): Promise<StoreBackupBundle> {
     transactionItems.error,
     payments.error,
     stockMovements.error,
+    loyaltyLedger.error,
   ].filter(Boolean)
   if (errors.length > 0) {
     throw new Error("Gagal memuat data toko")
@@ -148,6 +152,7 @@ async function loadCurrentBundle(): Promise<StoreBackupBundle> {
     transaction_items: (transactionItems.data ?? []) as StoreBackupBundle["transaction_items"],
     payments: (payments.data ?? []) as StoreBackupBundle["payments"],
     stock_movements: (stockMovements.data ?? []) as StoreBackupBundle["stock_movements"],
+    loyalty_ledger: (loyaltyLedger.data ?? []) as StoreBackupBundle["loyalty_ledger"],
   }
 }
 

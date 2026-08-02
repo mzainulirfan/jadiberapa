@@ -29,6 +29,7 @@ import {
   Search,
   Plus,
   Receipt,
+  Zap,
 } from "@/components/ui/icons"
 import { cn } from "@/lib/utils"
 import {
@@ -73,6 +74,7 @@ export function CheckoutView() {
   const [newName, setNewName] = useState("")
   const [newPhone, setNewPhone] = useState("")
   const [creating, setCreating] = useState(false)
+  const [redeemOn, setRedeemOn] = useState(false)
 
   useEffect(() => {
     getSettings().then(setPayConfig)
@@ -123,8 +125,18 @@ export function CheckoutView() {
     discountType === "pct"
       ? Math.round((netBeforeNota * Math.min(discountRaw, 100)) / 100)
       : Math.min(discountRaw, netBeforeNota)
-  // Biaya layanan/pajak: % dihitung dari total setelah diskon nota.
-  const feeBase = Math.max(0, netBeforeNota - discountAmount)
+  // Loyalitas: nilai tukar poin (server-authoritative di createTransaction).
+  const loyaltyEnabled = payConfig.loyalty_enabled !== "0"
+  const loyaltyRedeemValue = Number(payConfig.loyalty_redeem_value) || 100
+  const loyaltyEarnPer = Number(payConfig.loyalty_earn_per) || 1000
+  const customerPoints = customer?.points ?? 0
+  const redeemMax = Math.max(
+    0,
+    Math.min(customerPoints, Math.floor((netBeforeNota - discountAmount) / loyaltyRedeemValue))
+  )
+  const pointsDiscount = loyaltyEnabled && redeemOn ? redeemMax * loyaltyRedeemValue : 0
+  // Biaya layanan/pajak: % dihitung dari total setelah diskon nota & poin.
+  const feeBase = Math.max(0, netBeforeNota - discountAmount - pointsDiscount)
   const feeAmount =
     feeType === "pct"
       ? Math.round((feeBase * Math.min(feeRaw, 100)) / 100)
@@ -180,7 +192,7 @@ export function CheckoutView() {
       toast.error(err ?? "Gagal menyimpan pembeli")
       return
     }
-    setCustomer({ id, name: newName.trim() })
+    setCustomer({ id, name: newName.trim(), points: 0 })
     setNewName("")
     setNewPhone("")
     setCustOpen(false)
@@ -213,6 +225,7 @@ export function CheckoutView() {
           paid_amount: dp,
           discount: discountAmount,
           fee: feeAmount,
+          points_redeemed: pointsDiscount > 0 ? redeemMax : 0,
           total: netTotal,
           itemCount: items.reduce((sum, item) => sum + item.qty, 0),
           customerName: customer?.name ?? null,
@@ -240,7 +253,8 @@ export function CheckoutView() {
         customer?.id ?? null,
         dp,
         discountAmount,
-        feeAmount
+        feeAmount,
+        pointsDiscount > 0 ? redeemMax : 0
       )
       if (err) {
         setError(err)
@@ -324,6 +338,69 @@ export function CheckoutView() {
             </button>
           </div>
         </div>
+
+        {loyaltyEnabled && (
+          <div className="rounded-xl bg-canvas border border-hairline">
+            <p className="px-3 pt-3 pb-2 text-xs font-semibold text-ink-muted uppercase tracking-wider">
+              Poin Loyalitas
+            </p>
+            <div className="p-3 pt-0">
+              {!customer?.id ? (
+                <p className="rounded-xl border border-hairline bg-canvas-soft p-3 text-xs text-ink-muted">
+                  Pilih pembeli untuk pakai poin.
+                </p>
+              ) : customerPoints <= 0 ? (
+                <p className="rounded-xl border border-hairline bg-canvas-soft p-3 text-xs text-ink-muted">
+                  Belum ada poin. Belanja Rp{loyaltyEarnPer.toLocaleString("id-ID")} dapat 1 poin.
+                </p>
+              ) : (
+                <div className="rounded-xl border border-hairline bg-canvas-soft p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                        <Zap className="size-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-ink">{customerPoints} poin</p>
+                        <p className="text-[11px] text-ink-faint">
+                          Senilai Rp{(customerPoints * loyaltyRedeemValue).toLocaleString("id-ID")}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={redeemOn}
+                      onClick={() => redeemMax > 0 && setRedeemOn((v) => !v)}
+                      aria-label="Tukar poin di transaksi ini"
+                      className={cn(
+                        "relative h-6 w-11 shrink-0 rounded-full transition-colors",
+                        redeemOn ? "bg-primary" : "bg-ink/20",
+                        redeemMax === 0 && "opacity-40"
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "absolute left-0.5 top-0.5 size-5 rounded-full bg-white shadow transition-transform",
+                          redeemOn && "translate-x-5"
+                        )}
+                      />
+                    </button>
+                  </div>
+                  {redeemOn ? (
+                    <p className="mt-2 text-[11px] font-medium text-accent-green">
+                      Diskon poin -Rp{pointsDiscount.toLocaleString("id-ID")} ({redeemMax} poin)
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-[11px] text-ink-faint">
+                      1 poin = Rp{loyaltyRedeemValue.toLocaleString("id-ID")} diskon
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="rounded-xl bg-canvas border border-hairline">
           <p className="px-3 pt-3 pb-2 text-xs font-semibold text-ink-muted uppercase tracking-wider">
@@ -616,7 +693,7 @@ export function CheckoutView() {
             <p className="text-[11px] text-ink-faint">
               Biaya layanan/pajak persen dihitung dari total setelah diskon.
             </p>
-            {(itemDiscTotal > 0 || discountAmount > 0 || feeAmount > 0) && (
+            {(itemDiscTotal > 0 || discountAmount > 0 || pointsDiscount > 0 || feeAmount > 0) && (
               <>
                 {itemDiscTotal > 0 && (
                   <div className="flex items-center justify-between text-sm">
@@ -631,6 +708,14 @@ export function CheckoutView() {
                     <span className="text-ink-muted">Diskon</span>
                     <span className="font-semibold text-accent-green">
                       -Rp{discountAmount.toLocaleString("id-ID")}
+                    </span>
+                  </div>
+                )}
+                {pointsDiscount > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-ink-muted">Poin ({redeemMax})</span>
+                    <span className="font-semibold text-accent-green">
+                      -Rp{pointsDiscount.toLocaleString("id-ID")}
                     </span>
                   </div>
                 )}
@@ -652,7 +737,7 @@ export function CheckoutView() {
         <div className="flex items-end justify-between">
           <span className="text-ink-muted text-sm pb-1">Total Bayar</span>
           <span className="flex flex-col items-end">
-            {(itemDiscTotal > 0 || discountAmount > 0) && (
+            {(itemDiscTotal > 0 || discountAmount > 0 || pointsDiscount > 0) && (
               <span className="text-sm text-ink-faint line-through">
                 Rp{total.toLocaleString("id-ID")}
               </span>
@@ -712,7 +797,7 @@ export function CheckoutView() {
                 key={c.id}
                 type="button"
                 onClick={() => {
-                  setCustomer({ id: c.id, name: c.name })
+                  setCustomer({ id: c.id, name: c.name, points: c.points })
                   setCustOpen(false)
                 }}
                 className={cn(

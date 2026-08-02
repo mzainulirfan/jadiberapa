@@ -25,6 +25,7 @@ export type OfflineTransactionDraft = {
   paid_amount?: number
   discount?: number
   fee?: number
+  points_redeemed?: number
   total: number
   itemCount: number
   customerName?: string | null
@@ -117,6 +118,7 @@ export async function queueOfflineTransaction(
     paid_amount: draft.paid_amount,
     discount: draft.discount,
     fee: draft.fee,
+    points_redeemed: draft.points_redeemed,
     total: draft.total,
     itemCount: draft.itemCount,
     customerName: draft.customerName ?? null,
@@ -142,7 +144,8 @@ export async function syncQueuedTransactions() {
         item.customer_id ?? null,
         item.paid_amount,
         item.discount,
-        item.fee
+        item.fee,
+        item.points_redeemed
       )
       if (res?.error) {
         await updateQueuedTransaction(item.id, { error: res.error })

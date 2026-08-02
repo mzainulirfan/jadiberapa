@@ -23,6 +23,7 @@ import {
   Tag,
   Refresh,
   AlertTriangle,
+  Zap,
 } from "@/components/ui/icons"
 import { cn } from "@/lib/utils"
 import { DangerZone } from "@/components/settings/danger-zone"
@@ -53,6 +54,7 @@ const STORE_KEYS = STORE_FIELDS.map((f) => f.key)
 const PAYMENT_KEYS = ["qris_payload", "dana_number"]
 const NOTA_KEYS = ["show_nota_number", "receipt_footer"]
 const PREFERENSI_KEYS = ["default_min_stock"]
+const LOYALTY_KEYS = ["loyalty_enabled", "loyalty_earn_per", "loyalty_redeem_value"]
 
 // Validasi ringan payload EMV QRIS: awalan PFI + struktur TLV + CRC (ID 63).
 function validateQris(payload: string): string | null {
@@ -343,28 +345,33 @@ export function SettingsForm() {
   const qris = settings.qris_payload ?? ""
   const qrisError = validateQris(qris)
   const showNota = settings.show_nota_number !== "0"
+  const loyaltyEnabled = settings.loyalty_enabled !== "0"
   const inviteLink = `${window.location.origin}/register?code=${encodeURIComponent(code)}`
 
   return (
     <div className="space-y-5 p-4">
       <Tabs defaultValue="toko" className="space-y-5">
-        <div className="sticky top-0 -mx-4 -mt-4 z-10 border-b border-hairline bg-canvas/95 px-4 pt-2 pb-3 backdrop-blur-sm">
-          <TabsList variant="line" className="w-full">
-            <TabsTrigger value="toko" className="flex-1 justify-start px-1 after:hidden data-active:font-bold">
+        <div className="sticky top-0 -mx-4 -mt-4 z-10 overflow-x-auto border-b border-hairline bg-canvas/95 px-4 pt-2 pb-3 backdrop-blur-sm">
+          <TabsList variant="line" className="w-max max-w-full">
+            <TabsTrigger value="toko" className="shrink-0 justify-start px-1 after:hidden data-active:font-bold">
               <Store className="size-4" />
               <span>Toko</span>
             </TabsTrigger>
-            <TabsTrigger value="pembayaran" className="flex-1 justify-start px-1 after:hidden data-active:font-bold">
+            <TabsTrigger value="pembayaran" className="shrink-0 justify-start px-1 after:hidden data-active:font-bold">
               <Wallet className="size-4" />
               <span>Pembayaran</span>
             </TabsTrigger>
-            <TabsTrigger value="nota" className="flex-1 justify-start px-1 after:hidden data-active:font-bold">
+            <TabsTrigger value="nota" className="shrink-0 justify-start px-1 after:hidden data-active:font-bold">
               <Receipt className="size-4" />
               <span>Nota</span>
             </TabsTrigger>
-            <TabsTrigger value="preferensi" className="flex-1 justify-start px-1 after:hidden data-active:font-bold">
+            <TabsTrigger value="preferensi" className="shrink-0 justify-start px-1 after:hidden data-active:font-bold">
               <Tag className="size-4" />
               <span>Preferensi</span>
+            </TabsTrigger>
+            <TabsTrigger value="loyalitas" className="shrink-0 justify-start px-1 after:hidden data-active:font-bold">
+              <Zap className="size-4" />
+              <span>Loyalitas</span>
             </TabsTrigger>
           </TabsList>
         </div>
@@ -595,6 +602,86 @@ export function SettingsForm() {
               onChange={handleChange}
               onBlur={handleBlur}
               onReset={() => resetField("default_min_stock")}
+            />
+          </SectionCard>
+        </TabsContent>
+
+        <TabsContent value="loyalitas" className="space-y-5">
+          <div className="flex items-start gap-2.5 px-1">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-black/[0.05] text-ink-muted">
+              <Zap className="size-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-sm font-semibold text-ink">Poin Loyalitas</h2>
+              <p className="text-xs text-ink-faint">Poin untuk pembeli dari setiap belanja.</p>
+            </div>
+          </div>
+
+          <SectionCard status={sectionStatus(LOYALTY_KEYS)} onRetry={() => retrySection(LOYALTY_KEYS)}>
+            <div className="p-3.5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs text-ink-muted">Program Loyalitas</p>
+                  <p className="text-[11px] text-ink-faint">Berikan poin & izinkan penukaran saat checkout.</p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={loyaltyEnabled}
+                  onClick={() => handleChange("loyalty_enabled", loyaltyEnabled ? "0" : "1")}
+                  aria-label="Aktifkan program loyalitas"
+                  className={cn(
+                    "relative h-6 w-11 shrink-0 rounded-full transition-colors",
+                    loyaltyEnabled ? "bg-primary" : "bg-ink/20"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "absolute left-0.5 top-0.5 size-5 rounded-full bg-white shadow transition-transform",
+                      loyaltyEnabled && "translate-x-5"
+                    )}
+                  />
+                </button>
+              </div>
+              {saveState.loyalty_enabled && (
+                <div className="mt-2 flex justify-end">
+                  <StatusBadge
+                    status={saveState.loyalty_enabled}
+                    onRetry={() => retrySection(["loyalty_enabled"])}
+                  />
+                </div>
+              )}
+            </div>
+
+            <FieldRow
+              def={{
+                key: "loyalty_earn_per",
+                label: "Belanja per 1 Poin",
+                icon: Zap,
+                placeholder: "1000",
+                type: "number",
+                hint: "Jumlah rupiah belanja untuk mendapat 1 poin. Contoh: 1000 = 1 poin tiap Rp1.000 belanja.",
+              }}
+              value={settings.loyalty_earn_per ?? ""}
+              status={saveState.loyalty_earn_per}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              onReset={() => resetField("loyalty_earn_per")}
+            />
+            <FieldRow
+              def={{
+                key: "loyalty_redeem_value",
+                label: "Nilai Tukar 1 Poin",
+                icon: Tag,
+                placeholder: "100",
+                type: "number",
+                hint: "Diskon rupiah per 1 poin yang ditukar saat checkout. Contoh: 100 = 100 poin jadi Rp10.000.",
+              }}
+              value={settings.loyalty_redeem_value ?? ""}
+              status={saveState.loyalty_redeem_value}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              onReset={() => resetField("loyalty_redeem_value")}
             />
           </SectionCard>
         </TabsContent>

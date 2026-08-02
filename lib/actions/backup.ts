@@ -43,6 +43,7 @@ async function clearStoreData(
     "suppliers",
     "discount_products",
     "transactions",
+    "loyalty_ledger",
     "product_variants",
     "discounts",
     "expenses",
@@ -86,6 +87,7 @@ export async function restoreStoreBackup(bundle: StoreBackupBundle) {
     ["transaction_items", bundle.transaction_items],
     ["payments", bundle.payments],
     ["stock_movements", bundle.stock_movements],
+    ["loyalty_ledger", bundle.loyalty_ledger ?? []],
   ]
 
   for (const [table, rows] of steps) {
