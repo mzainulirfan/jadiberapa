@@ -43,16 +43,26 @@ const greeting = (() => {
   return "Selamat malam"
 })()
 
-const dateFilterLabel = new Intl.DateTimeFormat("id-ID", {
-  weekday: "short",
-  day: "numeric",
-  month: "short",
-}).format(new Date())
-
 const timeFormat = new Intl.DateTimeFormat("id-ID", {
   hour: "2-digit",
   minute: "2-digit",
 })
+
+// Sub-label chip filter: tanggal hari ini untuk "Hari Ini", atau rentang untuk
+// 7/30 hari (mis. "27 Jul – 2 Agu").
+function periodSubLabel(period: BxPeriod): string {
+  const now = new Date()
+  const dayFmt = new Intl.DateTimeFormat("id-ID", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  })
+  if (period === "today") return dayFmt.format(now)
+  const rangeFmt = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short" })
+  const start = new Date(now)
+  start.setDate(start.getDate() - (period === "7d" ? 6 : 29))
+  return `${rangeFmt.format(start)} – ${rangeFmt.format(now)}`
+}
 
 const fmtRp = (n: number) => `Rp${n.toLocaleString("id-ID")}`
 
@@ -116,7 +126,7 @@ function PeriodDropdown({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="flex shrink-0 items-center gap-1.5 rounded-full border border-hairline bg-canvas px-3 py-1.5 text-xs font-semibold text-ink transition-colors outline-none active:bg-canvas-soft data-[popup-open]:bg-canvas-soft">
-        {current} · {dateFilterLabel}
+        {current} · {periodSubLabel(value)}
         <ChevronDown className="size-3.5 text-ink-muted" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-[140px]">
@@ -493,7 +503,6 @@ export function DashboardView() {
   const role = useRole()
   const username = user?.email?.split("@")[0] ?? ""
   const name = username.charAt(0).toUpperCase() + username.slice(1)
-  const roleLabel = role === "owner" ? "Pemilik" : role === "kasir" ? "Kasir" : null
   const pendingTemplateKey = typeof user?.user_metadata?.template_key === "string"
     ? user.user_metadata.template_key
     : null
@@ -547,17 +556,10 @@ export function DashboardView() {
     <div className="space-y-4 p-4">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-lg font-bold tracking-tight text-ink">
+          <p className="truncate text-base font-bold tracking-tight text-ink">
             {greeting}
-            {name ? `, ${name}` : ""} 👋
+            {name ? `, ${name}` : ""}
           </p>
-          <div className="flex items-center gap-1.5">
-            {roleLabel && (
-              <span className="shrink-0 rounded-full bg-canvas-soft px-2 py-0.5 text-[11px] font-semibold text-ink-muted">
-                {roleLabel}
-              </span>
-            )}
-          </div>
         </div>
         <PeriodDropdown value={period} onChange={changePeriod} />
       </div>
