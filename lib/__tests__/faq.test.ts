@@ -7,6 +7,7 @@ describe("konten FAQ", () => {
     for (const group of faqGroups) {
       expect(group.id).toBeTruthy()
       expect(group.title).toBeTruthy()
+      expect(group.desc?.trim().length).toBeGreaterThan(0)
       expect(group.items.length).toBeGreaterThan(0)
     }
   })

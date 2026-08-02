@@ -11,6 +11,7 @@ export type FaqItem = {
 export type FaqGroup = {
   id: string
   title: string
+  desc?: string
   icon: "store" | "package" | "receipt" | "chart"
   items: FaqItem[]
 }
@@ -19,6 +20,7 @@ export const faqGroups: FaqGroup[] = [
   {
     id: "memulai",
     title: "Cara Mulai",
+    desc: "Buat akun, buat toko, dan ajak kasir bergabung.",
     icon: "store",
     items: [
       {
@@ -70,6 +72,7 @@ export const faqGroups: FaqGroup[] = [
   {
     id: "kelola",
     title: "Kelola Toko & Data",
+    desc: "Barang, kategori, pembeli, diskon, dan stok.",
     icon: "package",
     items: [
       {
@@ -143,6 +146,7 @@ export const faqGroups: FaqGroup[] = [
   {
     id: "transaksi",
     title: "Transaksi & Kasir",
+    desc: "Penjualan, kasbon, shift, struk, offline, dan poin.",
     icon: "receipt",
     items: [
       {
@@ -192,6 +196,7 @@ export const faqGroups: FaqGroup[] = [
   {
     id: "laporan-keamanan",
     title: "Laporan, Data & Keamanan",
+    desc: "Laporan, backup, dan keamanan akun.",
     icon: "chart",
     items: [
       {
