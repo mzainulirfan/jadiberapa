@@ -274,6 +274,7 @@ export function ProductDialog({
     <Drawer
       open={open}
       modal={!scanOpen && !photoOpen}
+      disablePointerDismissal={scanOpen || photoOpen}
       onOpenChange={(v) => {
         if (v) {
           setOpen(true)
