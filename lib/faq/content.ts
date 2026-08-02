@@ -39,7 +39,7 @@ export const faqGroups: FaqGroup[] = [
         id: "gabung-kasir",
         q: "Cara bergabung sebagai kasir",
         a: [
-          "1. Pemilik menyalin kode toko: Lainnya \u2192 \u201cSalin kode toko aktif\u201d.",
+          "1. Pemilik melihat kode toko di kartu profil (halaman Lainnya atau Pengaturan).",
           "2. Kasir memilih \u201cGabung sebagai Kasir\u201d di halaman daftar.",
           "3. Masukkan kode toko, lalu isi username & passcode sendiri.",
           "4. Tekan \u201cGabung ke Toko\u201d.",

@@ -42,7 +42,6 @@ import {
   Store,
   Check,
   ChartLine,
-  Copy,
   Package,
   Lock,
   KeyRound,
@@ -174,16 +173,6 @@ export function MoreView() {
     window.location.reload()
   }
 
-  async function copyStoreCode() {
-    if (!profile?.store_code) return
-    try {
-      await navigator.clipboard.writeText(profile.store_code)
-      toast.success("Kode toko disalin")
-    } catch {
-      toast.error("Gagal menyalin kode toko")
-    }
-  }
-
   const isOwner = role === "owner"
   const groups = role ? (isOwner ? OWNER_GROUPS : KASIR_GROUPS) : []
 
@@ -236,17 +225,6 @@ export function MoreView() {
   return (
     <div className="space-y-5 p-4">
       {profileCard}
-
-      {profile?.store_code && (
-        <button
-          type="button"
-          onClick={copyStoreCode}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-hairline bg-canvas p-3 text-sm font-medium text-ink transition-colors active:bg-canvas-soft"
-        >
-          <Copy className="size-4 text-ink-muted" />
-          Salin kode toko aktif
-        </button>
-      )}
 
       <PwaInstallButton />
 
