@@ -26,12 +26,20 @@ const GROUP_ICONS: Record<FaqGroup["icon"], ComponentType<{ className?: string }
 
 const ITEM_ANCHOR = (id: string) => `faq-${id}`
 
+// Jarak pendaratan target scroll dari atas viewport: cukup untuk melewati
+// header sticky (56px) + ruang napas, dan konsisten dengan ACTIVE_LINE.
+const SCROLL_PAD = 96
+const ACTIVE_LINE = 120
+
 function normalize(s: string) {
   return s.toLowerCase().trim()
 }
 
-function scrollToId(id: string) {
-  document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })
+function scrollToId(id: string, container: HTMLElement | null) {
+  const el = document.getElementById(id)
+  if (!el || !container) return
+  const top = el.getBoundingClientRect().top + container.scrollTop - SCROLL_PAD
+  container.scrollTo({ top: Math.max(0, top), behavior: "smooth" })
 }
 
 function ArticleCard({ item }: { item: FaqItem }) {
@@ -39,6 +47,7 @@ function ArticleCard({ item }: { item: FaqItem }) {
     <article
       id={ITEM_ANCHOR(item.id)}
       data-faq-section={ITEM_ANCHOR(item.id)}
+      data-scroll-marker={ITEM_ANCHOR(item.id)}
       className="scroll-mt-24 rounded-xl border border-hairline bg-canvas p-4 sm:p-5"
     >
       <h3 className="text-[15px] font-semibold text-ink">{item.q}</h3>
@@ -59,7 +68,11 @@ function ArticleCard({ item }: { item: FaqItem }) {
 function GroupSection({ group }: { group: FaqGroup }) {
   const Icon = GROUP_ICONS[group.icon]
   return (
-    <section id={`grp-${group.id}`} className="scroll-mt-24">
+    <section
+      id={`grp-${group.id}`}
+      data-scroll-marker={group.items[0] ? ITEM_ANCHOR(group.items[0].id) : undefined}
+      className="scroll-mt-24"
+    >
       <div className="mb-4 flex items-start gap-3">
         <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-hairline bg-canvas text-primary">
           <Icon className="size-4" />
@@ -114,31 +127,40 @@ export function FaqView() {
     return null
   }, [activeId])
 
-  // Scroll-spy stabil: item aktif = section TERAKHIR yang sudah melewati garis
-  // aktif (di bawah header). Berbasis posisi scroll per-frame; aman saat garis
-  // berada di celah antar artikel (tidak melompat ke item pertama/terakhir).
+  // Scroll-spy: marker = artikel + header grup (grup menunjuk ke item pertamanya).
+  // Item aktif = marker yang membentangi garis aktif; bila garis di celah,
+  // pakai marker terakhir yang sudah melewati garis. Tidak melompat bolak-balik.
   useEffect(() => {
     if (searching) return
     const container = scrollRef.current
     if (!container) return
-    const sections = Array.from(container.querySelectorAll<HTMLElement>("[data-faq-section]"))
-    if (!sections.length) return
+    const markers = Array.from(
+      container.querySelectorAll<HTMLElement>("[data-scroll-marker]")
+    ).filter((el) => el.getAttribute("data-scroll-marker"))
+    if (!markers.length) return
 
-    const ACTIVE_LINE = 120
     let ticking = false
 
     function compute() {
       ticking = false
       let current: string | null = null
-      for (const el of sections) {
-        if (el.getBoundingClientRect().top <= ACTIVE_LINE) {
-          current = el.getAttribute("data-faq-section")
-        } else {
+      for (const el of markers) {
+        const rect = el.getBoundingClientRect()
+        if (rect.top <= ACTIVE_LINE && rect.bottom > ACTIVE_LINE) {
+          current = el.getAttribute("data-scroll-marker")
           break
         }
       }
-      if (!current) {
-        current = sections[0].getAttribute("data-faq-section")
+      if (current === null) {
+        let last: string | null = null
+        for (const el of markers) {
+          if (el.getBoundingClientRect().bottom <= ACTIVE_LINE) {
+            last = el.getAttribute("data-scroll-marker")
+          } else {
+            break
+          }
+        }
+        current = last ?? markers[0].getAttribute("data-scroll-marker")
       }
       setActiveId((prev) => (prev === current ? prev : current))
     }
@@ -158,7 +180,8 @@ export function FaqView() {
     }
   }, [searching])
 
-  // Jaga item navigasi aktif tetap terlihat di sidebar (scroll minimal).
+  // Jaga item navigasi aktif tetap terlihat di sidebar (scroll minimal, hanya
+  // sidebar yang digeser — tidak menyentuh container utama).
   useEffect(() => {
     if (searching || !activeId) return
     const aside = asideRef.current
@@ -166,8 +189,12 @@ export function FaqView() {
     const btn = aside.querySelector<HTMLElement>(`[data-nav-item="${activeId}"]`)
     if (!btn) return
     const top = btn.offsetTop
-    if (top < aside.scrollTop || top + btn.offsetHeight > aside.scrollTop + aside.clientHeight) {
-      btn.scrollIntoView({ block: "nearest", behavior: "smooth" })
+    const bottom = top + btn.offsetHeight
+    const from = aside.scrollTop + 8
+    const to = aside.scrollTop + aside.clientHeight - 8
+    if (top < from || bottom > to) {
+      const next = top < from ? top - 8 : bottom - aside.clientHeight + 8
+      aside.scrollTo({ top: Math.max(0, next), behavior: "smooth" })
     }
   }, [activeId, searching])
 
@@ -228,7 +255,7 @@ export function FaqView() {
                           data-nav-item={anchor}
                           onClick={() => {
                             setActiveId(anchor)
-                            scrollToId(anchor)
+                            scrollToId(anchor, scrollRef.current)
                           }}
                           className={cn(
                             "w-full rounded-lg px-2.5 py-1.5 text-left text-sm leading-snug text-ink-muted transition-colors hover:bg-canvas-soft hover:text-ink",
@@ -278,7 +305,7 @@ export function FaqView() {
                     onClick={() => {
                       const first = group.items[0]
                       if (first) setActiveId(ITEM_ANCHOR(first.id))
-                      scrollToId(`grp-${group.id}`)
+                      scrollToId(`grp-${group.id}`, scrollRef.current)
                     }}
                     className={cn(
                       "shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
