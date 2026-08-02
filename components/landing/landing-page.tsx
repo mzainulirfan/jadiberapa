@@ -31,7 +31,7 @@ const featureIconMap: Record<FeatureIconKey, React.ComponentType<{ className?: s
 
 export function LandingPage() {
   return (
-    <div className="flex min-h-dvh flex-col bg-canvas-soft text-ink">
+    <div className="flex h-dvh flex-col overflow-y-auto bg-canvas-soft text-ink">
       <LandingNav />
       <main className="flex-1">
         <Hero />
