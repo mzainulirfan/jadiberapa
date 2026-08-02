@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { createContext, useContext, useEffect, useState } from "react"
 import type { User } from "@supabase/supabase-js"
+import { translateAuthError } from "@/lib/auth/auth-errors"
 
 type AuthContext = {
   user: User | null
@@ -14,15 +15,6 @@ type AuthContext = {
 }
 
 const AuthContext = createContext<AuthContext | null>(null)
-
-function translateAuthError(message: string): string {
-  const lower = message.toLowerCase()
-  if (lower.includes("invalid login credentials")) return "Username atau passcode salah"
-  if (lower.includes("user not found")) return "Username atau passcode salah"
-  if (lower.includes("email not confirmed")) return "Akun belum dikonfirmasi"
-  if (lower.includes("too many requests")) return "Terlalu banyak percobaan. Tunggu sebentar, lalu coba lagi"
-  return message
-}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)

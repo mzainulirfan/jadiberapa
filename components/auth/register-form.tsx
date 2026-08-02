@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
@@ -11,6 +11,7 @@ import { getStoreByCode } from "@/lib/db/queries"
 import { TemplatePicker } from "@/components/templates/template-picker"
 import { getStoreTemplate } from "@/lib/templates"
 import { storeTemplateOptions } from "@/lib/templates/options"
+import { translateAuthError } from "@/lib/auth/auth-errors"
 
 type Mode = "owner" | "kasir"
 
@@ -34,6 +35,7 @@ export function RegisterForm({
   const [foundStore, setFoundStore] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const passcodeRef = useRef<HTMLInputElement>(null)
 
   const selectedTemplate = getStoreTemplate(templateKey)
   const selectedOption = storeTemplateOptions.find((option) => option.key === templateKey)
@@ -95,7 +97,9 @@ export function RegisterForm({
     setLoading(false)
 
     if (signUpError) {
-      setError(signUpError.message.includes("already") ? "Username sudah terdaftar" : signUpError.message)
+      setError(translateAuthError(signUpError.message))
+      setPasscode("")
+      passcodeRef.current?.focus()
       return
     }
 
@@ -133,6 +137,7 @@ export function RegisterForm({
               value={storeName}
               onChange={(e) => setStoreName(e.target.value)}
               autoComplete="organization"
+              autoFocus
               required
             />
           </div>
@@ -198,6 +203,7 @@ export function RegisterForm({
             }}
             autoCapitalize="none"
             autoCorrect="off"
+            autoFocus={!invited}
             className="font-mono"
             required
           />
@@ -211,34 +217,53 @@ export function RegisterForm({
         <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
           {isOwner ? "Akun pemilik" : "Informasi akun"}
         </p>
-        <Input
-          placeholder="Username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          autoComplete="username"
-          required
-        />
-        <div className="relative">
-          <Input
-            type={showPass ? "text" : "password"}
-            placeholder="Passcode 4-6 digit"
-            value={passcode}
-            onChange={(e) => setPasscode(e.target.value)}
-            autoComplete="new-password"
-            inputMode="numeric"
-            minLength={4}
-            maxLength={6}
-            required
-            className="pr-10"
-          />
-          <button
-            type="button"
-            onClick={() => setShowPass((value) => !value)}
-            aria-label={showPass ? "Sembunyikan passcode" : "Tampilkan passcode"}
-            className="absolute inset-y-0 right-1 flex w-9 items-center justify-center text-ink-muted active:text-ink"
+        <div className="space-y-1.5">
+          <label
+            htmlFor="username"
+            className="text-xs font-semibold uppercase tracking-wide text-ink-faint"
           >
-            {showPass ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-          </button>
+            Username
+          </label>
+          <Input
+            id="username"
+            placeholder="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            autoComplete="username"
+            required
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label
+            htmlFor="passcode"
+            className="text-xs font-semibold uppercase tracking-wide text-ink-faint"
+          >
+            Passcode
+          </label>
+          <div className="relative">
+            <Input
+              id="passcode"
+              type={showPass ? "text" : "password"}
+              placeholder="4-6 digit"
+              value={passcode}
+              onChange={(e) => setPasscode(e.target.value)}
+              autoComplete="new-password"
+              inputMode="numeric"
+              minLength={4}
+              maxLength={6}
+              required
+              className="pr-10"
+              ref={passcodeRef}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPass((value) => !value)}
+              aria-label={showPass ? "Sembunyikan passcode" : "Tampilkan passcode"}
+              className="absolute inset-y-0 right-1 flex w-9 items-center justify-center text-ink-muted active:text-ink"
+            >
+              {showPass ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </button>
+          </div>
         </div>
       </div>
 
