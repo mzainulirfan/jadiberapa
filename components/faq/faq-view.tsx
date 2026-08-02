@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, type ComponentType } from "react"
+import { useEffect, useMemo, useRef, useState, type ComponentType } from "react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
@@ -82,6 +82,8 @@ export function FaqView() {
   const { user } = useAuth()
   const [query, setQuery] = useState("")
   const [activeId, setActiveId] = useState<string | null>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const asideRef = useRef<HTMLElement>(null)
 
   const searching = query.trim().length > 0
 
@@ -103,26 +105,78 @@ export function FaqView() {
     return result
   }, [query])
 
+  // Grup dari artikel yang sedang aktif (dipakai untuk menandai chip mobile).
+  const activeGroupId = useMemo(() => {
+    if (!activeId) return null
+    for (const group of faqGroups) {
+      if (group.items.some((it) => ITEM_ANCHOR(it.id) === activeId)) return group.id
+    }
+    return null
+  }, [activeId])
+
+  // Scroll-spy: tandai item navigasi sesuai artikel yang sedang dibaca. Berbasis
+  // posisi scroll (bukan IntersectionObserver) agar konsisten di bagian atas/bawah.
   useEffect(() => {
     if (searching) return
-    const els = Array.from(document.querySelectorAll<HTMLElement>("[data-faq-section]"))
-    if (!els.length) return
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            setActiveId(entry.target.getAttribute("data-faq-section"))
-          }
+    const container = scrollRef.current
+    if (!container) return
+    const sections = Array.from(container.querySelectorAll<HTMLElement>("[data-faq-section]"))
+    if (!sections.length) return
+
+    const ACTIVE_LINE = 120 // di bawah header sticky
+    let ticking = false
+
+    function compute() {
+      ticking = false
+      let current: string | null = null
+      for (const el of sections) {
+        const rect = el.getBoundingClientRect()
+        if (rect.top <= ACTIVE_LINE && rect.bottom > ACTIVE_LINE) {
+          current = el.getAttribute("data-faq-section")
+          break
         }
-      },
-      { rootMargin: "-15% 0px -70% 0px", threshold: 0 }
-    )
-    els.forEach((el) => observer.observe(el))
-    return () => observer.disconnect()
+      }
+      if (!current) {
+        const first = sections[0].getBoundingClientRect()
+        current =
+          first.top > ACTIVE_LINE
+            ? sections[0].getAttribute("data-faq-section")
+            : sections[sections.length - 1].getAttribute("data-faq-section")
+      }
+      setActiveId((prev) => (prev === current ? prev : current))
+    }
+
+    function onScroll() {
+      if (!ticking) {
+        ticking = true
+        requestAnimationFrame(compute)
+      }
+    }
+
+    container.addEventListener("scroll", onScroll, { passive: true })
+    const raf = requestAnimationFrame(compute)
+    return () => {
+      container.removeEventListener("scroll", onScroll)
+      cancelAnimationFrame(raf)
+    }
   }, [searching])
 
+  // Jaga item navigasi aktif tetap terlihat di sidebar (auto-scroll bila perlu).
+  useEffect(() => {
+    if (searching || !activeId) return
+    const aside = asideRef.current
+    if (!aside) return
+    const btn = aside.querySelector<HTMLElement>(`[data-nav-item="${activeId}"]`)
+    if (!btn) return
+    const top = btn.offsetTop
+    const visible = aside.clientHeight
+    if (top < aside.scrollTop + 8 || top + btn.clientHeight > aside.scrollTop + visible - 8) {
+      aside.scrollTop = top - visible / 2 + btn.clientHeight / 2
+    }
+  }, [activeId, searching])
+
   return (
-    <div className="fixed inset-0 overflow-y-auto overscroll-y-auto bg-canvas-soft">
+    <div ref={scrollRef} className="fixed inset-0 overflow-y-auto overscroll-y-auto bg-canvas-soft">
       <div className="mx-auto flex min-h-full w-full flex-col">
         <header className="sticky top-0 z-20 border-b border-hairline bg-canvas">
           <div className="mx-auto flex h-14 w-full max-w-5xl items-center gap-3 px-4 sm:px-6">
@@ -151,7 +205,7 @@ export function FaqView() {
         </header>
 
         <div className="mx-auto w-full max-w-5xl flex-1 px-4 sm:px-6 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-12">
-          <aside className="sticky top-14 hidden max-h-[calc(100dvh-3.5rem)] self-start overflow-y-auto py-8 pr-1 lg:block">
+          <aside ref={asideRef} className="sticky top-14 hidden max-h-[calc(100dvh-3.5rem)] self-start overflow-y-auto py-8 pr-1 lg:block">
           <div className="relative mb-6">
             <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-ink-faint" />
             <Input
@@ -175,10 +229,13 @@ export function FaqView() {
                       <li key={item.id}>
                         <button
                           type="button"
+                          data-nav-item={anchor}
                           onClick={() => scrollToId(anchor)}
                           className={cn(
                             "w-full rounded-lg px-2.5 py-1.5 text-left text-sm leading-snug text-ink-muted transition-colors hover:bg-canvas-soft hover:text-ink",
-                            !searching && activeId === anchor && "bg-canvas-soft font-medium text-ink"
+                            !searching &&
+                              activeId === anchor &&
+                              "bg-primary/10 font-medium text-primary"
                           )}
                         >
                           {item.q}
@@ -213,16 +270,24 @@ export function FaqView() {
 
           {!searching && (
             <div className="sticky top-14 z-10 mt-5 -mx-4 flex gap-2 overflow-x-auto border-b border-hairline bg-canvas-soft px-4 py-2 sm:-mx-6 sm:px-6 lg:hidden">
-              {faqGroups.map((group) => (
-                <button
-                  key={group.id}
-                  type="button"
-                  onClick={() => scrollToId(`grp-${group.id}`)}
-                  className="shrink-0 rounded-full border border-hairline bg-canvas px-3 py-1.5 text-xs font-medium text-ink-muted active:bg-canvas-soft"
-                >
-                  {group.title}
-                </button>
-              ))}
+              {faqGroups.map((group) => {
+                const active = activeGroupId === group.id
+                return (
+                  <button
+                    key={group.id}
+                    type="button"
+                    onClick={() => scrollToId(`grp-${group.id}`)}
+                    className={cn(
+                      "shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                      active
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-hairline bg-canvas text-ink-muted active:bg-canvas-soft"
+                    )}
+                  >
+                    {group.title}
+                  </button>
+                )
+              })}
             </div>
           )}
 
