@@ -151,7 +151,7 @@ export function FaqView() {
         </header>
 
         <div className="mx-auto w-full max-w-5xl flex-1 px-4 sm:px-6 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-12">
-          <aside className="sticky top-14 hidden max-h-[calc(100dvh-3.5rem)] overflow-y-auto py-8 pr-1 lg:block">
+          <aside className="sticky top-14 hidden max-h-[calc(100dvh-3.5rem)] self-start overflow-y-auto py-8 pr-1 lg:block">
           <div className="relative mb-6">
             <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-ink-faint" />
             <Input
@@ -211,18 +211,20 @@ export function FaqView() {
             />
           </div>
 
-          <div className="mt-5 flex -mx-1 gap-2 overflow-x-auto px-1 pb-1 lg:hidden">
-            {faqGroups.map((group) => (
-              <button
-                key={group.id}
-                type="button"
-                onClick={() => scrollToId(`grp-${group.id}`)}
-                className="shrink-0 rounded-full border border-hairline bg-canvas px-3 py-1.5 text-xs font-medium text-ink-muted active:bg-canvas-soft"
-              >
-                {group.title}
-              </button>
-            ))}
-          </div>
+          {!searching && (
+            <div className="sticky top-14 z-10 mt-5 -mx-4 flex gap-2 overflow-x-auto border-b border-hairline bg-canvas-soft px-4 py-2 sm:-mx-6 sm:px-6 lg:hidden">
+              {faqGroups.map((group) => (
+                <button
+                  key={group.id}
+                  type="button"
+                  onClick={() => scrollToId(`grp-${group.id}`)}
+                  className="shrink-0 rounded-full border border-hairline bg-canvas px-3 py-1.5 text-xs font-medium text-ink-muted active:bg-canvas-soft"
+                >
+                  {group.title}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="mt-6 space-y-12">
             {searching ? (
