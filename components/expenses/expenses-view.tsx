@@ -45,7 +45,6 @@ const RANGES: { key: RangeKey; label: string }[] = [
 ]
 
 const CATEGORIES = [
-  "Belanja Stok",
   "Operasional",
   "Gaji",
   "Sewa",

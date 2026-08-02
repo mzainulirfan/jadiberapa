@@ -19,6 +19,8 @@ const ROUTES: Record<string, RouteMeta> = {
   "/reports": { title: "Laporan", back: "/more" },
   "/debts": { title: "Utang", back: "/more" },
   "/expenses": { title: "Pengeluaran", back: "/more" },
+  "/suppliers": { title: "Supplier", back: "/more" },
+  "/purchases": { title: "Pembelian", back: "/more" },
   "/shift": { title: "Shift Kasir", back: "/more" },
   "/settings": { title: "Pengaturan", back: "/more" },
   "/staff": { title: "Kelola Kasir", back: "/more" },
@@ -29,6 +31,9 @@ const ROUTES: Record<string, RouteMeta> = {
 function resolveMeta(pathname: string): RouteMeta {
   if (pathname.startsWith("/transactions/") && pathname !== "/transactions") {
     return { title: "Detail Transaksi", back: "/transactions" }
+  }
+  if (pathname.startsWith("/purchases/") && pathname !== "/purchases") {
+    return { title: "Detail Pembelian", back: "/purchases" }
   }
   return ROUTES[pathname] ?? { title: "Saberaha" }
 }

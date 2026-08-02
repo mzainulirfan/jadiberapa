@@ -16,6 +16,10 @@ export type StoreBackupBundle = {
   products: BackupRow[]
   product_variants: BackupRow[]
   customers: BackupRow[]
+  suppliers: BackupRow[]
+  purchases: BackupRow[]
+  purchase_items: BackupRow[]
+  supplier_payments: BackupRow[]
   expenses: BackupRow[]
   discounts: BackupRow[]
   discount_products: Array<{ discount_id: string; product_id: string }>
@@ -32,6 +36,10 @@ export type StoreBackupCounts = {
   products: number
   product_variants: number
   customers: number
+  suppliers: number
+  purchases: number
+  purchase_items: number
+  supplier_payments: number
   expenses: number
   discounts: number
   discount_products: number

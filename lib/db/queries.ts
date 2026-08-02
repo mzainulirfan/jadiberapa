@@ -732,6 +732,7 @@ export type BxReports = {
   payment: { key: string; value: number }[]
   topProducts: { name: string; qty: number; total: number }[]
   trend: { t: string; value: number }[]
+  purchases: BxPurchasesReport
 }
 
 /** Bentuk mentah JSON yang dikembalikan RPC get_reports_summary. */
@@ -754,7 +755,7 @@ export async function getReports(
   bucket: "hour" | "day"
 ): Promise<BxReports> {
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Jakarta"
-  const [reportRes, expenseRes] = await Promise.all([
+  const [reportRes, expenseRes, purchaseRes] = await Promise.all([
     supabase.rpc("get_reports_summary", {
       p_from: from ?? null,
       p_to: null,
@@ -767,6 +768,7 @@ export async function getReports(
       const { data } = await query
       return (data ?? []).reduce((sum, row) => sum + (Number(row.amount) || 0), 0)
     })(),
+    getPurchasesReport(from),
   ])
   const { data } = reportRes
   const r = (data ?? {}) as Partial<RpcReports>
@@ -789,6 +791,7 @@ export async function getReports(
       total: Number(p.total) || 0,
     })),
     trend: (r.trend ?? []).map((t) => ({ t: t.t, value: Number(t.value) || 0 })),
+    purchases: purchaseRes,
   }
 }
 
@@ -851,4 +854,351 @@ export async function getShiftSummary(
   const { data } = await supabase.rpc("get_shift_summary", { p_opened_at: openedAt })
   const r = (data ?? {}) as { cashSales?: number; txCount?: number }
   return { cashSales: Number(r.cashSales) || 0, txCount: Number(r.txCount) || 0 }
+}
+
+export type BxSupplier = {
+  id: string
+  name: string
+  phone: string | null
+  note: string | null
+}
+
+const SUPPLIER_TTL_MS = 60_000
+let suppliersCache: BxSupplier[] | null = null
+let suppliersFetchedAt = 0
+let suppliersPromise: Promise<BxSupplier[]> | null = null
+
+// Daftar supplier (nyaris statis). Query langsung dari client + cache TTL.
+export function getSuppliers(search?: string): Promise<BxSupplier[]> {
+  const now = Date.now()
+  if (suppliersCache && now - suppliersFetchedAt < SUPPLIER_TTL_MS) {
+    const s = search?.trim().toLowerCase()
+    if (!s) return Promise.resolve(suppliersCache)
+    return Promise.resolve(
+      suppliersCache.filter((sup) => sup.name.toLowerCase().includes(s))
+    )
+  }
+  if (!suppliersPromise) {
+    suppliersPromise = (async () => {
+      try {
+        const { data } = await supabase.from("suppliers").select("id, name, phone, note").order("name")
+        suppliersCache = (data ?? []) as unknown as BxSupplier[]
+        suppliersFetchedAt = Date.now()
+        return suppliersCache
+      } finally {
+        suppliersPromise = null
+      }
+    })()
+  }
+  return suppliersPromise.then((list) => {
+    const s = search?.trim().toLowerCase()
+    if (!s) return list
+    return list.filter((sup) => sup.name.toLowerCase().includes(s))
+  })
+}
+
+export function invalidateSuppliers() {
+  suppliersCache = null
+  suppliersFetchedAt = 0
+}
+
+export type BxPurchase = {
+  id: string
+  number: string
+  supplier_id: string | null
+  supplier_name: string | null
+  total: number
+  paid_amount: number
+  status: "lunas" | "utang"
+  created_at: string
+  item_count: number
+}
+
+// Daftar nota beli (filter status opsional), terbaru dulu.
+export async function getPurchases(params?: {
+  status?: "lunas" | "utang"
+}): Promise<BxPurchase[]> {
+  let query = supabase
+    .from("purchases")
+    .select("id, number, supplier_id, total, paid_amount, status, created_at, suppliers(name)")
+    .order("created_at", { ascending: false })
+    .limit(200)
+  if (params?.status) query = query.eq("status", params.status)
+
+  type Row = {
+    id: string
+    number: string
+    supplier_id: string | null
+    total: number
+    paid_amount: number
+    status: "lunas" | "utang"
+    created_at: string
+    suppliers: { name: string } | null
+  }
+  const { data } = await query
+  return ((data ?? []) as unknown as Row[]).map((r) => ({
+    id: r.id,
+    number: r.number,
+    supplier_id: r.supplier_id,
+    supplier_name: r.suppliers?.name ?? null,
+    total: r.total,
+    paid_amount: r.paid_amount ?? 0,
+    status: r.status,
+    created_at: r.created_at,
+    item_count: 0,
+  }))
+}
+
+export type BxPurchaseDetail = {
+  id: string
+  number: string
+  supplier_id: string | null
+  supplier_name: string | null
+  total: number
+  paid_amount: number
+  status: "lunas" | "utang"
+  note: string | null
+  cashier_name: string | null
+  created_at: string
+  items: {
+    id: string
+    qty: number
+    price_buy: number
+    subtotal: number
+    product_name: string | null
+  }[]
+  payments: BxSupplierPayment[]
+}
+
+// Detail 1 nota beli: nota + item (+ nama produk) + supplier + riwayat pembayaran.
+export async function getPurchase(id: string): Promise<{
+  error: string | null
+  purchase: BxPurchaseDetail | null
+}> {
+  const { data, error } = await supabase
+    .from("purchases")
+    .select("*, purchase_items(*, products(name)), suppliers(name), supplier_payments(*)")
+    .eq("id", id)
+    .single()
+
+  if (error) return { error: error.message, purchase: null }
+  const p = data as {
+    id: string
+    number: string
+    supplier_id: string | null
+    total: number
+    paid_amount: number
+    status: "lunas" | "utang"
+    note: string | null
+    cashier_name: string | null
+    created_at: string
+    purchase_items: {
+      id: string
+      qty: number
+      price_buy: number
+      subtotal: number
+      products: { name: string } | null
+    }[]
+    suppliers: { name: string } | null
+    supplier_payments: {
+      id: string
+      amount: number
+      method: string
+      note: string | null
+      created_at: string
+    }[]
+  }
+  return {
+    error: null,
+    purchase: {
+      id: p.id,
+      number: p.number,
+      supplier_id: p.supplier_id,
+      supplier_name: p.suppliers?.name ?? null,
+      total: p.total,
+      paid_amount: p.paid_amount ?? 0,
+      status: p.status,
+      note: p.note,
+      cashier_name: p.cashier_name,
+      created_at: p.created_at,
+      items: (p.purchase_items ?? []).map((i) => ({
+        id: i.id,
+        qty: i.qty,
+        price_buy: i.price_buy,
+        subtotal: i.subtotal,
+        product_name: i.products?.name ?? null,
+      })),
+      payments: (p.supplier_payments ?? []).map((pm) => ({
+        id: pm.id,
+        amount: pm.amount,
+        method: pm.method,
+        note: pm.note,
+        created_at: pm.created_at,
+      })),
+    },
+  }
+}
+
+export type BxSupplierDebt = {
+  id: string
+  number: string
+  total: number
+  paid_amount: number
+  created_at: string
+  supplier_id: string | null
+  supplier_name: string | null
+}
+
+// Nota beli yang masih berutang ke supplier (status = 'utang'), tertua dulu.
+export async function getSupplierDebts(): Promise<BxSupplierDebt[]> {
+  const { data } = await supabase
+    .from("purchases")
+    .select("id, number, total, paid_amount, created_at, supplier_id, suppliers(name)")
+    .eq("status", "utang")
+    .order("created_at", { ascending: true })
+
+  type Row = {
+    id: string
+    number: string
+    total: number
+    paid_amount: number
+    created_at: string
+    supplier_id: string | null
+    suppliers: { name: string } | null
+  }
+  return ((data ?? []) as unknown as Row[]).map((r) => ({
+    id: r.id,
+    number: r.number,
+    total: r.total,
+    paid_amount: r.paid_amount ?? 0,
+    created_at: r.created_at,
+    supplier_id: r.supplier_id,
+    supplier_name: r.suppliers?.name ?? null,
+  }))
+}
+
+export type BxSupplierPayment = {
+  id: string
+  amount: number
+  method: string
+  note: string | null
+  created_at: string
+}
+
+// Riwayat pembayaran (DP + cicilan) sebuah nota beli.
+export async function getSupplierPayments(purchaseId: string): Promise<BxSupplierPayment[]> {
+  const { data } = await supabase
+    .from("supplier_payments")
+    .select("id, amount, method, note, created_at")
+    .eq("purchase_id", purchaseId)
+    .order("created_at", { ascending: true })
+  return (data ?? []) as unknown as BxSupplierPayment[]
+}
+
+export type BxPurchasesReport = {
+  totalPurchases: number
+  outstandingDebt: number
+}
+
+// Ringkasan pembelian (nilai nota dalam rentang) + utang supplier berjalan.
+export async function getPurchasesReport(from?: string, to?: string): Promise<BxPurchasesReport> {
+  const { data } = await supabase.rpc("get_purchases_summary", {
+    p_from: from ?? null,
+    p_to: to ?? null,
+  })
+  const r = (data ?? {}) as { totalPurchases?: number; outstandingDebt?: number }
+  return {
+    totalPurchases: Number(r.totalPurchases) || 0,
+    outstandingDebt: Number(r.outstandingDebt) || 0,
+  }
+}
+
+export type BxMarginProduct = {
+  id: string
+  name: string
+  stock: number
+  qty: number
+  revenue: number
+  cost: number
+  profit: number
+  marginPct: number
+}
+
+export type BxBusyHour = { hour: number; value: number }
+
+export type BxBusyDay = { day: number; value: number }
+
+export type BxRestockSuggestion = {
+  id: string
+  name: string
+  stock: number
+  minStock: number
+  sold: number
+  daysLeft: number | null
+}
+
+export type BxDeadStock = {
+  id: string
+  name: string
+  stock: number
+  lastSold: string | null
+  daysIdle: number | null
+}
+
+export type BxAnalytics = {
+  margins: BxMarginProduct[]
+  busyHours: BxBusyHour[]
+  busyDays: BxBusyDay[]
+  restock: BxRestockSuggestion[]
+  deadStock: BxDeadStock[]
+}
+
+// Analitik Fase B: margin per produk + jam/hari sibuk (periode) + saran restock
+// (lookback 14 hari) + barang mati (lookback 30 hari). RPC non-security-definer,
+// jadi pemfilteran toko otomatis via RLS. Normalisasi angka dari jsonb.
+export async function getAnalytics(from?: string, to?: string): Promise<BxAnalytics> {
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Jakarta"
+  const { data } = await supabase.rpc("get_analytics_summary", {
+    p_from: from ?? null,
+    p_to: to ?? null,
+    p_tz: tz,
+    p_restock_days: 14,
+    p_dead_days: 30,
+  })
+  const r = (data ?? {}) as Partial<BxAnalytics>
+  return {
+    margins: (r.margins ?? []).map((m) => ({
+      id: m.id,
+      name: m.name,
+      stock: Number(m.stock) || 0,
+      qty: Number(m.qty) || 0,
+      revenue: Number(m.revenue) || 0,
+      cost: Number(m.cost) || 0,
+      profit: Number(m.profit) || 0,
+      marginPct: Number(m.marginPct) || 0,
+    })),
+    busyHours: (r.busyHours ?? []).map((b) => ({
+      hour: Number(b.hour) || 0,
+      value: Number(b.value) || 0,
+    })),
+    busyDays: (r.busyDays ?? []).map((d) => ({
+      day: Number(d.day) || 0,
+      value: Number(d.value) || 0,
+    })),
+    restock: (r.restock ?? []).map((s) => ({
+      id: s.id,
+      name: s.name,
+      stock: Number(s.stock) || 0,
+      minStock: Number(s.minStock) || 0,
+      sold: Number(s.sold) || 0,
+      daysLeft: s.daysLeft == null ? null : Math.round(Number(s.daysLeft)),
+    })),
+    deadStock: (r.deadStock ?? []).map((d) => ({
+      id: d.id,
+      name: d.name,
+      stock: Number(d.stock) || 0,
+      lastSold: d.lastSold ?? null,
+      daysIdle: d.daysIdle == null ? null : Number(d.daysIdle),
+    })),
+  }
 }

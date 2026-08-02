@@ -39,6 +39,7 @@ import {
   Check,
   ChartLine,
   Copy,
+  Package,
 } from "@/components/ui/icons"
 
 const APP_VERSION = "Saberaha v1.0.0"
@@ -54,6 +55,13 @@ const OWNER_GROUPS: Group[] = [
       { href: "/shift", label: "Shift Kasir", desc: "Buka/tutup laci & selisih kas", icon: Receipt },
       { href: "/expenses", label: "Pengeluaran", desc: "Biaya operasional & laba bersih", icon: Dollar },
       { href: "/reports", label: "Laporan", desc: "Laporan penjualan", icon: BarChart },
+    ],
+  },
+  {
+    title: "Stok & Beli",
+    items: [
+      { href: "/suppliers", label: "Supplier", desc: "Daftar & kelola pemasok", icon: Package },
+      { href: "/purchases", label: "Pembelian", desc: "Nota beli & utang supplier", icon: Receipt },
     ],
   },
   {
