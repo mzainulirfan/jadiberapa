@@ -480,6 +480,9 @@ export function DashboardView() {
   const username = user?.email?.split("@")[0] ?? ""
   const name = username.charAt(0).toUpperCase() + username.slice(1)
   const roleLabel = role === "owner" ? "Pemilik" : role === "kasir" ? "Kasir" : null
+  const pendingTemplateKey = typeof user?.user_metadata?.template_key === "string"
+    ? user.user_metadata.template_key
+    : null
   const [period, setPeriod] = useState<BxPeriod>("today")
   const [data, setData] = useState<BxDashboardSummary | null>(null)
   const [refreshing, setRefreshing] = useState(false)
@@ -546,7 +549,7 @@ export function DashboardView() {
         <PeriodDropdown value={period} onChange={changePeriod} />
       </div>
 
-      <TemplateOnboarding enabled={role === "owner"} />
+      <TemplateOnboarding enabled={role === "owner"} pendingTemplateKey={pendingTemplateKey} />
 
       <div className={cn("transition-opacity duration-200", refreshing && "opacity-60")}>
         {!data ? <DashboardSkeleton /> : <DashboardContent data={data} />}

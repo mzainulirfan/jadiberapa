@@ -25,6 +25,7 @@ import {
   AlertTriangle,
 } from "@/components/ui/icons"
 import { cn } from "@/lib/utils"
+import { DangerZone } from "@/components/settings/danger-zone"
 
 const APP_VERSION = "Saberaha v1.0.0"
 const SAVE_DEBOUNCE_MS = 1200
@@ -420,6 +421,8 @@ export function SettingsForm() {
               </div>
             </div>
           </SectionCard>
+
+          <DangerZone storeName={settings.store_name?.trim() || "Toko Saya"} />
         </TabsContent>
 
         <TabsContent value="pembayaran" className="space-y-5">

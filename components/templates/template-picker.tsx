@@ -23,7 +23,7 @@ export function TemplatePicker({
   compact?: boolean
 }) {
   return (
-    <div className={cn(compact ? "grid grid-cols-1 gap-2 sm:grid-cols-2" : "space-y-2")}>
+    <div className={cn(compact ? "grid grid-cols-2 gap-2" : "space-y-2")}>
       {storeTemplateOptions.map((template) => {
         const Icon = ICONS[template.icon]
         const active = value === template.key
@@ -33,9 +33,10 @@ export function TemplatePicker({
             type="button"
             onClick={() => onChange(template.key)}
             className={cn(
-              "flex w-full min-w-0 items-center gap-3 rounded-xl border text-left transition-colors active:bg-canvas-soft",
-              compact ? "p-2.5" : "p-3",
-              active ? "border-primary bg-primary/5" : "border-hairline bg-canvas"
+              "relative flex w-full min-w-0 rounded-xl border text-left transition-colors active:bg-canvas-soft",
+              compact ? "min-h-20 flex-col items-start gap-2 p-3" : "items-center gap-3 p-3",
+              compact && template.key === "kosong" && "col-span-2 min-h-0 flex-row items-center",
+              active ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-hairline bg-canvas"
             )}
           >
             <span
@@ -49,14 +50,24 @@ export function TemplatePicker({
             </span>
             <span className="min-w-0 flex-1">
               <span className={cn("block font-semibold text-ink", compact ? "text-[13px]" : "text-sm")}>{template.name}</span>
-              <span className={cn("block text-xs text-ink-faint", compact && "truncate")}>{template.desc}</span>
+              {!compact && <span className="block text-xs text-ink-faint">{template.desc}</span>}
+              {compact && template.key === "kelontong" && (
+                <span className="mt-0.5 block text-[10px] font-semibold text-primary">Direkomendasikan</span>
+              )}
+              {compact && template.key !== "kelontong" && template.productCount > 0 && (
+                <span className="mt-0.5 block text-[10px] font-medium text-ink-faint">
+                  {template.productCount} produk
+                </span>
+              )}
               {!compact && template.productCount > 0 && (
                 <span className="mt-1 block text-[11px] font-medium text-ink-muted">
                   {template.productCount} barang contoh
                 </span>
               )}
             </span>
-            {active && <Check className="size-5 shrink-0 text-primary" />}
+            {active && (
+              <Check className={cn("size-5 shrink-0 text-primary", compact && "absolute right-2.5 top-2.5")} />
+            )}
           </button>
         )
       })}

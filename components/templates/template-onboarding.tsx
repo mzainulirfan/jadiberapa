@@ -10,7 +10,13 @@ import { EMPTY_TEMPLATE_KEY, PENDING_STORE_TEMPLATE_KEY } from "@/lib/templates/
 
 type State = "checking" | "hidden" | "choosing" | "applying"
 
-export function TemplateOnboarding({ enabled }: { enabled: boolean }) {
+export function TemplateOnboarding({
+  enabled,
+  pendingTemplateKey,
+}: {
+  enabled: boolean
+  pendingTemplateKey?: string | null
+}) {
   const [state, setState] = useState<State>(enabled ? "checking" : "hidden")
   const [selected, setSelected] = useState("kelontong")
 
@@ -21,9 +27,10 @@ export function TemplateOnboarding({ enabled }: { enabled: boolean }) {
     async function check() {
       const info = await getStoreTemplateOnboardingState()
       if (!active) return
-      const pending = window.localStorage.getItem(PENDING_STORE_TEMPLATE_KEY)
+      const storedPending = window.localStorage.getItem(PENDING_STORE_TEMPLATE_KEY)
+      const pending = pendingTemplateKey || storedPending
       if (!info.empty || info.templateKey) {
-        if (pending) window.localStorage.removeItem(PENDING_STORE_TEMPLATE_KEY)
+        if (storedPending) window.localStorage.removeItem(PENDING_STORE_TEMPLATE_KEY)
         setState("hidden")
         return
       }
@@ -34,7 +41,7 @@ export function TemplateOnboarding({ enabled }: { enabled: boolean }) {
           ? await skipStoreTemplate()
           : await applyStoreTemplate(pending)
         if (!active) return
-        window.localStorage.removeItem(PENDING_STORE_TEMPLATE_KEY)
+        if (storedPending) window.localStorage.removeItem(PENDING_STORE_TEMPLATE_KEY)
         if (res.error) {
           toast.error(res.error)
           setState("choosing")
@@ -51,7 +58,7 @@ export function TemplateOnboarding({ enabled }: { enabled: boolean }) {
     return () => {
       active = false
     }
-  }, [enabled])
+  }, [enabled, pendingTemplateKey])
 
   async function applySelected() {
     setState("applying")

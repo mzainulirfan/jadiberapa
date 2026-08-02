@@ -273,6 +273,29 @@ export async function removeMember(userId: string): Promise<string | null> {
   return (data as { error?: string | null } | null)?.error ?? null
 }
 
+export type StoreDeletionStats = {
+  products: number
+  categories: number
+  customers: number
+  transactions: number
+}
+
+// Ringkasan jumlah data toko aktif untuk ditampilkan di zona berbahaya.
+export async function getStoreDeletionStats(): Promise<StoreDeletionStats> {
+  const [products, categories, customers, transactions] = await Promise.all([
+    supabase.from("products").select("*", { count: "exact", head: true }),
+    supabase.from("categories").select("*", { count: "exact", head: true }),
+    supabase.from("customers").select("*", { count: "exact", head: true }),
+    supabase.from("transactions").select("*", { count: "exact", head: true }),
+  ])
+  return {
+    products: products.count ?? 0,
+    categories: categories.count ?? 0,
+    customers: customers.count ?? 0,
+    transactions: transactions.count ?? 0,
+  }
+}
+
 // Hapus seluruh cache data yang bergantung pada toko aktif (setelah ganti toko).
 export function invalidateAllDataCaches() {
   invalidateCategories()
