@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/hooks/use-auth"
-import { useRole } from "@/lib/hooks/use-role"
+import { useRole, type UserRole } from "@/lib/hooks/use-role"
 import { TemplateOnboarding } from "@/components/templates/template-onboarding"
 import { WelcomeChecklist } from "@/components/dashboard/welcome-checklist"
 import { QuickActions } from "@/components/dashboard/quick-actions"
@@ -256,7 +256,7 @@ function DashboardSkeleton() {
   )
 }
 
-function DashboardContent({ data }: { data: BxDashboardSummary }) {
+function DashboardContent({ data, role }: { data: BxDashboardSummary; role: UserRole | null | undefined }) {
   const { period } = data
   const maxTrend = Math.max(...data.trend.map((d) => d.total), 1)
   const avgTrend = data.trend.reduce((s, d) => s + d.total, 0) / data.trend.length
@@ -281,6 +281,8 @@ function DashboardContent({ data }: { data: BxDashboardSummary }) {
           <HeroStat label="Transaksi" value={String(data.count.value)} stat={data.count} />
           <HeroStat label="Barang Terjual" value={String(data.items.value)} stat={data.items} />
         </div>
+
+        <QuickActions role={role} />
       </div>
 
       <div className="grid grid-cols-2 gap-2">
@@ -551,14 +553,12 @@ export function DashboardView() {
         <PeriodDropdown value={period} onChange={changePeriod} />
       </div>
 
-      <QuickActions role={role} />
-
       <TemplateOnboarding enabled={role === "owner"} pendingTemplateKey={pendingTemplateKey} />
 
       <WelcomeChecklist enabled={role === "owner"} />
 
       <div className={cn("transition-opacity duration-200", refreshing && "opacity-60")}>
-        {!data ? <DashboardSkeleton /> : <DashboardContent data={data} />}
+        {!data ? <DashboardSkeleton /> : <DashboardContent data={data} role={role} />}
       </div>
     </div>
   )
