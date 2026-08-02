@@ -114,8 +114,9 @@ export function FaqView() {
     return null
   }, [activeId])
 
-  // Scroll-spy: tandai item navigasi sesuai artikel yang sedang dibaca. Berbasis
-  // posisi scroll (bukan IntersectionObserver) agar konsisten di bagian atas/bawah.
+  // Scroll-spy stabil: item aktif = section TERAKHIR yang sudah melewati garis
+  // aktif (di bawah header). Berbasis posisi scroll per-frame; aman saat garis
+  // berada di celah antar artikel (tidak melompat ke item pertama/terakhir).
   useEffect(() => {
     if (searching) return
     const container = scrollRef.current
@@ -123,25 +124,21 @@ export function FaqView() {
     const sections = Array.from(container.querySelectorAll<HTMLElement>("[data-faq-section]"))
     if (!sections.length) return
 
-    const ACTIVE_LINE = 120 // di bawah header sticky
+    const ACTIVE_LINE = 120
     let ticking = false
 
     function compute() {
       ticking = false
       let current: string | null = null
       for (const el of sections) {
-        const rect = el.getBoundingClientRect()
-        if (rect.top <= ACTIVE_LINE && rect.bottom > ACTIVE_LINE) {
+        if (el.getBoundingClientRect().top <= ACTIVE_LINE) {
           current = el.getAttribute("data-faq-section")
+        } else {
           break
         }
       }
       if (!current) {
-        const first = sections[0].getBoundingClientRect()
-        current =
-          first.top > ACTIVE_LINE
-            ? sections[0].getAttribute("data-faq-section")
-            : sections[sections.length - 1].getAttribute("data-faq-section")
+        current = sections[0].getAttribute("data-faq-section")
       }
       setActiveId((prev) => (prev === current ? prev : current))
     }
@@ -161,7 +158,7 @@ export function FaqView() {
     }
   }, [searching])
 
-  // Jaga item navigasi aktif tetap terlihat di sidebar (auto-scroll bila perlu).
+  // Jaga item navigasi aktif tetap terlihat di sidebar (scroll minimal).
   useEffect(() => {
     if (searching || !activeId) return
     const aside = asideRef.current
@@ -169,9 +166,8 @@ export function FaqView() {
     const btn = aside.querySelector<HTMLElement>(`[data-nav-item="${activeId}"]`)
     if (!btn) return
     const top = btn.offsetTop
-    const visible = aside.clientHeight
-    if (top < aside.scrollTop + 8 || top + btn.clientHeight > aside.scrollTop + visible - 8) {
-      aside.scrollTop = top - visible / 2 + btn.clientHeight / 2
+    if (top < aside.scrollTop || top + btn.offsetHeight > aside.scrollTop + aside.clientHeight) {
+      btn.scrollIntoView({ block: "nearest", behavior: "smooth" })
     }
   }, [activeId, searching])
 
@@ -230,7 +226,10 @@ export function FaqView() {
                         <button
                           type="button"
                           data-nav-item={anchor}
-                          onClick={() => scrollToId(anchor)}
+                          onClick={() => {
+                            setActiveId(anchor)
+                            scrollToId(anchor)
+                          }}
                           className={cn(
                             "w-full rounded-lg px-2.5 py-1.5 text-left text-sm leading-snug text-ink-muted transition-colors hover:bg-canvas-soft hover:text-ink",
                             !searching &&
@@ -276,7 +275,11 @@ export function FaqView() {
                   <button
                     key={group.id}
                     type="button"
-                    onClick={() => scrollToId(`grp-${group.id}`)}
+                    onClick={() => {
+                      const first = group.items[0]
+                      if (first) setActiveId(ITEM_ANCHOR(first.id))
+                      scrollToId(`grp-${group.id}`)
+                    }}
                     className={cn(
                       "shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
                       active
