@@ -39,7 +39,6 @@ import {
   Zap,
   Receipt,
   ShoppingBag,
-  Store,
   Check,
   ChartLine,
   Package,
@@ -47,6 +46,7 @@ import {
   KeyRound,
   HelpCircle,
   Plus,
+  Refresh,
 } from "@/components/ui/icons"
 
 const APP_VERSION = "Saberaha v1.0.0"
@@ -124,6 +124,23 @@ const KASIR_GROUPS: Group[] = [
   },
 ]
 
+// Avatar logo/initial toko yang juga berfungsi membuka dialog ganti toko.
+function StoreAvatarButton({ name, onClick }: { name: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Pilih atau ganti toko"
+      className="relative flex size-12 shrink-0 items-center justify-center rounded-xl bg-ink text-lg font-bold text-white transition-opacity active:opacity-80"
+    >
+      {name.charAt(0).toUpperCase()}
+      <span className="absolute -bottom-1 -right-1 flex size-5 items-center justify-center rounded-full border-2 border-canvas bg-primary text-white">
+        <Refresh className="size-2.5" />
+      </span>
+    </button>
+  )
+}
+
 export function MoreView() {
   const router = useRouter()
   const { user, logout } = useAuth()
@@ -191,27 +208,25 @@ export function MoreView() {
       <Skeleton className="size-4 shrink-0 rounded-sm" />
     </div>
   ) : isOwner ? (
-    <Link
-      href="/settings"
-      className="flex items-center gap-3 rounded-xl border border-hairline bg-canvas p-4 transition-colors active:bg-canvas-soft"
-    >
-      <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-ink text-lg font-bold text-white">
-        {storeName.charAt(0).toUpperCase()}
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-base font-bold text-ink">{storeName}</p>
-        <p className="truncate text-xs text-ink-muted">{subtitle}</p>
-        {profile?.store_code && (
-          <p className="mt-1 text-[11px] font-mono text-ink-faint">Kode: {profile.store_code}</p>
-        )}
-      </div>
-      <ChevronRight className="size-4 shrink-0 text-ink-faint" />
-    </Link>
+    <div className="flex items-center gap-3 rounded-xl border border-hairline bg-canvas p-4">
+      <StoreAvatarButton name={storeName} onClick={openStores} />
+      <Link
+        href="/settings"
+        className="flex min-w-0 flex-1 items-center gap-3 transition-colors active:opacity-70"
+      >
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-base font-bold text-ink">{storeName}</p>
+          <p className="truncate text-xs text-ink-muted">{subtitle}</p>
+          {profile?.store_code && (
+            <p className="mt-1 text-[11px] font-mono text-ink-faint">Kode: {profile.store_code}</p>
+          )}
+        </div>
+        <ChevronRight className="size-4 shrink-0 text-ink-faint" />
+      </Link>
+    </div>
   ) : (
     <div className="flex items-center gap-3 rounded-xl border border-hairline bg-canvas p-4">
-      <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-ink text-lg font-bold text-white">
-        {storeName.charAt(0).toUpperCase()}
-      </span>
+      <StoreAvatarButton name={storeName} onClick={openStores} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-base font-bold text-ink">{storeName}</p>
         <p className="truncate text-xs text-ink-muted">{subtitle}</p>
@@ -242,24 +257,6 @@ export function MoreView() {
         </div>
       ) : (
         <>
-          <div className="space-y-1.5">
-            <p className="px-1 text-xs font-semibold tracking-wide text-ink-faint uppercase">Toko</p>
-            <div className="divide-y divide-hairline rounded-xl border border-hairline bg-canvas">
-              <button
-                type="button"
-                onClick={openStores}
-                className="flex w-full items-center gap-3 p-3.5 text-left transition-colors active:bg-canvas-soft"
-              >
-                <Store className="size-5 shrink-0 text-ink-muted" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-ink">Toko Aktif</p>
-                  <p className="truncate text-xs text-ink-faint">{storeName}</p>
-                </div>
-                <ChevronRight className="size-4 shrink-0 text-ink-faint" />
-              </button>
-            </div>
-          </div>
-
           {groups.map((g) => (
             <div key={g.title} className="space-y-1.5">
               <p className="px-1 text-xs font-semibold tracking-wide text-ink-faint uppercase">
