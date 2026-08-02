@@ -352,7 +352,7 @@ export function SettingsForm() {
     <div className="space-y-5 p-4">
       <Tabs defaultValue="toko" className="space-y-5">
         <div className="sticky top-0 -mx-4 -mt-4 z-10 overflow-x-auto border-b border-hairline bg-canvas/95 px-4 pt-2 pb-3 backdrop-blur-sm">
-          <TabsList variant="line" className="w-max max-w-full">
+          <TabsList variant="line" className="w-max min-w-full">
             <TabsTrigger value="toko" className="shrink-0 justify-start px-1 after:hidden data-active:font-bold">
               <Store className="size-4" />
               <span>Toko</span>
