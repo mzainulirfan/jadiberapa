@@ -64,7 +64,11 @@ export const faqGroups: FaqGroup[] = [
       {
         id: "pindah-toko",
         q: "Punya lebih dari satu toko",
-        a: "Buka Lainnya \u2192 \u201cToko Aktif\u201d untuk berpindah toko. Fitur yang terlihat menyesuaikan peranmu (Pemilik atau Kasir).",
+        a: [
+          "1. Buka Lainnya \u2192 \u201cToko Aktif\u201d untuk berpindah toko.",
+          "2. Pemilik bisa menekan \u201cBuat Toko Baru\u201d di dialog yang sama untuk membuat toko tambahan.",
+          "3. Fitur yang terlihat menyesuaikan peranmu (Pemilik atau Kasir).",
+        ].join("\n"),
         href: "/more",
       },
     ],

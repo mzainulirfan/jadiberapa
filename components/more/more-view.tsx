@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -45,6 +46,7 @@ import {
   Lock,
   KeyRound,
   HelpCircle,
+  Plus,
 } from "@/components/ui/icons"
 
 const APP_VERSION = "Saberaha v1.0.0"
@@ -123,6 +125,7 @@ const KASIR_GROUPS: Group[] = [
 ]
 
 export function MoreView() {
+  const router = useRouter()
   const { user, logout } = useAuth()
   const role = useRole()
   const { lock } = useLock()
@@ -373,6 +376,15 @@ export function MoreView() {
               </button>
             ))}
           </div>
+          {isOwner && (
+            <Button
+              className="w-full"
+              onClick={() => router.push("/stores/new")}
+              disabled={switching !== null}
+            >
+              <Plus className="size-4" /> Buat Toko Baru
+            </Button>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setStoreOpen(false)} disabled={switching !== null}>
               {switching ? "Mengganti..." : "Tutup"}
