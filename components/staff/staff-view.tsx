@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+import { QRCodeSVG } from "qrcode.react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -15,10 +16,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { getStoreMembers, inviteKasir, removeMember, type BxStaffMember } from "@/lib/db/queries"
+import {
+  getStoreMembers,
+  getCurrentStoreCode,
+  inviteKasir,
+  removeMember,
+  type BxStaffMember,
+} from "@/lib/db/queries"
 import { useRole } from "@/lib/hooks/use-role"
 import { resetMemberPasscode } from "@/lib/actions/auth"
-import { Plus, Trash, User, KeyRound } from "@/components/ui/icons"
+import { Plus, Trash, User, KeyRound, Share, Copy, Check } from "@/components/ui/icons"
 
 function AddKasirForm({ onDone }: { onDone: () => void }) {
   const [username, setUsername] = useState("")
@@ -74,6 +81,9 @@ export function StaffView() {
   const [members, setMembers] = useState<BxStaffMember[]>([])
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
+  const [inviteOpen, setInviteOpen] = useState(false)
+  const [storeCode, setStoreCode] = useState("")
+  const [copied, setCopied] = useState(false)
   const [removeTarget, setRemoveTarget] = useState<BxStaffMember | null>(null)
   const [removing, setRemoving] = useState(false)
   const [resetTarget, setResetTarget] = useState<BxStaffMember | null>(null)
@@ -84,9 +94,10 @@ export function StaffView() {
   useEffect(() => {
     let active = true
     ;(async () => {
-      const { members: list } = await getStoreMembers()
+      const [membersRes, code] = await Promise.all([getStoreMembers(), getCurrentStoreCode()])
       if (active) {
-        setMembers(list)
+        setMembers(membersRes.members)
+        setStoreCode(code)
         setLoading(false)
       }
     })()
@@ -102,6 +113,40 @@ export function StaffView() {
   async function load() {
     const { members: list } = await getStoreMembers()
     setMembers(list)
+  }
+
+  const inviteLink = storeCode
+    ? `${window.location.origin}/register?code=${encodeURIComponent(storeCode)}`
+    : ""
+
+  async function handleInviteShare() {
+    if (!inviteLink) return
+    const text = `Gabung ke toko sebagai kasir di Saberaha.\n\n${inviteLink}`
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "Undang Kasir", text })
+      } catch {
+        // user cancelled
+      }
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(text)
+      toast.success("Teks undangan disalin")
+    } catch {
+      toast.error("Gagal membagikan undangan")
+    }
+  }
+
+  async function handleInviteCopyLink() {
+    if (!inviteLink) return
+    try {
+      await navigator.clipboard.writeText(inviteLink)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      toast.error("Gagal menyalin link undangan")
+    }
   }
 
   async function handleRemove() {
@@ -141,28 +186,69 @@ export function StaffView() {
 
   return (
     <div className="space-y-3 p-4">
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger
-          className="flex h-10 w-full items-center justify-center gap-1.5 rounded-full bg-primary text-sm font-semibold text-primary-foreground active:bg-primary-active"
-        >
-          <Plus className="size-4" /> Tambah Kasir
-        </DialogTrigger>
-        <DialogContent className="rounded-xl">
-          <DialogHeader>
-            <DialogTitle>Tambah Kasir</DialogTitle>
-            <DialogDescription>
-              Kasir login dengan akunnya sendiri dan otomatis memakai toko ini.
-            </DialogDescription>
-          </DialogHeader>
-          <AddKasirForm
-            onDone={() => {
-              setOpen(false)
-              toast.success("Kasir ditambahkan")
-              load()
-            }}
-          />
-        </DialogContent>
-      </Dialog>
+      <div className="flex gap-2">
+        <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+          <DialogTrigger className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full bg-primary text-sm font-semibold text-primary-foreground active:bg-primary-active">
+            <Share className="size-4" /> Undang Kasir
+          </DialogTrigger>
+          <DialogContent className="rounded-xl">
+            <DialogHeader>
+              <DialogTitle>Undang Kasir</DialogTitle>
+              <DialogDescription>
+                Kirim link undangan (atau kode toko) ke kasir. Setelah mendaftar, kasir
+                otomatis terhubung ke toko ini.
+              </DialogDescription>
+            </DialogHeader>
+            {storeCode ? (
+              <div className="flex flex-col items-center gap-3">
+                <div className="rounded-xl border-2 border-dashed border-hairline px-6 py-3">
+                  <code className="text-lg font-bold tracking-[0.15em] text-ink">{storeCode}</code>
+                </div>
+                <div className="flex w-full gap-2">
+                  <Button variant="outline" className="flex-1" onClick={handleInviteCopyLink}>
+                    {copied ? <Check className="size-4 text-primary" /> : <Copy className="size-4" />}
+                    {copied ? "Tersalin" : "Salin Link"}
+                  </Button>
+                  <Button className="flex-1" onClick={handleInviteShare}>
+                    <Share className="size-4" /> Bagikan
+                  </Button>
+                </div>
+                {inviteLink && (
+                  <div className="rounded-xl bg-white p-3">
+                    <QRCodeSVG value={inviteLink} size={128} marginSize={0} />
+                  </div>
+                )}
+                <p className="text-center text-[11px] text-ink-faint">
+                  Kasir cukup mendaftar lewat link — tanpa perlu memasukkan kode toko.
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-ink-muted">Memuat kode toko...</p>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full border border-hairline bg-canvas text-sm font-semibold text-ink active:bg-canvas-soft">
+            <Plus className="size-4" /> Tambah Kasir
+          </DialogTrigger>
+          <DialogContent className="rounded-xl">
+            <DialogHeader>
+              <DialogTitle>Tambah Kasir</DialogTitle>
+              <DialogDescription>
+                Kasir login dengan akunnya sendiri dan otomatis memakai toko ini.
+              </DialogDescription>
+            </DialogHeader>
+            <AddKasirForm
+              onDone={() => {
+                setOpen(false)
+                toast.success("Kasir ditambahkan")
+                load()
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      </div>
 
       {loading ? (
         <div className="space-y-2">

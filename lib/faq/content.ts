@@ -39,9 +39,9 @@ export const faqGroups: FaqGroup[] = [
         id: "gabung-kasir",
         q: "Cara bergabung sebagai kasir",
         a: [
-          "1. Pemilik melihat kode toko di kartu profil (halaman Lainnya atau Pengaturan).",
+          "1. Pemilik melihat kode toko di kartu profil (halaman Lainnya) atau membagikan link undangan dari halaman Kelola Kasir.",
           "2. Kasir memilih \u201cGabung sebagai Kasir\u201d di halaman daftar.",
-          "3. Masukkan kode toko, lalu isi username & passcode sendiri.",
+          "3. Masukkan kode toko (atau buka link undangan), lalu isi username & passcode sendiri.",
           "4. Tekan \u201cGabung ke Toko\u201d.",
         ].join("\n"),
         href: "/register?mode=kasir",

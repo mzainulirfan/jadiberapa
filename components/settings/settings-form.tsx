@@ -5,20 +5,17 @@ import { toast } from "sonner"
 import { QRCodeSVG } from "qrcode.react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { updateSetting } from "@/lib/actions/settings"
-import { getSettings, getCurrentStoreCode, invalidateSettings, invalidateStoreProfile } from "@/lib/db/queries"
+import { getSettings, invalidateSettings, invalidateStoreProfile } from "@/lib/db/queries"
 import {
   Store,
   LocationPin,
   Phone,
   Qr,
   Wallet,
-  Copy,
   Check,
-  Share,
   Receipt,
   Tag,
   Refresh,
@@ -191,8 +188,6 @@ function FieldRow({
 
 export function SettingsForm() {
   const [settings, setSettings] = useState<Record<string, string>>({})
-  const [code, setCode] = useState("")
-  const [copied, setCopied] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saveState, setSaveState] = useState<Record<string, FieldStatus>>({})
   const savedRef = useRef<Record<string, string>>({})
@@ -203,11 +198,10 @@ export function SettingsForm() {
     let active = true
     const debounce = debounceRef.current
     const clears = clearRef.current
-    Promise.all([getSettings(), getCurrentStoreCode()]).then(([s, c]) => {
+    getSettings().then((s) => {
       if (!active) return
       setSettings(s)
       savedRef.current = s
-      setCode(c)
       setLoading(false)
     })
     return () => {
@@ -282,51 +276,9 @@ export function SettingsForm() {
     return undefined
   }
 
-  async function handleShare() {
-    if (!code) return
-    const storeName = settings.store_name?.trim() || "Toko Saya"
-    const link = `${window.location.origin}/register?code=${encodeURIComponent(code)}`
-    const text = `Gabung ke toko ${storeName} di Saberaha sebagai kasir.\n\n${link}`
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: "Undang Kasir", text })
-      } catch {
-        // user cancelled
-      }
-      return
-    }
-    try {
-      await navigator.clipboard.writeText(text)
-      toast.success("Teks undangan disalin")
-    } catch {
-      toast.error("Gagal membagikan kode toko")
-    }
-  }
-
-  async function handleCopyLink() {
-    if (!code) return
-    const link = `${window.location.origin}/register?code=${encodeURIComponent(code)}`
-    try {
-      await navigator.clipboard.writeText(link)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    } catch {
-      toast.error("Gagal menyalin link undangan")
-    }
-  }
-
   if (loading) {
     return (
       <div className="space-y-5 p-4">
-        <div className="space-y-1.5">
-          <Skeleton className="h-8 w-40 rounded-lg" />
-          <div className="rounded-xl border border-hairline bg-canvas p-4">
-            <Skeleton className="mx-auto h-10 w-32 rounded-md" />
-            <Skeleton className="mx-auto mt-3 h-9 w-40 rounded-full" />
-            <Skeleton className="mx-auto mt-3 size-32 rounded-xl" />
-          </div>
-        </div>
-
         <div className="space-y-1.5">
           <Skeleton className="h-3.5 w-28 rounded-full" />
           <div className="divide-y divide-hairline rounded-xl border border-hairline bg-canvas">
@@ -346,7 +298,6 @@ export function SettingsForm() {
   const qrisError = validateQris(qris)
   const showNota = settings.show_nota_number !== "0"
   const loyaltyEnabled = settings.loyalty_enabled !== "0"
-  const inviteLink = `${window.location.origin}/register?code=${encodeURIComponent(code)}`
 
   return (
     <div className="space-y-5 p-4">
@@ -383,7 +334,7 @@ export function SettingsForm() {
             </span>
             <div className="min-w-0 flex-1">
               <h2 className="text-sm font-semibold text-ink">Pengaturan Toko</h2>
-              <p className="text-xs text-ink-faint">Identitas toko, kontak, & undangan kasir.</p>
+              <p className="text-xs text-ink-faint">Identitas toko & kontak.</p>
             </div>
           </div>
 
@@ -399,34 +350,6 @@ export function SettingsForm() {
                 onReset={() => resetField(f.key)}
               />
             ))}
-          </SectionCard>
-
-          <SectionCard>
-            <div className="p-4">
-              <div className="flex flex-col items-center gap-3">
-                <div className="rounded-xl border-2 border-dashed border-hairline px-6 py-3">
-                  <code className="text-lg font-bold tracking-[0.15em] text-ink">{code}</code>
-                </div>
-                <div className="flex w-full gap-2">
-                  <Button variant="outline" className="flex-1" onClick={handleCopyLink}>
-                    {copied ? <Check className="size-4 text-primary" /> : <Copy className="size-4" />}
-                    {copied ? "Tersalin" : "Salin Link"}
-                  </Button>
-                  <Button className="flex-1" onClick={handleShare}>
-                    <Share className="size-4" /> Bagikan
-                  </Button>
-                </div>
-                {code && (
-                  <div className="rounded-xl bg-white p-3">
-                    <QRCodeSVG value={inviteLink} size={128} marginSize={0} />
-                  </div>
-                )}
-                <p className="text-center text-[11px] text-ink-faint">
-                  Bagikan link undangan (atau kode) ke kasir — saat mendaftar, kasir langsung
-                  terhubung ke toko Anda tanpa memasukkan kode.
-                </p>
-              </div>
-            </div>
           </SectionCard>
 
           <DangerZone storeName={settings.store_name?.trim() || "Toko Saya"} />
