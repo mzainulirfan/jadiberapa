@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { AuthBrand } from "@/components/auth/auth-brand"
 import { LoginForm } from "@/components/auth/login-form"
+import { FaqLink } from "@/components/faq/faq-link"
 
 export default function LoginPage() {
   return (
@@ -20,6 +21,7 @@ export default function LoginPage() {
             </Link>
           </p>
         </div>
+        <FaqLink />
       </div>
     </div>
   )

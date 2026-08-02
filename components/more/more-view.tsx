@@ -44,6 +44,7 @@ import {
   Package,
   Lock,
   KeyRound,
+  HelpCircle,
 } from "@/components/ui/icons"
 
 const APP_VERSION = "Saberaha v1.0.0"
@@ -93,6 +94,7 @@ const OWNER_GROUPS: Group[] = [
       items: [
         { href: "/settings", label: "Pengaturan", desc: "Info toko & pembayaran", icon: Cog },
         { href: "/backup", label: "Cadangan Data", desc: "Export / pulihkan data toko", icon: ChartLine },
+        { href: "/bantuan", label: "Bantuan & FAQ", desc: "Panduan pakai aplikasi", icon: HelpCircle },
       ],
     },
   ]
@@ -110,6 +112,12 @@ const KASIR_GROUPS: Group[] = [
     items: [
       { href: "/customers", label: "Pembeli", desc: "Daftar & kelola pembeli", icon: ShoppingBag },
       { href: "/debts", label: "Utang", desc: "Kasbon & pelunasan pembeli", icon: Wallet },
+    ],
+  },
+  {
+    title: "Aplikasi",
+    items: [
+      { href: "/bantuan", label: "Bantuan & FAQ", desc: "Panduan pakai aplikasi", icon: HelpCircle },
     ],
   },
 ]

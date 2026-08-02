@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { AuthBrand } from "@/components/auth/auth-brand"
 import { RegisterForm } from "@/components/auth/register-form"
+import { FaqLink } from "@/components/faq/faq-link"
 
 export default async function RegisterPage({
   searchParams,
@@ -22,6 +23,7 @@ export default async function RegisterPage({
             </Link>
           </p>
         </div>
+        <FaqLink />
       </div>
     </div>
   )
