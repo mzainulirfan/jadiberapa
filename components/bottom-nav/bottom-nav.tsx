@@ -13,8 +13,8 @@ import { cn } from "@/lib/utils"
 
 const sideNav = [
   { href: "/dashboard", label: "Dashboard", icon: DashboardIcon },
-  { href: "/transactions", label: "Transaksi", icon: ReceiptIcon },
   { href: "/products", label: "Barang", icon: PackageIcon },
+  { href: "/transactions", label: "Transaksi", icon: ReceiptIcon },
   { href: "/more", label: "Lainnya", icon: MoreIcon },
 ]
 
