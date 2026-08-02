@@ -92,18 +92,19 @@ function LockScreen({ onUnlock }: { onUnlock: (p: string) => Promise<string | nu
           type="password"
           inputMode="numeric"
           autoComplete="current-password"
-          placeholder="Passcode 4-6 digit"
+          placeholder="Passcode 6 digit"
           value={value}
           onChange={(e) => setValue(e.target.value.replace(/\D/g, ""))}
           className="text-center text-lg font-semibold tracking-widest"
           autoFocus
           maxLength={6}
+          minLength={6}
         />
         {error && <p className="text-center text-xs text-destructive">{error}</p>}
         <Button
           type="submit"
           className="w-full rounded-full"
-          disabled={checking || value.length < 4}
+          disabled={checking || value.length < 6}
         >
           {checking ? "Memeriksa..." : "Buka Kunci"}
         </Button>

@@ -30,7 +30,7 @@ export const faqGroups: FaqGroup[] = [
           "1. Buka halaman daftar, lalu pilih \u201cBuat toko baru\u201d.",
           "2. Isi nama toko.",
           "3. Pilih \u201cMulai dengan\u201d: template kategori (mis. Sembako, Warung, Kopi) yang langsung membuat kategori + produk contoh, atau mulai kosong.",
-          "4. Isi username dan passcode 4-6 digit untuk akun pemilik.",
+          "4. Isi username dan passcode 6 digit untuk akun pemilik.",
           "5. Tekan \u201cBuat Toko & Akun\u201d. Toko langsung aktif.",
         ].join("\n"),
         href: "/register",
@@ -49,7 +49,7 @@ export const faqGroups: FaqGroup[] = [
       {
         id: "login",
         q: "Cara login",
-        a: "Masukkan username dan passcode 4-6 digit lalu tekan Masuk. Saberaha tidak memakai email/password panjang.",
+        a: "Masukkan username dan passcode 6 digit lalu tekan Masuk. Saberaha tidak memakai email/password panjang.",
         href: "/login",
       },
       {
@@ -57,7 +57,7 @@ export const faqGroups: FaqGroup[] = [
         q: "Lupa passcode",
         a: [
           "Kasir: minta pemilik toko mereset passcode kamu.",
-          "Pemilik: buka Lainnya \u2192 Kelola Kasir, lalu ketuk ikon kunci di samping kasir bersangkutan dan isi passcode baru (4-6 digit).",
+          "Pemilik: buka Lainnya \u2192 Kelola Kasir, lalu ketuk ikon kunci di samping kasir bersangkutan dan isi passcode baru (6 digit).",
         ].join("\n"),
         href: "/staff",
       },
@@ -224,7 +224,7 @@ export const faqGroups: FaqGroup[] = [
       {
         id: "ganti-passcode",
         q: "Cara ganti passcode",
-        a: "Buka Lainnya \u2192 Ganti Passcode, masukkan passcode lama lalu passcode baru (4-6 digit).",
+        a: "Buka Lainnya \u2192 Ganti Passcode, masukkan passcode lama lalu passcode baru (6 digit).",
         href: "/more",
       },
       {

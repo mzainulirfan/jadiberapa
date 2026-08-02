@@ -120,8 +120,8 @@ export function StaffView() {
 
   async function handleReset() {
     if (!resetTarget) return
-    if (resetPasscode.length < 4 || resetPasscode.length > 6) {
-      setResetError("Passcode harus 4-6 digit angka.")
+    if (resetPasscode.length !== 6) {
+      setResetError("Passcode harus 6 digit angka.")
       return
     }
     setResetting(true)
@@ -256,7 +256,7 @@ export function StaffView() {
             <Input
               type="password"
               inputMode="numeric"
-              placeholder="Passcode baru (4-6 digit)"
+              placeholder="Passcode baru (6 digit)"
               value={resetPasscode}
               onChange={(e) => setResetPasscode(e.target.value.replace(/\D/g, ""))}
               maxLength={6}

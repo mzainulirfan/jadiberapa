@@ -55,7 +55,7 @@ export function ChangePasscodeDialog({
         <DialogHeader>
           <DialogTitle>Ganti Passcode</DialogTitle>
           <DialogDescription>
-            Passcode dipakai saat masuk aplikasi. Harus 4-6 digit angka.
+            Passcode dipakai saat masuk aplikasi. Harus 6 digit angka.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-3">
@@ -71,10 +71,11 @@ export function ChangePasscodeDialog({
           <Input
             type="password"
             inputMode="numeric"
-            placeholder="Passcode baru (4-6 digit)"
+            placeholder="Passcode baru (6 digit)"
             value={next}
             onChange={(e) => setNext(digits(e.target.value))}
             maxLength={6}
+            minLength={6}
           />
           <Input
             type="password"
@@ -83,12 +84,13 @@ export function ChangePasscodeDialog({
             value={confirm}
             onChange={(e) => setConfirm(digits(e.target.value))}
             maxLength={6}
+            minLength={6}
           />
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button
             type="submit"
             className="w-full rounded-full"
-            disabled={pending || current.length < 4 || next.length < 4}
+            disabled={pending || !current || next.length < 6 || confirm.length < 6}
           >
             {pending ? "Menyimpan..." : "Simpan Passcode"}
           </Button>

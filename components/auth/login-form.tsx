@@ -64,12 +64,12 @@ export function LoginForm() {
           <Input
             id="passcode"
             type={showPass ? "text" : "password"}
-            placeholder="4-6 digit"
+            placeholder="6 digit"
             value={passcode}
             onChange={(e) => setPasscode(e.target.value)}
             autoComplete="current-password"
             inputMode="numeric"
-            minLength={4}
+            minLength={6}
             maxLength={6}
             required
             className="pr-10"
