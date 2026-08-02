@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/hooks/use-auth"
 import { useRole } from "@/lib/hooks/use-role"
 import { TemplateOnboarding } from "@/components/templates/template-onboarding"
+import { WelcomeChecklist } from "@/components/dashboard/welcome-checklist"
 
 const greeting = (() => {
   const h = new Date().getHours()
@@ -550,6 +551,8 @@ export function DashboardView() {
       </div>
 
       <TemplateOnboarding enabled={role === "owner"} pendingTemplateKey={pendingTemplateKey} />
+
+      <WelcomeChecklist enabled={role === "owner"} />
 
       <div className={cn("transition-opacity duration-200", refreshing && "opacity-60")}>
         {!data ? <DashboardSkeleton /> : <DashboardContent data={data} />}

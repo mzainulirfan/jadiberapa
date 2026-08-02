@@ -1,9 +1,10 @@
 # Rencana Landing Page & Onboarding — Saberaha
 
-> Dokumen perencanaan. Tanggal disusun: 2026-08-02. **Status: rencana** — belum
-> dieksekusi. Sasaran: membuka akses publik di `/` (saat ini langsung redirect ke
-> `/dashboard`) dan memuluskan alur pengguna baru dari daftar → toko pertama →
-> transaksi pertama. **Bukan** arah full-SaaS (belum menyentuh billing/paket).
+> Dokumen perencanaan. Tanggal disusun: 2026-08-02. **Status: terimplementasi
+> (fase A & B)** — landing page `/` publik + checklist "Langkah pertama" untuk
+> pemilik baru + empty-state berbantuan (Barang & Kategori) sudah dibuat dan
+> ter-commit. Fase C (faktor lanjutan seperti screenshot asli & sosial proof)
+> masih terbuka. **Bukan** arah full-SaaS (belum menyentuh billing/paket).
 
 ---
 

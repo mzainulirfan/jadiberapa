@@ -44,6 +44,7 @@ import { cn } from "@/lib/utils"
 import { fmtRp } from "@/lib/format"
 import { format } from "date-fns"
 import { id as localeId } from "date-fns/locale"
+import Link from "next/link"
 import type { BxProduct, BxCategory, BxVariant } from "./types"
 import { ProductThumb, ProductPrice, StockBadge } from "./product-view"
 import { Barcode, barcodeSvgString } from "@/components/ui/barcode"
@@ -536,14 +537,34 @@ export function ProductList() {
           </div>
         )
       ) : products.length === 0 ? (
-        <div className="text-center py-12 text-ink-faint">
+        <div className="py-12 text-center">
           {isFiltering ? (
-            <p className="text-sm">Barang tidak ditemukan</p>
+            <p className="text-sm text-ink-faint">Barang tidak ditemukan</p>
           ) : (
-            <>
-              <p className="text-sm">Belum ada barang</p>
-              {canManage && <p className="text-xs mt-1">Tambah barang pertama</p>}
-            </>
+            <div className="px-4">
+              <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-canvas-soft text-ink-faint">
+                <Package className="size-6" />
+              </span>
+              <p className="mt-3 text-sm font-semibold text-ink">Belum ada barang</p>
+              <p className="mt-1 text-xs text-ink-muted">
+                Tambahkan produk jualan pertama agar bisa langsung dipakai di halaman kasir.
+              </p>
+              {canManage ? (
+                <div className="mt-4 flex flex-col items-center gap-2">
+                  <ProductDialog product={null} onSaved={reload}>
+                    <Button className="rounded-full px-4">
+                      <Plus className="size-4" />
+                      Tambah Barang
+                    </Button>
+                  </ProductDialog>
+                  <Link href="/bantuan" className="text-xs font-medium text-primary">
+                    Cara menambah barang
+                  </Link>
+                </div>
+              ) : (
+                <p className="mt-2 text-xs text-ink-faint">Hubungi pemilik toko untuk menambah barang.</p>
+              )}
+            </div>
           )}
         </div>
       ) : view === "grid" ? (

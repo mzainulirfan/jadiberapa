@@ -162,7 +162,16 @@ export function CategoriesTab() {
           ))}
         </div>
       ) : cats.length === 0 ? (
-        <p className="py-8 text-center text-sm text-ink-faint">Belum ada kategori</p>
+        <div className="py-10 text-center">
+          <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-canvas-soft text-ink-faint">
+            <Tag className="size-6" />
+          </span>
+          <p className="mt-3 text-sm font-semibold text-ink">Belum ada kategori</p>
+          <p className="mt-1 px-4 text-xs text-ink-muted">
+            Kelompokkan barang agar mudah dicari dan dilaporkan. Tekan &quot;Tambah
+            Kategori&quot; di atas untuk membuat yang pertama.
+          </p>
+        </div>
       ) : (
         <div className="space-y-2">
           {cats.map((c) => (
