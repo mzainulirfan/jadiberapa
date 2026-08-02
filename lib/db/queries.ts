@@ -1,7 +1,7 @@
 "use client"
 
 import { createClient } from "@/lib/supabase/client"
-import type { BxProduct, BxCategory, BxVariant } from "@/components/products/types"
+import type { BxProduct, BxCategory, BxVariant, BxProductUnit } from "@/components/products/types"
 import type { ProductSort } from "@/lib/actions/products"
 
 const supabase = createClient()
@@ -544,6 +544,20 @@ export async function getProductVariants(productIds: string[]): Promise<BxVarian
 
 export async function getProductVariantsByProduct(productId: string): Promise<BxVariant[]> {
   return getProductVariants([productId])
+}
+
+export async function getProductUnits(productIds: string[]): Promise<BxProductUnit[]> {
+  if (productIds.length === 0) return []
+  const { data } = await supabase
+    .from("product_units")
+    .select("*")
+    .in("product_id", productIds)
+    .order("name")
+  return (data ?? []) as unknown as BxProductUnit[]
+}
+
+export async function getProductUnitsByProduct(productId: string): Promise<BxProductUnit[]> {
+  return getProductUnits([productId])
 }
 
 export async function getInventorySummary(): Promise<{

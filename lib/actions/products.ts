@@ -27,6 +27,24 @@ function parseVariants(json?: string) {
   }
 }
 
+// Parsing JSON daftar satuan turunan (bulk/eceran) dari field tersembunyi form produk.
+function parseUnits(json?: string) {
+  if (!json) return []
+  try {
+    const arr = JSON.parse(json)
+    if (!Array.isArray(arr)) return []
+    return arr
+      .map((u) => ({
+        name: String(u.name ?? "").trim(),
+        factor: Math.max(1, Math.round(Number(u.factor) || 1)),
+        price_sell: Number(u.price_sell) || 0,
+      }))
+      .filter((u) => u.name && u.price_sell > 0)
+  } catch {
+    return []
+  }
+}
+
 export async function getProducts(search?: string, categoryIds?: string[], limit?: number) {
   const supabase = await createClient()
   let query = supabase.from("products").select("*, categories(name)").order("name")
@@ -113,6 +131,7 @@ export async function createProduct(formData: FormData) {
   const raw = Object.fromEntries(formData) as Record<string, string>
 
   const variants = parseVariants(raw.variants)
+  const units = parseUnits(raw.units)
 
   const { data: product, error } = await supabase
     .from("products")
@@ -142,6 +161,13 @@ export async function createProduct(formData: FormData) {
     if (vErr) return { error: vErr.message }
   }
 
+  if (units.length > 0) {
+    const { error: uErr } = await supabase.from("product_units").insert(
+      units.map((u) => ({ product_id: product.id as string, ...u }))
+    )
+    if (uErr) return { error: uErr.message }
+  }
+
   revalidatePath("/products")
   return { error: null }
 }
@@ -152,6 +178,7 @@ export async function updateProduct(id: string, formData: FormData) {
   const raw = Object.fromEntries(formData) as Record<string, string>
 
   const variants = parseVariants(raw.variants)
+  const units = parseUnits(raw.units)
 
   const { error } = await supabase
     .from("products")
@@ -180,6 +207,15 @@ export async function updateProduct(id: string, formData: FormData) {
       variants.map((v) => ({ product_id: id, ...v }))
     )
     if (vErr) return { error: vErr.message }
+  }
+
+  // Ganti seluruh daftar satuan turunan: hapus lama, tulis ulang yang baru.
+  await supabase.from("product_units").delete().eq("product_id", id)
+  if (units.length > 0) {
+    const { error: uErr } = await supabase.from("product_units").insert(
+      units.map((u) => ({ product_id: id, ...u }))
+    )
+    if (uErr) return { error: uErr.message }
   }
 
   revalidatePath("/products")

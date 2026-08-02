@@ -1,7 +1,8 @@
 "use client"
 
 import * as React from "react"
-import type { BxProduct, BxVariant } from "@/components/products/types"
+import type { BxProduct, BxVariant, BxProductUnit } from "@/components/products/types"
+import { cartKey, priceOf, maxQtyFor } from "@/lib/pricing"
 import { getCart, saveCart, watchCart } from "@/lib/db/cart"
 import {
   getDiscounts,
@@ -13,30 +14,22 @@ import {
 export type CartItem = {
   product: BxProduct
   variant?: BxVariant
+  unit?: BxProductUnit
   qty: number
 }
+
+export { cartKey, priceOf, maxQtyFor }
 
 // Pembeli terpilih untuk transaksi yang sedang dibuat. Disimpan bersama keranjang
 // agar tidak hilang saat kasir keluar-masuk halaman checkout. `points` hanya
 // penanda awal dari daftar pembeli; saldo otoritatif dibaca ulang di server.
 export type BxCartCustomer = { id: string | null; name: string; points?: number }
 
-// Kunci identitas baris keranjang: produk + varian. Produk yang sama dengan
-// varian berbeda dihitung sebagai baris terpisah.
-export function cartKey(i: { product: BxProduct; variant?: BxVariant | null }) {
-  return `${i.product.id}::${i.variant?.id ?? ""}`
-}
-
-// Harga efektif baris: harga varian jika ada, kalau tidak harga produk.
-export function priceOf(i: CartItem) {
-  return i.variant?.price_sell ?? i.product.price_sell
-}
-
 type CartContextValue = {
   items: CartItem[]
   customer: BxCartCustomer | null
   setCustomer: (c: BxCartCustomer | null) => void
-  addItem: (product: BxProduct, variant?: BxVariant | null) => void
+  addItem: (product: BxProduct, variant?: BxVariant | null, unit?: BxProductUnit | null) => void
   updateQty: (key: string, qty: number) => void
   removeItem: (key: string) => void
   clearCart: () => void
@@ -50,10 +43,12 @@ type CartContextValue = {
 
 const CartContext = React.createContext<CartContextValue | null>(null)
 
-// Signatur kanonik keranjang: hanya id produk + varian + qty, urutan-independen.
+// Signatur kanonik keranjang: id produk + varian + satuan + qty, urutan-independen.
 // jsonb menyusun ulang urutan key, jadi JSON.stringify tidak andal untuk pembandingan.
 function cartSig(items: CartItem[]) {
-  return items.map((i) => `${i.product.id}:${i.variant?.id ?? ""}:${i.qty}`).join("|")
+  return items
+    .map((i) => `${i.product.id}:${i.variant?.id ?? ""}:${i.unit?.id ?? ""}:${i.qty}`)
+    .join("|")
 }
 
 // timestamptz bisa diserialkan beda format (offset/precision) antara yang kita
@@ -151,28 +146,30 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(t)
   }, [items, customer])
 
-  const addItem = React.useCallback((product: BxProduct, variant?: BxVariant | null) => {
-    setItems((prev) => {
-      const key = cartKey({ product, variant })
-      const existing = prev.find((i) => cartKey(i) === key)
-      if (existing) {
-        return prev.map((i) =>
-          cartKey(i) === key
-            ? { ...i, qty: Math.min(i.qty + 1, i.product.stock) }
-            : i
-        )
-      }
-      return [...prev, { product, variant: variant || undefined, qty: 1 }]
-    })
-  }, [])
+  const addItem = React.useCallback(
+    (product: BxProduct, variant?: BxVariant | null, unit?: BxProductUnit | null) => {
+      setItems((prev) => {
+        const key = cartKey({ product, variant, unit })
+        const existing = prev.find((i) => cartKey(i) === key)
+        if (existing) {
+          return prev.map((i) =>
+            cartKey(i) === key ? { ...i, qty: Math.min(i.qty + 1, maxQtyFor(i)) } : i
+          )
+        }
+        return [
+          ...prev,
+          { product, variant: variant || undefined, unit: unit || undefined, qty: 1 },
+        ]
+      })
+    },
+    []
+  )
 
   const updateQty = React.useCallback((key: string, qty: number) => {
     setItems((prev) =>
       qty <= 0
         ? prev.filter((i) => cartKey(i) !== key)
-        : prev.map((i) =>
-            cartKey(i) === key ? { ...i, qty: Math.min(qty, i.product.stock) } : i
-          )
+        : prev.map((i) => (cartKey(i) === key ? { ...i, qty: Math.min(qty, maxQtyFor(i)) } : i))
     )
   }, [])
 

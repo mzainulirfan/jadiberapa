@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { getProducts, getCategories, resolveDiscountAmount, getProductVariants } from "@/lib/db/queries"
+import { getProducts, getCategories, resolveDiscountAmount, getProductVariants, getProductUnits } from "@/lib/db/queries"
 import { useCart } from "@/components/cart/cart-provider"
 import { ProductCard, ProductRow } from "./product-card"
 import { BarcodeScanner } from "./barcode-scanner"
@@ -25,13 +25,15 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
-import type { BxProduct, BxCategory, BxVariant } from "@/components/products/types"
+import type { BxProduct, BxCategory, BxVariant, BxProductUnit } from "@/components/products/types"
 
 export function CashierPage() {
   const [products, setProducts] = useState<BxProduct[]>([])
   const [categories, setCategories] = useState<BxCategory[]>([])
   const [variantsMap, setVariantsMap] = useState<Record<string, BxVariant[]>>({})
+  const [unitsMap, setUnitsMap] = useState<Record<string, BxProductUnit[]>>({})
   const [pickProduct, setPickProduct] = useState<BxProduct | null>(null)
+  const [pickUnit, setPickUnit] = useState<{ product: BxProduct; variant?: BxVariant } | null>(null)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [catIds, setCatIds] = useState<string[]>([])
@@ -54,17 +56,28 @@ export function CashierPage() {
     return m
   }, [items])
 
-  function addToCart(p: BxProduct, variant?: BxVariant) {
-    const inCartQty = items
+  function addToCart(p: BxProduct, variant?: BxVariant, unit?: BxProductUnit | null) {
+    // Gate stok berbasis SATUAN DASAR: jumlahkan seluruh baris produk (termasuk
+    // satuan lain) setelah dikonversi faktor, lalu bandingkan dengan stok.
+    const inCartBaseQty = items
       .filter((i) => i.product.id === p.id)
-      .reduce((sum, i) => sum + i.qty, 0)
-    if (inCartQty >= p.stock) {
+      .reduce((sum, i) => sum + i.qty * (i.unit?.factor ?? 1), 0)
+    if (inCartBaseQty >= p.stock) {
       toast.info(`Stok ${p.name} maksimal`)
       return
     }
-    addItem(p, variant)
+    addItem(p, variant, unit)
     popKeyRef.current += 1
     setPop({ id: p.id, key: popKeyRef.current })
+  }
+
+  function openUnitPicker(p: BxProduct, variant?: BxVariant) {
+    const units = unitsMap[p.id]
+    if (units && units.length > 0) {
+      setPickUnit({ product: p, variant })
+    } else {
+      addToCart(p, variant)
+    }
   }
 
   function handleAdd(p: BxProduct) {
@@ -73,13 +86,21 @@ export function CashierPage() {
       setPickProduct(p)
       return
     }
-    addToCart(p)
+    openUnitPicker(p)
   }
 
   function handlePickVariant(v: BxVariant) {
     if (!pickProduct) return
-    addToCart(pickProduct, v)
+    const p = pickProduct
     setPickProduct(null)
+    openUnitPicker(p, v)
+  }
+
+  function handlePickUnit(u: BxProductUnit | null) {
+    if (!pickUnit) return
+    const { product, variant } = pickUnit
+    setPickUnit(null)
+    addToCart(product, variant, u)
   }
 
   async function resolveCode(term: string): Promise<BxProduct | null> {
@@ -168,6 +189,23 @@ export function CashierPage() {
         ;(m[v.product_id] ??= []).push(v)
       }
       setVariantsMap(m)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [products])
+
+  // Muat daftar satuan turunan agar pemilih satuan muncul saat produk punya satuan lain.
+  useEffect(() => {
+    if (products.length === 0) return
+    let cancelled = false
+    getProductUnits(products.map((p) => p.id)).then((us) => {
+      if (cancelled) return
+      const m: Record<string, BxProductUnit[]> = {}
+      for (const u of us) {
+        ;(m[u.product_id] ??= []).push(u)
+      }
+      setUnitsMap(m)
     })
     return () => {
       cancelled = true
@@ -438,6 +476,62 @@ export function CashierPage() {
               <button
                 type="button"
                 onClick={() => setPickProduct(null)}
+                className="mt-1 rounded-xl px-4 py-2.5 text-sm font-medium text-ink-muted active:bg-canvas-soft"
+              >
+                Batal
+              </button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={pickUnit !== null} onOpenChange={(v) => !v && setPickUnit(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Pilih Satuan</DialogTitle>
+            <DialogDescription>
+              Pilih satuan jual untuk barang ini. Stok dihitung dari satuan dasar.
+            </DialogDescription>
+          </DialogHeader>
+          {pickUnit && (
+            <div className="flex flex-col gap-2">
+              <p className="px-1 text-sm text-ink-muted">
+                {pickUnit.product.name}
+                {pickUnit.variant && <span> · {pickUnit.variant.name}</span>}
+              </p>
+              <button
+                type="button"
+                onClick={() => handlePickUnit(null)}
+                className="flex w-full items-center justify-between rounded-xl border border-hairline bg-canvas px-4 py-3 text-left active:bg-canvas-soft"
+              >
+                <span className="flex items-center gap-2 text-sm font-medium text-ink">
+                  <Package className="size-4 text-ink-faint" />
+                  {pickUnit.product.unit || "pcs"}
+                </span>
+                <span className="text-sm font-semibold text-primary">
+                  Rp{pickUnit.product.price_sell.toLocaleString()}
+                </span>
+              </button>
+              {unitsMap[pickUnit.product.id]?.map((u) => (
+                <button
+                  key={u.id}
+                  type="button"
+                  onClick={() => handlePickUnit(u)}
+                  className="flex w-full items-center justify-between rounded-xl border border-hairline bg-canvas px-4 py-3 text-left active:bg-canvas-soft"
+                >
+                  <span className="flex items-center gap-2 text-sm font-medium text-ink">
+                    <Package className="size-4 text-ink-faint" />
+                    {u.name}
+                    <span className="text-xs text-ink-faint">= {u.factor} {pickUnit.product.unit || "pcs"}</span>
+                  </span>
+                  <span className="text-sm font-semibold text-primary">
+                    Rp{u.price_sell.toLocaleString()}
+                  </span>
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setPickUnit(null)}
                 className="mt-1 rounded-xl px-4 py-2.5 text-sm font-medium text-ink-muted active:bg-canvas-soft"
               >
                 Batal

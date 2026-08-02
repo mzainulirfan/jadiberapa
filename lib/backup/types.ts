@@ -14,6 +14,7 @@ export type StoreBackupBundle = {
   settings: Array<{ key: string; value: string }>
   categories: BackupRow[]
   products: BackupRow[]
+  product_units: BackupRow[]
   product_variants: BackupRow[]
   customers: BackupRow[]
   suppliers: BackupRow[]
@@ -35,6 +36,7 @@ export type StoreBackupCounts = {
   settings: number
   categories: number
   products: number
+  product_units: number
   product_variants: number
   customers: number
   suppliers: number

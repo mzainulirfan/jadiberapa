@@ -18,6 +18,7 @@ function emptyCounts(): StoreBackupCounts {
     settings: 0,
     categories: 0,
     products: 0,
+    product_units: 0,
     product_variants: 0,
     customers: 0,
     suppliers: 0,
@@ -41,6 +42,7 @@ function countBundle(bundle: StoreBackupBundle): StoreBackupCounts {
     settings: bundle.settings.length,
     categories: bundle.categories.length,
     products: bundle.products.length,
+    product_units: (bundle.product_units ?? []).length,
     product_variants: bundle.product_variants.length,
     customers: bundle.customers.length,
     suppliers: bundle.suppliers.length,
@@ -81,10 +83,11 @@ function downloadJson(bundle: StoreBackupBundle) {
 
 async function loadCurrentBundle(): Promise<StoreBackupBundle> {
   const supabase = createClient()
-  const [settings, categories, products, productVariants, customers, suppliers, purchases, purchaseItems, supplierPayments, expenses, discounts, discountProducts, cashSessions, transactions, transactionItems, payments, stockMovements, loyaltyLedger] = await Promise.all([
+  const [settings, categories, products, productUnits, productVariants, customers, suppliers, purchases, purchaseItems, supplierPayments, expenses, discounts, discountProducts, cashSessions, transactions, transactionItems, payments, stockMovements, loyaltyLedger] = await Promise.all([
     supabase.from("settings").select("key, value").order("key"),
     supabase.from("categories").select("*").order("created_at", { ascending: true }),
     supabase.from("products").select("*").order("created_at", { ascending: true }),
+    supabase.from("product_units").select("*").order("created_at", { ascending: true }),
     supabase.from("product_variants").select("*").order("created_at", { ascending: true }),
     supabase.from("customers").select("*").order("created_at", { ascending: true }),
     supabase.from("suppliers").select("*").order("created_at", { ascending: true }),
@@ -106,6 +109,7 @@ async function loadCurrentBundle(): Promise<StoreBackupBundle> {
     settings.error,
     categories.error,
     products.error,
+    productUnits.error,
     productVariants.error,
     customers.error,
     suppliers.error,
@@ -138,6 +142,7 @@ async function loadCurrentBundle(): Promise<StoreBackupBundle> {
     settings: settingsMap,
     categories: (categories.data ?? []) as StoreBackupBundle["categories"],
     products: (products.data ?? []) as StoreBackupBundle["products"],
+    product_units: (productUnits.data ?? []) as StoreBackupBundle["product_units"],
     product_variants: (productVariants.data ?? []) as StoreBackupBundle["product_variants"],
     customers: (customers.data ?? []) as StoreBackupBundle["customers"],
     suppliers: (suppliers.data ?? []) as StoreBackupBundle["suppliers"],

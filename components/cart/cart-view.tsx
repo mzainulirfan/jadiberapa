@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { getProducts, resolveDiscountAmount } from "@/lib/db/queries"
-import { cartKey, priceOf, useCart } from "@/components/cart/cart-provider"
+import { cartKey, priceOf, maxQtyFor, useCart } from "@/components/cart/cart-provider"
 import {
   getHeldCarts,
   getHeldCart,
@@ -224,7 +224,7 @@ export function CartView() {
               const { product, qty } = item
               const key = cartKey(item)
               const price = priceOf(item)
-              const atMax = qty >= product.stock
+              const atMax = qty >= maxQtyFor(item)
               return (
                 <div
                   key={key}
@@ -246,6 +246,11 @@ export function CartView() {
                     <p className="text-sm font-medium text-ink truncate">{product.name}</p>
                     {item.variant && (
                       <p className="text-xs text-ink-muted mt-0.5">Varian: {item.variant.name}</p>
+                    )}
+                    {item.unit && (
+                      <p className="text-xs text-ink-muted mt-0.5">
+                        {item.unit.name} (= {item.unit.factor} {product.unit || "pcs"})
+                      </p>
                     )}
                     <p className="text-xs text-ink-muted mt-0.5">
                       Rp{price.toLocaleString()}

@@ -10,6 +10,7 @@ type AuthContext = {
   loading: boolean
   login: (username: string, passcode: string) => Promise<string | null>
   logout: () => Promise<void>
+  verifyPasscode: (passcode: string) => Promise<string | null>
 }
 
 const AuthContext = createContext<AuthContext | null>(null)
@@ -52,8 +53,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push("/login")
   }
 
+  // Verifikasi passcode tanpa memindahkan halaman (dipakai membuka kunci layar).
+  // Kembali null bila cocok, atau pesan error bila salah.
+  async function verifyPasscode(passcode: string): Promise<string | null> {
+    if (!user?.email) return "Sesi tidak ditemukan"
+    const { error } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: passcode,
+    })
+    return error ? error.message : null
+  }
+
   return (
-    <AuthContext value={{ user, loading, login, logout }}>
+    <AuthContext value={{ user, loading, login, logout, verifyPasscode }}>
       {children}
     </AuthContext>
   )

@@ -1,5 +1,6 @@
 import { BottomNav } from "@/components/bottom-nav/bottom-nav"
 import { CartProvider } from "@/components/cart/cart-provider"
+import { LockProvider } from "@/components/lock/screen-lock"
 import { Header } from "@/components/header/header"
 import { PullToRefresh } from "@/components/pull-to-refresh/pull-to-refresh"
 import { ViewportHeight } from "@/components/viewport-height/viewport-height"
@@ -18,9 +19,11 @@ export default function MainLayout({
       >
         <ViewportHeight />
         <CartProvider>
-          <Header />
-          <PullToRefresh className="flex-1">{children}</PullToRefresh>
-          <BottomNav />
+          <LockProvider>
+            <Header />
+            <PullToRefresh className="flex-1">{children}</PullToRefresh>
+            <BottomNav />
+          </LockProvider>
         </CartProvider>
       </div>
     </NoStoreGuard>

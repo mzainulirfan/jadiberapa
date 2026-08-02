@@ -17,7 +17,8 @@ import {
 } from "@/components/ui/dialog"
 import { getStoreMembers, inviteKasir, removeMember, type BxStaffMember } from "@/lib/db/queries"
 import { useRole } from "@/lib/hooks/use-role"
-import { Plus, Trash, User } from "@/components/ui/icons"
+import { resetMemberPasscode } from "@/lib/actions/auth"
+import { Plus, Trash, User, KeyRound } from "@/components/ui/icons"
 
 function AddKasirForm({ onDone }: { onDone: () => void }) {
   const [username, setUsername] = useState("")
@@ -75,6 +76,10 @@ export function StaffView() {
   const [open, setOpen] = useState(false)
   const [removeTarget, setRemoveTarget] = useState<BxStaffMember | null>(null)
   const [removing, setRemoving] = useState(false)
+  const [resetTarget, setResetTarget] = useState<BxStaffMember | null>(null)
+  const [resetPasscode, setResetPasscode] = useState("")
+  const [resetError, setResetError] = useState<string | null>(null)
+  const [resetting, setResetting] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -111,6 +116,25 @@ export function StaffView() {
     setRemoveTarget(null)
     toast.success("Kasir dihapus dari toko")
     load()
+  }
+
+  async function handleReset() {
+    if (!resetTarget) return
+    if (resetPasscode.length < 4 || resetPasscode.length > 6) {
+      setResetError("Passcode harus 4-6 digit angka.")
+      return
+    }
+    setResetting(true)
+    setResetError(null)
+    const { error } = await resetMemberPasscode(resetTarget.user_id, resetPasscode)
+    setResetting(false)
+    if (error) {
+      setResetError(error)
+      return
+    }
+    setResetTarget(null)
+    setResetPasscode("")
+    toast.success(`Passcode @${resetTarget.username} direset`)
   }
 
   if (role !== "owner") return null
@@ -174,13 +198,26 @@ export function StaffView() {
                 </span>
               </div>
               {m.role !== "owner" && (
-                <button
-                  onClick={() => setRemoveTarget(m)}
-                  aria-label={`Hapus ${m.username}`}
-                  className="flex size-8 shrink-0 items-center justify-center rounded-lg text-ink-muted active:bg-canvas-soft"
-                >
-                  <Trash className="size-4" />
-                </button>
+                <>
+                  <button
+                    onClick={() => {
+                      setResetTarget(m)
+                      setResetPasscode("")
+                      setResetError(null)
+                    }}
+                    aria-label={`Reset passcode ${m.username}`}
+                    className="flex size-8 shrink-0 items-center justify-center rounded-lg text-ink-muted active:bg-canvas-soft"
+                  >
+                    <KeyRound className="size-4" />
+                  </button>
+                  <button
+                    onClick={() => setRemoveTarget(m)}
+                    aria-label={`Hapus ${m.username}`}
+                    className="flex size-8 shrink-0 items-center justify-center rounded-lg text-ink-muted active:bg-canvas-soft"
+                  >
+                    <Trash className="size-4" />
+                  </button>
+                </>
               )}
             </div>
           ))}
@@ -203,6 +240,45 @@ export function StaffView() {
               {removing ? "Menghapus..." : "Hapus"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={resetTarget !== null} onOpenChange={(o) => !o && !resetting && setResetTarget(null)}>
+        <DialogContent className="rounded-xl">
+          <DialogHeader>
+            <DialogTitle>Reset Passcode Kasir</DialogTitle>
+            <DialogDescription>
+              Passcode baru untuk @{resetTarget?.username}. Kasir perlu masuk lagi
+              dengan passcode baru ini.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              type="password"
+              inputMode="numeric"
+              placeholder="Passcode baru (4-6 digit)"
+              value={resetPasscode}
+              onChange={(e) => setResetPasscode(e.target.value.replace(/\D/g, ""))}
+              maxLength={6}
+              autoFocus
+            />
+            {resetError && <p className="text-sm text-destructive">{resetError}</p>}
+            <DialogFooter className="gap-2 sm:justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setResetTarget(null)}
+                disabled={resetting}
+              >
+                Batal
+              </Button>
+              <Button
+                onClick={handleReset}
+                disabled={resetting || resetPasscode.length < 4}
+              >
+                {resetting ? "Menyimpan..." : "Reset Passcode"}
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

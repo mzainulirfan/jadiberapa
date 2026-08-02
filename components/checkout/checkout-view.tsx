@@ -18,6 +18,7 @@ import { createTransaction } from "@/lib/actions/transactions"
 import { createCustomer } from "@/lib/actions/customers"
 import { getCustomers, getSettings, resolveDiscountAmount, type BxCustomer } from "@/lib/db/queries"
 import { useCart, cartKey, priceOf } from "@/components/cart/cart-provider"
+import { computeRedeem, computeTotals } from "@/lib/pricing"
 import {
   ChevronRight,
   Dollar,
@@ -130,18 +131,26 @@ export function CheckoutView() {
   const loyaltyRedeemValue = Number(payConfig.loyalty_redeem_value) || 100
   const loyaltyEarnPer = Number(payConfig.loyalty_earn_per) || 1000
   const customerPoints = customer?.points ?? 0
-  const redeemMax = Math.max(
-    0,
-    Math.min(customerPoints, Math.floor((netBeforeNota - discountAmount) / loyaltyRedeemValue))
-  )
-  const pointsDiscount = loyaltyEnabled && redeemOn ? redeemMax * loyaltyRedeemValue : 0
+  // Poin maksimum yang BISA ditukar (dipakai untuk enable toggle & label).
+  const potentialRedeem = computeRedeem({
+    loyaltyEnabled,
+    pointsRequested: customerPoints,
+    customerPoints,
+    redeemValue: loyaltyRedeemValue,
+    remainingAfterNotaDisc: netBeforeNota - discountAmount,
+  })
+  const redeemMax = potentialRedeem.redeemMax
+  // Saat toggle aktif, poin benar-benar dipakai; kalau tidak, tidak ada potongan.
+  const redeem = redeemOn ? potentialRedeem : { redeemMax: 0, pointsValue: 0 }
+  const pointsDiscount = redeem.pointsValue
   // Biaya layanan/pajak: % dihitung dari total setelah diskon nota & poin.
-  const feeBase = Math.max(0, netBeforeNota - discountAmount - pointsDiscount)
-  const feeAmount =
-    feeType === "pct"
-      ? Math.round((feeBase * Math.min(feeRaw, 100)) / 100)
-      : feeRaw
-  const netTotal = Math.max(0, feeBase + feeAmount)
+  const { feeAmount, netTotal } = computeTotals({
+    netBeforeNota,
+    discountAmount,
+    pointsValue: redeem.pointsValue,
+    feeType,
+    feeInput: feeRaw,
+  })
   const change = paidAmount - netTotal
   const qrisPayload = payConfig.qris_payload ?? ""
   const danaNumber = payConfig.dana_number ?? ""
@@ -212,6 +221,8 @@ export function CheckoutView() {
         discount: itemDiscTotals.find((x) => x.key === cartKey(i))?.disc ?? 0,
         variant_id: i.variant?.id ?? null,
         variant_name: i.variant?.name ?? null,
+        unit_name: i.unit?.name ?? null,
+        factor: i.unit?.factor ?? 1,
       }
     })
     const dp = method === "utang" ? Math.min(paidAmount, netTotal) : undefined
@@ -581,6 +592,11 @@ export function CheckoutView() {
                     <p className="truncate text-sm font-medium text-ink">{i.product.name}</p>
                     {i.variant && (
                       <p className="text-xs text-ink-muted">Varian: {i.variant.name}</p>
+                    )}
+                    {i.unit && (
+                      <p className="text-xs text-ink-muted">
+                        Satuan: {i.unit.name} ({i.unit.factor}x)
+                      </p>
                     )}
                     <p className="text-xs text-ink-muted">
                       {i.qty} × Rp{price.toLocaleString("id-ID")}

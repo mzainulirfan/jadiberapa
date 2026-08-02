@@ -20,7 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { createProduct, updateProduct, uploadProductImage } from "@/lib/actions/products"
-import { getCategories, getProductVariantsByProduct, getSettings } from "@/lib/db/queries"
+import { getCategories, getProductVariantsByProduct, getProductUnitsByProduct, getSettings } from "@/lib/db/queries"
 import type { BxCategory, BxProduct } from "./types"
 import { Trash, X, Camera, Plus } from "@/components/ui/icons"
 import { toast } from "sonner"
@@ -45,6 +45,12 @@ type VariantDraft = {
   name: string
   sku: string
   price_buy: string
+  price_sell: string
+}
+
+type UnitDraft = {
+  name: string
+  factor: string
   price_sell: string
 }
 
@@ -79,6 +85,7 @@ export function ProductDialog({
   const [dirty, setDirty] = useState(false)
   const [discardOpen, setDiscardOpen] = useState(false)
   const [variants, setVariants] = useState<VariantDraft[]>([])
+  const [units, setUnits] = useState<UnitDraft[]>([])
   const [fieldErrors, setFieldErrors] = useState<{ name?: string; price_sell?: string }>({})
   const [defaultMinStock, setDefaultMinStock] = useState(5)
   const action = product ? updateProduct.bind(null, product.id) : createProduct
@@ -122,8 +129,9 @@ export function ProductDialog({
 
   useEffect(() => {
     if (!open) return
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- muat varian saat mengedit
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- muat varian & satuan saat mengedit
     setVariants([])
+    setUnits([])
     if (product?.id) {
       getProductVariantsByProduct(product.id).then((vs) => {
         setVariants(
@@ -131,6 +139,15 @@ export function ProductDialog({
             name: x.name,
             sku: x.sku ?? "",
             price_buy: x.price_buy ? String(x.price_buy) : "",
+            price_sell: x.price_sell ? String(x.price_sell) : "",
+          }))
+        )
+      })
+      getProductUnitsByProduct(product.id).then((us) => {
+        setUnits(
+          us.map((x) => ({
+            name: x.name,
+            factor: String(x.factor),
             price_sell: x.price_sell ? String(x.price_sell) : "",
           }))
         )
@@ -220,12 +237,35 @@ export function ProductDialog({
     setDirty(true)
   }
 
+  function updateUnit(idx: number, patch: Partial<UnitDraft>) {
+    setUnits((prev) => prev.map((v, i) => (i === idx ? { ...v, ...patch } : v)))
+    setDirty(true)
+  }
+
+  function removeUnit(idx: number) {
+    setUnits((prev) => prev.filter((_, i) => i !== idx))
+    setDirty(true)
+  }
+
+  function addUnit() {
+    setUnits((prev) => [...prev, { name: "", factor: "", price_sell: "" }])
+    setDirty(true)
+  }
+
   const variantsJson = JSON.stringify(
     variants.map((v) => ({
       name: v.name.trim(),
       sku: v.sku.trim() || null,
       price_buy: Number(v.price_buy) || 0,
       price_sell: Number(v.price_sell) || 0,
+    }))
+  )
+
+  const unitsJson = JSON.stringify(
+    units.map((u) => ({
+      name: u.name.trim(),
+      factor: Number(u.factor) || 1,
+      price_sell: Number(u.price_sell) || 0,
     }))
   )
 
@@ -278,6 +318,7 @@ export function ProductDialog({
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
             <input type="hidden" name="image_url" value={imageUrl} />
             <input type="hidden" name="variants" value={variantsJson} />
+            <input type="hidden" name="units" value={unitsJson} />
             <div className="rounded-xl bg-canvas-soft p-3 space-y-3">
               <p className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Gambar</p>
               <div className="flex items-center gap-3">
@@ -502,6 +543,64 @@ export function ProductDialog({
                           inputMode="numeric"
                           value={formatThousands(v.price_sell)}
                           onChange={(e) => updateVariant(idx, { price_sell: onlyDigits(e.target.value) })}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-xl bg-canvas-soft p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Satuan Lain</p>
+                <button
+                  type="button"
+                  onClick={addUnit}
+                  className="flex items-center gap-1 text-xs font-medium text-primary active:opacity-70"
+                >
+                  <Plus className="size-3.5" /> Tambah Satuan
+                </button>
+              </div>
+              <p className="text-[11px] text-ink-faint">
+                Opsional untuk jualan borongan (mis. 1 dus = 12 pcs). Kasir memilih
+                satuan saat menambahkan barang. Stok tetap dihitung dalam{" "}
+                <span className="font-medium">{product?.unit || "pcs"}</span>.
+              </p>
+              {units.length === 0 ? (
+                <p className="text-xs text-ink-muted">Belum ada satuan lain.</p>
+              ) : (
+                <div className="space-y-2">
+                  {units.map((u, idx) => (
+                    <div key={idx} className="rounded-lg border border-hairline bg-canvas p-2.5 space-y-2">
+                      <div className="flex gap-2">
+                        <Input
+                          className="flex-1"
+                          placeholder="Nama satuan (mis. Dus)"
+                          value={u.name}
+                          onChange={(e) => updateUnit(idx, { name: e.target.value })}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeUnit(idx)}
+                          aria-label="Hapus satuan"
+                          className="flex size-8 shrink-0 items-center justify-center rounded-lg text-ink-muted active:bg-canvas-soft"
+                        >
+                          <Trash className="size-4" />
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input
+                          placeholder="Isi (mis. 12)"
+                          inputMode="numeric"
+                          value={u.factor}
+                          onChange={(e) => updateUnit(idx, { factor: onlyDigits(e.target.value) })}
+                        />
+                        <Input
+                          placeholder="Harga jual"
+                          inputMode="numeric"
+                          value={formatThousands(u.price_sell)}
+                          onChange={(e) => updateUnit(idx, { price_sell: onlyDigits(e.target.value) })}
                         />
                       </div>
                     </div>

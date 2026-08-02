@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { computeRedeem, computeTotals } from "@/lib/pricing"
 
 export async function createTransaction(
   items: {
@@ -12,6 +13,8 @@ export async function createTransaction(
     discount?: number
     variant_id?: string | null
     variant_name?: string | null
+    unit_name?: string | null
+    factor?: number
   }[],
   payment_method: string = "cash",
   customer_id?: string | null,
@@ -45,6 +48,8 @@ export async function createTransaction(
     discount: Math.max(0, Math.min(Math.round(i.discount ?? 0), i.subtotal)),
     variant_id: i.variant_id || null,
     variant_name: i.variant_name || null,
+    unit_name: i.unit_name || null,
+    factor: Math.max(1, Math.round(i.factor ?? 1)),
   }))
   const gross = normItems.reduce((sum, i) => sum + i.subtotal, 0)
   const itemDisc = normItems.reduce((sum, i) => sum + i.discount, 0)
@@ -70,14 +75,25 @@ export async function createTransaction(
     }
     if (loyaltyConfig.enabled && points_redeemed) {
       const balance = Number((custRes.data as { points?: number } | null)?.points) || 0
-      const remaining = Math.max(0, gross - itemDisc - disc)
-      const affordable = Math.floor(remaining / loyaltyConfig.redeemValue)
-      pointsUsed = Math.max(0, Math.min(Math.round(points_redeemed), balance, affordable))
-      pointsValue = pointsUsed * loyaltyConfig.redeemValue
+      const redeem = computeRedeem({
+        loyaltyEnabled: loyaltyConfig.enabled,
+        pointsRequested: points_redeemed,
+        customerPoints: balance,
+        redeemValue: loyaltyConfig.redeemValue,
+        remainingAfterNotaDisc: gross - itemDisc - disc,
+      })
+      pointsUsed = redeem.redeemMax
+      pointsValue = redeem.pointsValue
     }
   }
 
-  const total = Math.max(0, gross - itemDisc - disc - pointsValue + feeAmount)
+  const { netTotal: total } = computeTotals({
+    netBeforeNota: gross - itemDisc,
+    discountAmount: disc,
+    pointsValue,
+    feeType: "rp",
+    feeInput: feeAmount,
+  })
 
   const isUtang = payment_method === "utang"
   const paid = isUtang
@@ -147,15 +163,16 @@ export async function createTransaction(
   if (itemError) return { error: itemError.message }
 
   for (const item of normItems) {
-    await supabase.rpc("decrement_stock", { pid: item.product_id, qty: item.qty })
+    // Stok dikurangi dalam satuan DASAR: qty × faktor (mis. 1 dus × 12 = 12 pcs).
+    await supabase.rpc("decrement_stock", { pid: item.product_id, qty: item.qty * item.factor })
   }
 
-  // Jejak audit stok keluar akibat penjualan (qty negatif = berkurang).
+  // Jejak audit stok keluar akibat penjualan (qty negatif = berkurang, satuan dasar).
   await supabase.from("stock_movements").insert(
     normItems.map((i) => ({
       product_id: i.product_id,
       type: "out" as const,
-      qty: -i.qty,
+      qty: -(i.qty * i.factor),
       note: "Penjualan",
     }))
   )

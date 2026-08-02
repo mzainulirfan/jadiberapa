@@ -14,6 +14,8 @@ export type OfflineTransactionItem = {
   discount?: number
   variant_id?: string | null
   variant_name?: string | null
+  unit_name?: string | null
+  factor?: number
 }
 
 export type OfflineTransactionDraft = {

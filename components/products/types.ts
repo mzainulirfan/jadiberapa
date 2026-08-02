@@ -29,3 +29,13 @@ export type BxVariant = {
   price_buy: number
   price_sell: number
 }
+
+// Satuan turunan (bulk/eceran) dari satu produk, mis. 1 dus = 12 pcs.
+// `factor` = berapa satuan dasar (products.unit) per satuan ini.
+export type BxProductUnit = {
+  id: string
+  product_id: string
+  name: string
+  factor: number
+  price_sell: number
+}

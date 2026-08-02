@@ -23,6 +23,8 @@ import {
 } from "@/lib/db/queries"
 import { useAuth } from "@/lib/hooks/use-auth"
 import { useRole } from "@/lib/hooks/use-role"
+import { useLock } from "@/components/lock/screen-lock"
+import { ChangePasscodeDialog } from "@/components/auth/change-passcode"
 import {
   User as UserIcon,
   BarChart,
@@ -40,6 +42,8 @@ import {
   ChartLine,
   Copy,
   Package,
+  Lock,
+  KeyRound,
 } from "@/components/ui/icons"
 
 const APP_VERSION = "Saberaha v1.0.0"
@@ -113,9 +117,11 @@ const KASIR_GROUPS: Group[] = [
 export function MoreView() {
   const { user, logout } = useAuth()
   const role = useRole()
+  const { lock } = useLock()
   const [profile, setProfile] = useState<BxStoreProfile | null>(null)
   const [confirmLogout, setConfirmLogout] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
+  const [passcodeOpen, setPasscodeOpen] = useState(false)
 
   const [storeOpen, setStoreOpen] = useState(false)
   const [stores, setStores] = useState<BxStore[]>([])
@@ -292,6 +298,28 @@ export function MoreView() {
           <div className="divide-y divide-hairline rounded-xl border border-hairline bg-canvas">
             <button
               type="button"
+              onClick={lock}
+              className="flex w-full items-center gap-3 p-3.5 text-left transition-colors active:bg-canvas-soft"
+            >
+              <Lock className="size-5 shrink-0 text-ink-muted" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-ink">Kunci Layar</p>
+                <p className="text-xs text-ink-faint">Kunci cepat, buka dengan passcode</p>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPasscodeOpen(true)}
+              className="flex w-full items-center gap-3 p-3.5 text-left transition-colors active:bg-canvas-soft"
+            >
+              <KeyRound className="size-5 shrink-0 text-ink-muted" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-ink">Ganti Passcode</p>
+                <p className="text-xs text-ink-faint">Perbarui passcode masuk aplikasi</p>
+              </div>
+            </button>
+            <button
+              type="button"
               onClick={() => setConfirmLogout(true)}
               className="flex w-full items-center gap-3 p-3.5 text-left transition-colors active:bg-canvas-soft"
             >
@@ -302,6 +330,8 @@ export function MoreView() {
               </div>
             </button>
           </div>
+
+          <ChangePasscodeDialog open={passcodeOpen} onOpenChange={setPasscodeOpen} />
         </>
       )}
 
