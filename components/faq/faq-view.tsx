@@ -122,35 +122,36 @@ export function FaqView() {
   }, [searching])
 
   return (
-    <div className="min-h-dvh scroll-smooth bg-canvas-soft">
-      <header className="sticky top-0 z-20 border-b border-hairline bg-canvas">
-        <div className="mx-auto flex h-14 w-full max-w-5xl items-center gap-3 px-4 sm:px-6">
-          <Link href="/" className="flex items-center gap-2.5">
-            <span className="flex size-7 items-center justify-center rounded-lg bg-ink text-sm font-bold text-white">
-              S
-            </span>
-            <span className="text-sm font-bold tracking-[-0.2px] text-ink">Saberaha</span>
-          </Link>
-          <span className="hidden text-xs text-ink-faint sm:inline">Pusat Bantuan</span>
-          <div className="ml-auto flex items-center">
-            {user ? (
-              <Link
-                href="/more"
-                className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-              >
-                Ke Aplikasi
-              </Link>
-            ) : (
-              <Link href="/login" className={cn(buttonVariants({ size: "sm" }))}>
-                Masuk
-              </Link>
-            )}
+    <div className="fixed inset-0 overflow-y-auto overscroll-y-auto bg-canvas-soft">
+      <div className="mx-auto flex min-h-full w-full flex-col">
+        <header className="sticky top-0 z-20 border-b border-hairline bg-canvas">
+          <div className="mx-auto flex h-14 w-full max-w-5xl items-center gap-3 px-4 sm:px-6">
+            <Link href="/" className="flex items-center gap-2.5">
+              <span className="flex size-7 items-center justify-center rounded-lg bg-ink text-sm font-bold text-white">
+                S
+              </span>
+              <span className="text-sm font-bold tracking-[-0.2px] text-ink">Saberaha</span>
+            </Link>
+            <span className="hidden text-xs text-ink-faint sm:inline">Pusat Bantuan</span>
+            <div className="ml-auto flex items-center">
+              {user ? (
+                <Link
+                  href="/more"
+                  className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+                >
+                  Ke Aplikasi
+                </Link>
+              ) : (
+                <Link href="/login" className={cn(buttonVariants({ size: "sm" }))}>
+                  Masuk
+                </Link>
+              )}
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-12">
-        <aside className="sticky top-14 hidden max-h-[calc(100dvh-3.5rem)] overflow-y-auto py-8 pr-1 lg:block">
+        <div className="mx-auto w-full max-w-5xl flex-1 px-4 sm:px-6 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-12">
+          <aside className="sticky top-14 hidden max-h-[calc(100dvh-3.5rem)] overflow-y-auto py-8 pr-1 lg:block">
           <div className="relative mb-6">
             <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-ink-faint" />
             <Input
@@ -254,6 +255,7 @@ export function FaqView() {
           <p className="text-xs text-ink-faint">Pusat Bantuan · v1.0.0</p>
         </div>
       </footer>
+        </div>
     </div>
   )
 }
