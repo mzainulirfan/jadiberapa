@@ -676,17 +676,15 @@ export function ProductList() {
                       {p.unit && p.unit !== "pcs" ? `${p.unit} · ` : ""}
                       {p.sku ? `SKU ${p.sku}` : !hasVariants(p) && !p.categories?.name ? p.unit || "pcs" : ""}
                     </p>
-                    <div className="mt-1 flex items-center gap-1.5">
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <p className="text-sm font-semibold text-primary">{fmtRp(net)}</p>
+                      {disc > 0 && (
+                        <p className="text-[11px] text-ink-faint line-through">
+                          {fmtRp(p.price_sell)}
+                        </p>
+                      )}
                       <StockBadge stock={p.stock} min={p.min_stock} />
                     </div>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <p className="text-sm font-semibold text-primary">{fmtRp(net)}</p>
-                    {disc > 0 && (
-                      <p className="mt-0.5 text-[11px] text-ink-faint line-through">
-                        {fmtRp(p.price_sell)}
-                      </p>
-                    )}
                   </div>
                 </button>
                 <div className="flex items-center gap-1">
