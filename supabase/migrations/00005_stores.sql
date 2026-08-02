@@ -1,5 +1,5 @@
 ﻿-- Fase multi-toko (bagian 1/6): tabel toko & keanggotaan, kode toko, dan
--- seeding default store untuk data yang sudah ada. Dipecah dari 00002_multi_store.sql.
+-- seeding default store untuk data yang sudah ada.
 
 -- Stores and membership
 create table if not exists stores (

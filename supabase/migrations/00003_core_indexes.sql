@@ -1,5 +1,4 @@
 ﻿-- Fase skema inti (bagian 3/4): index performa, pencarian trgm, dan unik.
--- Dipecah dari 00001_core.sql.
 
 -- Indexes
 create index if not exists idx_transactions_created_at on transactions (created_at desc);

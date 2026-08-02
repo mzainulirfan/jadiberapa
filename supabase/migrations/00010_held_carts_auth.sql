@@ -1,5 +1,5 @@
 ﻿-- Fase multi-toko (bagian 6/6): keranjang tertahan + hook auth signup
--- (owner membuat toko, kasir gabung via kode). Dipecah dari 00002_multi_store.sql.
+-- (owner membuat toko, kasir gabung via kode).
 
 -- Held carts are created after store isolation exists.
 create table if not exists held_carts (

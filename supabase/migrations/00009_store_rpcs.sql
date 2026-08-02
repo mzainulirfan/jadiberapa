@@ -1,4 +1,4 @@
-﻿-- Fase multi-toko (bagian 5/6): RPC kelola toko & kasir. Dipecah dari 00002_multi_store.sql.
+﻿-- Fase multi-toko (bagian 5/6): RPC kelola toko & kasir.
 
 -- Store and staff RPCs.
 create or replace function get_my_stores()

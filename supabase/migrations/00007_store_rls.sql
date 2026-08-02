@@ -1,5 +1,4 @@
 ﻿-- Fase multi-toko (bagian 3/6): RLS store-aware menggantikan kebijakan lama.
--- Dipecah dari 00002_multi_store.sql.
 
 -- Store-aware RLS.
 drop policy if exists stores_member on stores;

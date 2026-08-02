@@ -1,5 +1,5 @@
 ﻿-- Fase skema inti (bagian 4/4): fungsi utilitas, trigger barcode, dan RPC
--- pelaporan/pencarian. Dipecah dari 00001_core.sql.
+-- pelaporan/pencarian.
 
 -- Utility functions
 create or replace function decrement_stock(pid uuid, qty int)

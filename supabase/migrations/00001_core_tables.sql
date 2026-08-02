@@ -1,5 +1,4 @@
 ﻿-- Fase skema inti (bagian 1/4): ekstensi, tabel bisnis, dan seed pengaturan.
--- Dipecah dari 00001_core.sql.
 
 create extension if not exists pgcrypto;
 create extension if not exists pg_trgm;
@@ -88,11 +87,11 @@ create table if not exists settings (
   value text not null
 );
 
-insert into settings (key, value) values
-  ('store_name', 'Toko Saya'),
-  ('store_address', ''),
-  ('store_phone', '')
-on conflict (key) do nothing;
+-- Seed pengaturan default. Dipakai idempoten (tidak bergantung bentuk PK settings).
+insert into settings (key, value)
+select k, v
+from (values ('store_name', 'Toko Saya'), ('store_address', ''), ('store_phone', '')) as s(k, v)
+where not exists (select 1 from settings where key = s.k);
 
 -- Payments
 create table if not exists payments (

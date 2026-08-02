@@ -1,5 +1,5 @@
 ﻿-- Fase multi-toko (bagian 4/6): trigger keanggotaan + override fungsi security
--- definer agar sadar toko. Dipecah dari 00002_multi_store.sql.
+-- definer agar sadar toko.
 
 -- Keep active store valid when memberships change.
 create or replace function store_members_after_insert()

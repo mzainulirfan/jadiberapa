@@ -1,5 +1,5 @@
 ﻿-- Fase multi-toko (bagian 2/6): isolasi toko — tambah store_id ke semua tabel
--- bisnis, isi ulang, NOT NULL, dan perubahan PK/constraint. Dipecah dari 00002_multi_store.sql.
+-- bisnis, isi ulang, NOT NULL, dan perubahan PK/constraint.
 
 -- Add store ownership to every business table.
 do $$

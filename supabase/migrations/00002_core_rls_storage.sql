@@ -1,5 +1,5 @@
 ﻿-- Fase skema inti (bagian 2/4): RLS + kebijakan akses, storage gambar produk,
--- dan publikasi realtime carts. Dipecah dari 00001_core.sql.
+-- dan publikasi realtime carts.
 
 -- RLS
 alter table products enable row level security;
