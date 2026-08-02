@@ -25,38 +25,46 @@ Grafik → Stok Menipis → Transaksi → Produk**.
 
 ## 3. Struktur baru (urutan & alasan)
 
-**Keputusan desain (dipilih user): Aksi Cepat disatukan ke dalam kartu hero
-Pendapatan**, bukan kartu/baris terpisah di puncak maupun di bawah angka.
+**Keputusan desain (dipilih user, mengikuti review):**
+- **Aksi Cepat jadi section terpisah di bawah Hero Card** (bukan di dalam hero).
+- Scope pertama = paket **High**: hero ringkas + CTA + KPI sederhana.
+- Medium/Low (greeting, filter, grafik, bottom nav, warna, copywriting) = fase lanjut.
 
-| # | Seksi | Alasan |
-| --- | --- | --- |
-| 1 | Sapaan + [onboarding owner baru] | Tetap seperti sekarang. |
-| 2 | **Hero Pendapatan** (kartu gelap): Pendapatan + delta + 3 metrik (Laba Bersih, Transaksi, Barang Terjual) + **strip Aksi Cepat** (dipisah garis, ikon compact di atas bg gelap, tombol Atur) | Angka utama duluan; aksi sebagai "dock" ringkas di dasar hero, tidak menyaingi ringkasan. |
-| 3 | Kartu statistik, Grafik, Stok Menipis, Transaksi, Produk | Urutan tetap. |
+Urutan Dashboard:
 
-Block onboarding (`TemplateOnboarding` + `WelcomeChecklist`) tetap di atas hero
-hanya untuk pemilik baru (perlu panduan duluan).
+| # | Seksi |
+| --- | --- |
+| 1 | Sapaan + [onboarding owner baru] |
+| 2 | **Hero Card** ringkas: Penjualan (revenue) + delta saja |
+| 3 | **CTA "Mulai Transaksi"** → `/cashier` |
+| 4 | **Aksi Cepat** (section terpisah, kartu terang) |
+| 5 | **KPI Utama** (4): Laba, Pengeluaran, Transaksi, Produk Terjual |
+| 6 | Grafik Penjualan |
+| 7 | Stok Menipis, Transaksi Terbaru, Produk Terlaris |
 
-## 4. Desain Aksi Cepat di dalam hero
+## 4. Aksi Cepat — section terpisah
 
-- Di dalam kartu gelap `bg-ink`, di bawah metrik: pemisah `border-white/10`,
-  label kecil "Aksi Cepat" (white/40) + tombol **Atur** (pil translusen white/10).
-- Baris item **horizontal scroll**: lingkaran `bg-white/10` + ikon putih +
-  label `text-[10px] white/70`; maks 6 (owner) / 4 (kasir).
-- Kosong → teks "Belum ada aksi cepat." di atas bg gelap.
-- Logika localStorage, preset peran, & `QuickActionsSheet` **tidak berubah**.
+- Kartu `rounded-xl border bg-canvas` dengan header **Aksi Cepat** + tombol **Atur**.
+- Baris item **horizontal scroll** (lingkaran `bg-canvas-soft` + ikon + label);
+  maks 6 (owner) / 4 (kasir). Kosong → teks "Belum ada aksi cepat.".
+- Logika localStorage, preset peran, & `QuickActionsSheet` tidak berubah.
 
-## 5. Perubahan komponen
+## 5. Perubahan komponen (High — selesai)
 
 1. **`components/dashboard/dashboard-view.tsx`**
-   - Hapus `<QuickActions>` dari puncak halaman.
-   - Teruskan `role` ke `DashboardContent`; render `<QuickActions role={role} />`
-     di dalam kartu hero, setelah grid 3 metrik.
+   - Hero dikurangi: hanya "Penjualan · {periode}" + revenue + delta (sub-metrik
+     & strip QA dihapus dari kartu gelap).
+   - Tambah CTA **Mulai Transaksi** (Link → `/cashier`, primary full-width).
+   - `<QuickActions role={role} />` diletakkan di antara CTA dan KPI.
+   - 2×2 kartu lama (Laba kotor, Rata-rata/transaksi, Item/transaksi) diganti 4
+     KPI: **Laba** (bersih), **Pengeluaran**, **Transaksi**, **Produk Terjual**
+     (ikon aksen: hijau/merah/biru/oranye). Metrik analitis sudah ada di Laporan.
+   - Hapus `HeroStat` & `fmtShort` (tak terpakai).
 2. **`components/dashboard/quick-actions.tsx`**
-   - Ubah tampilan luar jadi **strip di atas bg gelap** (untuk dipakai di hero),
-     tanpa `<section>`/header sendiri.
-   - Tanpa perubahan logika data/sheet.
-3. **(Opsional, fase 3)** Banner status **Shift** (Buka/Tutup) di hero — query shift terakhir; berguna utk kasir & owner.
+   - Tampilan luar dikembalikan jadi kartu terang (section terpisah).
+   - Logika data/sheet tidak berubah.
+3. **Fase lanjut (belum dikerjakan):** greeting ringkas, chip filter menonjol,
+   evaluasi bottom nav, white space, copywriting ("Kelola Kasir"→"Kasir" dsb.).
 
 ## 6. Yang TIDAK dikerjakan
 
@@ -68,9 +76,9 @@ hanya untuk pemilik baru (perlu panduan duluan).
 ## 7. Pengujian (checklist)
 
 1. `npm run lint`, `npm run build`, `npm run test` lolos.
-2. Strip Aksi Cepat tampil di dasar kartu hero (bukan di puncak halaman).
-3. Owner: 6 aksi; kasir: 4 aksi; tap → halaman benar.
-4. Atur/toggle/urutkan/reset masih berfungsi & tersimpan (localStorage).
-5. Periode dropdown tetap mengontrol hero/stat/grafik.
-6. Aksi kosong → tampil teks "Belum ada aksi cepat.".
-7. Teks & ikon aksi tetap terbaca di atas bg gelap (white/70 + bg-white/10).
+2. Urutan seksi: Hero ringkas → CTA → Aksi Cepat → KPI → Grafik (owner & kasir).
+3. Hero hanya menampilkan Penjualan + delta (tanpa sub-metrik/strip).
+4. Tombol **Mulai Transaksi** menuju `/cashier`.
+5. KPI 4 kartu: Laba, Pengeluaran, Transaksi, Produk Terjual dengan ikon aksen.
+6. Aksi Cepat tampil section terpisah; Atur/toggle/urutkan/reset berfungsi & tersimpan.
+7. Periode dropdown tetap mengontrol hero/KPI/grafik.

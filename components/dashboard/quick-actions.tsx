@@ -238,49 +238,45 @@ export function QuickActions({ role }: { role: UserRole | null | undefined }) {
     .filter((a): a is QuickAction => !!a)
 
   return (
-    <>
-      <div className="mt-4 border-t border-white/10 pt-3">
-        <div className="mb-2 flex items-center justify-between">
-          <p className="text-[11px] font-semibold tracking-wide text-white/40 uppercase">
-            Aksi Cepat
-          </p>
-          <button
-            type="button"
-            onClick={() => setSheetOpen(true)}
-            className="flex items-center gap-0.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-semibold text-white transition-colors active:bg-white/20"
-          >
-            Atur
-            <ChevronRight className="size-3" />
-          </button>
-        </div>
-
-        {actions.length === 0 ? (
-          <p className="text-xs text-white/40">
-            Belum ada aksi cepat. Ketuk <span className="font-semibold text-white/70">Atur</span> untuk
-            memilih menu.
-          </p>
-        ) : (
-          <div className="-mx-4 flex gap-3 overflow-x-auto px-4">
-            {actions.map((action) => {
-              const Icon = action.icon
-              return (
-                <Link
-                  key={action.key}
-                  href={action.href}
-                  className="flex w-14 shrink-0 flex-col items-center gap-1"
-                >
-                  <span className="flex size-10 items-center justify-center rounded-full bg-white/10 text-white">
-                    <Icon className="size-4" />
-                  </span>
-                  <span className="text-center text-[10px] font-medium leading-tight text-white/70">
-                    {action.label}
-                  </span>
-                </Link>
-              )
-            })}
-          </div>
-        )}
+    <section aria-label="Aksi Cepat" className="rounded-xl border border-hairline bg-canvas p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-ink">Aksi Cepat</h2>
+        <button
+          type="button"
+          onClick={() => setSheetOpen(true)}
+          className="flex items-center gap-0.5 rounded-full border border-hairline bg-canvas px-2.5 py-1 text-xs font-semibold text-ink transition-colors active:bg-canvas-soft"
+        >
+          Atur
+          <ChevronRight className="size-3.5" />
+        </button>
       </div>
+
+      {actions.length === 0 ? (
+        <p className="text-xs text-ink-faint">
+          Belum ada aksi cepat. Ketuk <span className="font-semibold text-ink-muted">Atur</span> untuk
+          memilih menu.
+        </p>
+      ) : (
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+          {actions.map((action) => {
+            const Icon = action.icon
+            return (
+              <Link
+                key={action.key}
+                href={action.href}
+                className="flex w-16 shrink-0 flex-col items-center gap-1.5"
+              >
+                <span className="flex size-12 items-center justify-center rounded-2xl bg-canvas-soft text-ink">
+                  <Icon className="size-5" />
+                </span>
+                <span className="text-center text-[11px] font-medium leading-tight text-ink-muted">
+                  {action.label}
+                </span>
+              </Link>
+            )
+          })}
+        </div>
+      )}
 
       <QuickActionsSheet
         key={sheetOpen ? "quick-actions-open" : "quick-actions-closed"}
@@ -292,6 +288,6 @@ export function QuickActions({ role }: { role: UserRole | null | undefined }) {
         initialKeys={keys}
         onSaved={setKeys}
       />
-    </>
+    </section>
   )
 }
