@@ -43,10 +43,10 @@ const greeting = (() => {
   return "Selamat malam"
 })()
 
-const dateLabel = new Intl.DateTimeFormat("id-ID", {
-  weekday: "long",
+const dateFilterLabel = new Intl.DateTimeFormat("id-ID", {
+  weekday: "short",
   day: "numeric",
-  month: "long",
+  month: "short",
 }).format(new Date())
 
 const timeFormat = new Intl.DateTimeFormat("id-ID", {
@@ -116,7 +116,7 @@ function PeriodDropdown({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="flex shrink-0 items-center gap-1.5 rounded-full border border-hairline bg-canvas px-3 py-1.5 text-xs font-semibold text-ink transition-colors outline-none active:bg-canvas-soft data-[popup-open]:bg-canvas-soft">
-        {current}
+        {current} · {dateFilterLabel}
         <ChevronDown className="size-3.5 text-ink-muted" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-[140px]">
@@ -552,7 +552,6 @@ export function DashboardView() {
             {name ? `, ${name}` : ""} 👋
           </p>
           <div className="flex items-center gap-1.5">
-            <p className="truncate text-sm text-ink-muted">{dateLabel}</p>
             {roleLabel && (
               <span className="shrink-0 rounded-full bg-canvas-soft px-2 py-0.5 text-[11px] font-semibold text-ink-muted">
                 {roleLabel}
