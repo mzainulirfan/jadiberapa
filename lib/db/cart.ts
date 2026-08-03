@@ -23,14 +23,17 @@ export async function getCart(): Promise<CartSnapshot | null> {
   } = await supabase.auth.getUser()
   if (!user) return null
   const storeId = await currentStoreId()
-  if (!storeId) return null
   const { data, error } = await supabase
     .from("carts")
-    .select("items, updated_at, customer")
+    .select("items, updated_at, customer, store_id")
     .eq("user_id", user.id)
-    .eq("store_id", storeId)
     .maybeSingle()
   if (error || !data) return null
+  // Isolasi: hanya tampilkan baris yang dimiliki toko aktif. Baris legacy tanpa
+  // store_id (belum pernah ditulis dengan tag toko) diperlakukan sebagai milik
+  // toko aktif agar keranjang tidak "hilang" saat tab dibuka kembali.
+  const rowStore = (data.store_id ?? null) as string | null
+  if (rowStore && storeId && rowStore !== storeId) return null
   return {
     items: (data.items ?? []) as CartItem[],
     updatedAt: (data.updated_at ?? "") as string,
@@ -50,13 +53,17 @@ export async function saveCart(
   if (!user) return null
   const updatedAt = new Date().toISOString()
   const storeId = await currentStoreId()
-  if (!storeId) return null
+  const payload: {
+    user_id: string
+    items: CartItem[]
+    customer: BxCartCustomer | null
+    updated_at: string
+    store_id?: string
+  } = { user_id: user.id, items, customer, updated_at: updatedAt }
+  if (storeId) payload.store_id = storeId
   const { error } = await supabase
     .from("carts")
-    .upsert(
-      { user_id: user.id, store_id: storeId, items, customer, updated_at: updatedAt },
-      { onConflict: "user_id" }
-    )
+    .upsert(payload, { onConflict: "user_id" })
   return error ? null : updatedAt
 }
 
