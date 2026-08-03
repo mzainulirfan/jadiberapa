@@ -47,7 +47,12 @@ function parseNumber(v: string): number | null {
 function detectDelimiter(line: string): string {
   const tabs = (line.match(/\t/g) ?? []).length
   const commas = (line.match(/,/g) ?? []).length
-  return tabs > commas ? "\t" : ","
+  const semis = (line.match(/;/g) ?? []).length
+  const best = Math.max(tabs, commas, semis)
+  if (best === 0) return ","
+  if (tabs === best) return "\t"
+  if (semis === best) return ";"
+  return ","
 }
 
 function splitLine(line: string, delim: string): string[] {
@@ -61,9 +66,12 @@ export function parseProductImport(text: string): ImportParseResult {
   })
   if (lines.length === 0) return { rows: [], headerError: "Teks kosong" }
 
-  const delim = detectDelimiter(lines[0].text)
-  const hasHeader = /nama|harga/.test(lines[0].text.toLowerCase())
-  const header = hasHeader ? splitLine(lines[0].text, delim) : DEFAULT_COLUMNS
+  let start = 0
+  if (/^sep=/i.test(lines[0].text.trim())) start = 1
+
+  const delim = detectDelimiter(lines[start].text)
+  const hasHeader = /nama|harga/.test(lines[start].text.toLowerCase())
+  const header = hasHeader ? splitLine(lines[start].text, delim) : DEFAULT_COLUMNS
 
   const colIndex: Record<string, number> = {}
   header.forEach((h, i) => {
@@ -78,7 +86,7 @@ export function parseProductImport(text: string): ImportParseResult {
   }
 
   const rows: ImportProductRow[] = []
-  for (const { text, no } of lines.slice(hasHeader ? 1 : 0)) {
+  for (const { text, no } of lines.slice(start + (hasHeader ? 1 : 0))) {
     const cells = splitLine(text, delim)
     const get = (key: string) => {
       const i = colIndex[key]
@@ -115,9 +123,11 @@ export function parseProductImport(text: string): ImportParseResult {
   return { rows }
 }
 
-// Template CSV dengan BOM agar terbuka rapi di Excel/Google Sheets.
+// Template CSV dengan BOM + perintah `sep=;` agar terbuka rapi sebagai kolom
+// terpisah di Excel (locale Indonesia memakai pemisah `;`), bukan jadi 1 kolom.
 export function productImportTemplateCsv(): string {
-  const header = "Nama,Kategori,Harga Beli,Harga Jual,Stok,Stok Minimum,Satuan,SKU,Barcode"
-  const example = "Indomie Goreng,Makanan,2500,3000,50,5,pcs,IDM-001,8990000000000"
-  return `\uFEFF${header}\n${example}\n`
+  const sep = ";"
+  const header = ["Nama", "Kategori", "Harga Beli", "Harga Jual", "Stok", "Stok Minimum", "Satuan", "SKU", "Barcode"].join(sep)
+  const example = ["Indomie Goreng", "Makanan", "2500", "3000", "50", "5", "pcs", "IDM-001", "8990000000000"].join(sep)
+  return `\uFEFFsep=${sep}\n${header}\n${example}\n`
 }

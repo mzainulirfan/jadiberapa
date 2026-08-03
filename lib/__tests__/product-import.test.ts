@@ -97,7 +97,26 @@ describe("parseProductImport", () => {
 
   it("template CSV memuat header yang benar", () => {
     const csv = productImportTemplateCsv()
-    expect(csv).toContain("Nama,Kategori,Harga Beli,Harga Jual")
+    expect(csv).toContain("sep=;")
+    expect(csv).toContain("Nama;Kategori;Harga Beli;Harga Jual")
     expect(csv).toContain("Indomie Goreng")
+  })
+
+  it("memparse template semicolon yang berawalan sep=; (didownload lalu dibuka ulang)", () => {
+    const { rows, headerError } = parseProductImport(productImportTemplateCsv())
+    expect(headerError).toBeUndefined()
+    const v = validRows(rows)
+    expect(v).toHaveLength(1)
+    expect(v[0]).toMatchObject({
+      name: "Indomie Goreng",
+      category: "Makanan",
+      priceBuy: 2500,
+      priceSell: 3000,
+      stock: 50,
+      minStock: 5,
+      unit: "pcs",
+      sku: "IDM-001",
+      barcode: "8990000000000",
+    })
   })
 })

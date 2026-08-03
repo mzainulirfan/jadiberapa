@@ -137,7 +137,7 @@ export function BulkImportDialog({
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder={
-                  "Tempel di sini. Contoh:\n\nIndomie Goreng\tMakanan\t2500\t3000\t50\t5\tpcs\tIDM-001\t8990000000000\n\n(Pisahkan kolom dengan tab atau koma; baris pertama = nama kolom)"
+                  "Tempel di sini. Contoh:\n\nIndomie Goreng\tMakanan\t2500\t3000\t50\t5\tpcs\tIDM-001\t8990000000000\n\n(Pisahkan kolom dengan tab, koma, atau titik-koma; baris pertama = nama kolom)"
                 }
                 className="min-h-40 font-mono text-xs"
               />
