@@ -41,7 +41,7 @@ import {
   deleteProducts,
   type ProductSort,
 } from "@/lib/actions/products"
-import { Search, Plus, Pencil, Trash, Check, ChevronDown, Grid, List, X, Package, Printer, Barcode as BarcodeIcon, Star, Upload, CheckCircle } from "@/components/ui/icons"
+import { Search, Plus, Pencil, Trash, Check, ChevronDown, Grid, List, X, Package, Printer, Barcode as BarcodeIcon, Star, Upload, CheckCircle, DotsHorizontalRounded } from "@/components/ui/icons"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { fmtRp } from "@/lib/format"
@@ -144,6 +144,8 @@ export function ProductList() {
   const [addBarcode, setAddBarcode] = useState<string | null>(null)
   const [bulkOpen, setBulkOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
+  const [actionsOpen, setActionsOpen] = useState(false)
+  const [addProductOpen, setAddProductOpen] = useState(false)
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
@@ -387,44 +389,66 @@ export function ProductList() {
           </div>
         </div>
         {canManage && (
-          <Button
-            variant={selectMode ? "default" : "outline"}
-            className="rounded-full px-2.5"
-            onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
-            aria-label={selectMode ? "Selesai pilih barang" : "Pilih banyak barang"}
-            title={selectMode ? "Selesai" : "Pilih"}
-          >
-            {selectMode ? <Check className="size-4" /> : <CheckCircle className="size-4" />}
-          </Button>
-        )}
-        {canManage && (
-          <Button
-            variant="outline"
-            className="rounded-full px-2.5"
-            onClick={() => setEditOpen(true)}
-            aria-label="Edit banyak barang"
-            title="Edit massal"
-          >
-            <Pencil className="size-4" />
-          </Button>
-        )}
-        {canManage && (
-          <Button
-            variant="outline"
-            className="rounded-full px-2.5"
-            onClick={() => setBulkOpen(true)}
-            aria-label="Upload barang massal"
-            title="Upload barang massal"
-          >
-            <Upload className="size-4" />
-          </Button>
-        )}
-        {canManage && (
-          <ProductDialog product={null} onSaved={reload}>
-            <Button className="rounded-full size-9 p-0">
-              <Plus className="size-5" />
-            </Button>
-          </ProductDialog>
+          <Popover open={actionsOpen} onOpenChange={setActionsOpen}>
+            <PopoverTrigger
+              className="flex size-9 shrink-0 items-center justify-center rounded-full border border-hairline bg-canvas text-ink transition-colors active:bg-canvas-soft"
+              aria-label="Aksi barang"
+              title="Aksi barang"
+            >
+              <DotsHorizontalRounded className="size-5" />
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-52 p-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setActionsOpen(false)
+                  setAddProductOpen(true)
+                }}
+                className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm active:bg-canvas-soft"
+              >
+                <Plus className="size-4 text-ink-faint" />
+                <span className="flex-1">Tambah Barang</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActionsOpen(false)
+                  setBulkOpen(true)
+                }}
+                className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm active:bg-canvas-soft"
+              >
+                <Upload className="size-4 text-ink-faint" />
+                <span className="flex-1">Upload Massal</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActionsOpen(false)
+                  setEditOpen(true)
+                }}
+                className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm active:bg-canvas-soft"
+              >
+                <Pencil className="size-4 text-ink-faint" />
+                <span className="flex-1">Edit Massal</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActionsOpen(false)
+                  if (selectMode) exitSelectMode()
+                  else setSelectMode(true)
+                }}
+                className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm active:bg-canvas-soft"
+              >
+                {selectMode ? (
+                  <Check className="size-4 text-primary" />
+                ) : (
+                  <CheckCircle className="size-4 text-ink-faint" />
+                )}
+                <span className="flex-1">{selectMode ? "Selesai Pilih" : "Pilih Banyak"}</span>
+              </button>
+            </PopoverContent>
+          </Popover>
         )}
       </div>
 
@@ -1086,6 +1110,12 @@ export function ProductList() {
           if (!v) setStockTarget(null)
         }}
         canAdjust={canManage}
+        onSaved={reload}
+      />
+      <ProductDialog
+        open={addProductOpen}
+        onOpenChange={setAddProductOpen}
+        product={null}
         onSaved={reload}
       />
       <ProductDialog
