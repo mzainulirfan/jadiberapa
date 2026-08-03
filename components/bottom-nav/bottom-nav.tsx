@@ -10,6 +10,7 @@ import {
   DotsHorizontalRounded as MoreIcon,
 } from "@/components/ui/icons"
 import { cn } from "@/lib/utils"
+import { useCart } from "@/components/cart/cart-provider"
 
 const sideNav = [
   { href: "/dashboard", label: "Dashboard", icon: DashboardIcon },
@@ -46,6 +47,7 @@ function NavTab({
 export function BottomNav() {
   const pathname = usePathname()
   const cashierActive = pathname.startsWith("/cashier")
+  const { count } = useCart()
 
   return (
     <nav className="grid grid-cols-5 items-center border-t border-hairline bg-canvas px-2 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))]">
@@ -63,12 +65,17 @@ export function BottomNav() {
         <Link
           href="/cashier"
           aria-label="Kasir"
-          className={cn(
-            "flex size-13 items-center justify-center rounded-full text-primary-foreground shadow-sm transition-all active:scale-95",
+className={cn(
+            "relative flex size-13 items-center justify-center rounded-full text-primary-foreground shadow-sm transition-all active:scale-95",
             cashierActive ? "bg-primary-active" : "bg-primary"
           )}
         >
           <CashierIcon className="size-6" />
+          {count > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-destructive px-1 text-[11px] font-bold leading-none text-primary-foreground">
+              {count}
+            </span>
+          )}
         </Link>
       </div>
 
