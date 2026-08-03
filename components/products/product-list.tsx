@@ -41,7 +41,7 @@ import {
   deleteProducts,
   type ProductSort,
 } from "@/lib/actions/products"
-import { Search, Plus, Pencil, Trash, Check, ChevronDown, Grid, List, X, Package, Printer, Barcode as BarcodeIcon, Star, Upload, CheckCircle, DotsHorizontalRounded } from "@/components/ui/icons"
+import { Search, Plus, Pencil, Trash, Check, Grid, List, X, Package, Printer, Barcode as BarcodeIcon, Upload, CheckCircle, DotsHorizontalRounded, Filter } from "@/components/ui/icons"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { fmtRp } from "@/lib/format"
@@ -56,14 +56,6 @@ import { useCart } from "@/components/cart/cart-provider"
 import { useRole } from "@/lib/hooks/use-role"
 
 const PAGE_SIZE = 20
-
-const sortOptions: { id: ProductSort; label: string }[] = [
-  { id: "name-asc", label: "Nama (A-Z)" },
-  { id: "price-asc", label: "Harga Terendah" },
-  { id: "price-desc", label: "Harga Tertinggi" },
-  { id: "stock-asc", label: "Stok Terkecil" },
-  { id: "stock-desc", label: "Stok Terbesar" },
-]
 
 function escapeHtml(s: string) {
   return s.replace(/[&<>"']/g, (c) =>
@@ -128,7 +120,7 @@ export function ProductList() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [catIds, setCatIds] = useState<string[]>([])
-  const [sort, setSort] = useState<ProductSort>("name-asc")
+  const sort: ProductSort = "name-asc"
   const [view, setView] = useState<"grid" | "list">("grid")
   const [page, setPage] = useState(0)
   const [total, setTotal] = useState(0)
@@ -137,7 +129,6 @@ export function ProductList() {
   const [selected, setSelected] = useState<BxProduct | null>(null)
   const [stockTarget, setStockTarget] = useState<BxProduct | null>(null)
   const [catOpen, setCatOpen] = useState(false)
-  const [sortOpen, setSortOpen] = useState(false)
   const [lowStock, setLowStock] = useState(false)
   const [favOnly, setFavOnly] = useState(false)
   const [scanOpen, setScanOpen] = useState(false)
@@ -327,7 +318,6 @@ export function ProductList() {
 
   const hasMore = products.length < total
   const activeCats = categories.filter((c) => catIds.includes(c.id))
-  const sortLabel = sortOptions.find((s) => s.id === sort)?.label ?? "Nama (A-Z)"
   const isFiltering = search.trim() !== "" || catIds.length > 0 || lowStock || favOnly
 
   return (
@@ -388,6 +378,48 @@ export function ProductList() {
             </button>
           </div>
         </div>
+        <Popover open={catOpen} onOpenChange={setCatOpen}>
+          <PopoverTrigger
+            className={cn(
+              "flex size-9 shrink-0 items-center justify-center rounded-full border outline-none transition-colors",
+              catOpen || catIds.length > 0
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-hairline bg-canvas text-ink-muted active:bg-canvas-soft"
+            )}
+            aria-label="Filter kategori"
+            title={catIds.length > 0 ? `Kategori (${catIds.length})` : "Filter kategori"}
+          >
+            <Filter className="size-5" />
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-56 p-1">
+            {categories.map((c) => {
+              const selected = catIds.includes(c.id)
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => toggleCat(c.id)}
+                  className={cn(
+                    "flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm active:bg-canvas-soft",
+                    selected && "font-medium text-primary"
+                  )}
+                >
+                  <span className="flex-1 truncate">{c.name}</span>
+                  {selected && <Check className="size-4" />}
+                </button>
+              )
+            })}
+          </PopoverContent>
+        </Popover>
+        <button
+          type="button"
+          onClick={() => setView((v) => (v === "grid" ? "list" : "grid"))}
+          aria-label={view === "grid" ? "Tampilan daftar" : "Tampilan grid"}
+          title={view === "grid" ? "Tampilan daftar" : "Tampilan grid"}
+          className="flex size-9 shrink-0 items-center justify-center rounded-full border border-hairline bg-canvas text-ink-muted transition-colors active:bg-canvas"
+        >
+          {view === "grid" ? <List className="size-5" /> : <Grid className="size-5" />}
+        </button>
         {canManage && (
           <Popover open={actionsOpen} onOpenChange={setActionsOpen}>
             <PopoverTrigger
@@ -450,95 +482,6 @@ export function ProductList() {
             </PopoverContent>
           </Popover>
         )}
-      </div>
-
-      <div className="flex items-center gap-2">
-        <Popover open={catOpen} onOpenChange={setCatOpen}>
-          <PopoverTrigger
-            className={cn(
-              "flex h-8 min-w-0 flex-1 items-center justify-between gap-1 rounded-lg border px-2.5 text-sm outline-none transition-colors",
-              catOpen || catIds.length > 0
-                ? "border-primary bg-primary/10 text-ink"
-                : "border-hairline bg-canvas-soft text-ink-muted"
-            )}
-            aria-label="Filter kategori"
-          >
-            <span className="truncate">
-              {catIds.length > 0 ? `Kategori (${catIds.length})` : "Semua Kategori"}
-            </span>
-            <ChevronDown className="size-3.5 shrink-0" />
-          </PopoverTrigger>
-          <PopoverContent align="start" className="w-56 p-1">
-            {categories.map((c) => {
-              const selected = catIds.includes(c.id)
-              return (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => toggleCat(c.id)}
-                  className={cn(
-                    "flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm active:bg-canvas-soft",
-                    selected && "font-medium text-primary"
-                  )}
-                >
-                  <span className="flex-1 truncate">{c.name}</span>
-                  {selected && <Check className="size-4" />}
-                </button>
-              )
-            })}
-          </PopoverContent>
-        </Popover>
-
-        <Popover open={sortOpen} onOpenChange={setSortOpen}>
-          <PopoverTrigger
-            className="flex h-8 min-w-0 flex-1 items-center justify-between gap-1 rounded-lg border border-hairline bg-canvas-soft px-2.5 text-sm text-ink-muted outline-none"
-            aria-label="Urutkan"
-          >
-            <span className="truncate">{sortLabel}</span>
-            <ChevronDown className="size-3.5 shrink-0" />
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-44 p-1">
-            {sortOptions.map((o) => (
-              <button
-                key={o.id}
-                type="button"
-                onClick={() => {
-                  setSort(o.id)
-                  setSortOpen(false)
-                }}
-                className={cn(
-                  "flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm active:bg-canvas-soft",
-                  sort === o.id && "font-medium text-primary"
-                )}
-              >
-                <span className="flex-1">{o.label}</span>
-                {sort === o.id && <Check className="size-4" />}
-              </button>
-            ))}
-          </PopoverContent>
-        </Popover>
-
-        <button
-          type="button"
-          onClick={() => setFavOnly((v) => !v)}
-          aria-label="Tampilkan barang favorit"
-          className={cn(
-            "flex size-8 shrink-0 items-center justify-center rounded-lg border transition-colors",
-            favOnly
-              ? "border-accent-orange bg-accent-orange/10 text-accent-orange"
-              : "border-hairline bg-canvas-soft text-ink-muted"
-          )}
-        >
-          <Star className="size-4" />
-        </button>
-        <button
-          type="button"
-          onClick={() => setView((v) => (v === "grid" ? "list" : "grid"))}
-          aria-label={view === "grid" ? "Tampilan daftar" : "Tampilan grid"}
-          className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-hairline bg-canvas-soft text-ink-muted transition-colors active:bg-canvas"
-        >
-          {view === "grid" ? <List className="size-4" /> : <Grid className="size-4" />}
-        </button>
       </div>
 
       {(catIds.length > 0 || lowStock || favOnly) && (
