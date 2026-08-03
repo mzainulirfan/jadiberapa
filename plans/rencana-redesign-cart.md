@@ -1,6 +1,8 @@
 # Rencana Redesign Halaman Cart (Keranjang)
 
-Status: Draft — belum diimplementasi.
+Error  
+
+Status: P1–P7 selesai. Tersisa lanjutan: P8, P9, P10.
 Fokus: halaman Cart (`components/cart/cart-view.tsx`) + beberapa perbaikan
 terkait di CartProvider/checkout. Disusun dari hasil review kode.
 

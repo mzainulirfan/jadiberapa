@@ -23,7 +23,8 @@ import {
   type HeldCart,
 } from "@/lib/db/held-carts"
 import { ProductCard } from "@/components/cashier/product-card"
-import { Minus, Plus, Trash, Package, ChevronRight } from "@/components/ui/icons"
+import { SwipeToDelete } from "@/components/cart/swipe-to-delete"
+import { Minus, Plus, Trash, Package, ChevronRight, ChevronDown } from "@/components/ui/icons"
 import type { BxProduct } from "@/components/products/types"
 
 const heldDateFmt = new Intl.DateTimeFormat("id-ID", {
@@ -44,6 +45,7 @@ export function CartView() {
 
   const [heldCarts, setHeldCarts] = useState<HeldCart[]>([])
   const [heldOpen, setHeldOpen] = useState(false)
+  const [expandedHeld, setExpandedHeld] = useState<string | null>(null)
   const [holdOpen, setHoldOpen] = useState(false)
   const [holdLabel, setHoldLabel] = useState("")
   const [holding, setHolding] = useState(false)
@@ -255,10 +257,12 @@ export function CartView() {
                   const maxQty = maxQtyFor(item)
                   const atMax = qty >= maxQty
                   return (
-                    <div
+                    <SwipeToDelete
                       key={key}
-                      className="flex items-center gap-3 rounded-xl bg-canvas border border-hairline p-3"
+                      onDelete={() => removeItem(key)}
+                      className="bg-canvas border border-hairline"
                     >
+                      <div className="flex items-center gap-3 rounded-xl bg-canvas p-3">
                       <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-canvas-soft text-ink-faint">
                         {product.image_url ? (
                           // eslint-disable-next-line @next/next/no-img-element
@@ -368,6 +372,7 @@ export function CartView() {
                         </div>
                       </div>
                     </div>
+                    </SwipeToDelete>
                   )
                 })}
               </div>
@@ -410,34 +415,68 @@ export function CartView() {
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[50dvh] space-y-2 overflow-y-auto">
-            {heldCarts.map((h) => (
-              <div
-                key={h.id}
-                className="flex items-center gap-3 rounded-xl border border-hairline bg-canvas p-3"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-ink">{h.label}</p>
-                  <p className="text-xs text-ink-faint">
-                    {h.item_count} barang · {heldDateFmt.format(new Date(h.created_at))}
-                  </p>
+            {heldCarts.map((h) => {
+              const open = expandedHeld === h.id
+              return (
+                <div key={h.id} className="overflow-hidden rounded-xl border border-hairline bg-canvas">
+                  <div className="flex items-center gap-2 p-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-ink">{h.label}</p>
+                      <p className="text-xs text-ink-faint">
+                        {h.item_count} barang · {heldDateFmt.format(new Date(h.created_at))}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedHeld(open ? null : h.id)}
+                      aria-label={open ? "Sembunyikan isi" : "Lihat isi"}
+                      className="shrink-0 rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft"
+                    >
+                      <ChevronDown
+                        className={`size-4 ${open ? "rotate-180" : ""}`}
+                      />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleResume(h)}
+                      className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground active:bg-primary-active"
+                    >
+                      Lanjutkan
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteHeld(h)}
+                      aria-label={`Hapus ${h.label}`}
+                      className="shrink-0 rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft"
+                    >
+                      <Trash className="size-4" />
+                    </button>
+                  </div>
+                  {open && (
+                    <div className="space-y-1 border-t border-hairline px-3 py-2">
+                      {h.items.map((it, idx) => {
+                        const price = priceOf(it)
+                        const disc =
+                          resolveDiscountAmount(it.product.id, price, discounts) * it.qty
+                        return (
+                          <div
+                            key={idx}
+                            className="flex items-center justify-between gap-3 text-xs"
+                          >
+                            <span className="min-w-0 flex-1 truncate text-ink">
+                              {it.qty}× {it.product.name}
+                            </span>
+                            <span className="shrink-0 font-medium text-ink">
+                              Rp{(price * it.qty - disc).toLocaleString()}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleResume(h)}
-                  className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground active:bg-primary-active"
-                >
-                  Lanjutkan
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteHeld(h)}
-                  aria-label={`Hapus ${h.label}`}
-                  className="shrink-0 rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft"
-                >
-                  <Trash className="size-4" />
-                </button>
-              </div>
-            ))}
+              )
+            })}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setHeldOpen(false)}>

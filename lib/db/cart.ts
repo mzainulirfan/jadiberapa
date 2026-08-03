@@ -5,6 +5,12 @@ import type { CartItem, BxCartCustomer } from "@/components/cart/cart-provider"
 
 const supabase = createClient()
 
+// store_id aktif dari RPC (RLS-aman). null jika tidak ada toko aktif.
+export async function currentStoreId(): Promise<string | null> {
+  const { data } = await supabase.rpc("current_store_id")
+  return (data as string | null) ?? null
+}
+
 export type CartSnapshot = {
   items: CartItem[]
   updatedAt: string
@@ -16,10 +22,13 @@ export async function getCart(): Promise<CartSnapshot | null> {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return null
+  const storeId = await currentStoreId()
+  if (!storeId) return null
   const { data, error } = await supabase
     .from("carts")
     .select("items, updated_at, customer")
     .eq("user_id", user.id)
+    .eq("store_id", storeId)
     .maybeSingle()
   if (error || !data) return null
   return {
@@ -40,10 +49,12 @@ export async function saveCart(
   } = await supabase.auth.getUser()
   if (!user) return null
   const updatedAt = new Date().toISOString()
+  const storeId = await currentStoreId()
+  if (!storeId) return null
   const { error } = await supabase
     .from("carts")
     .upsert(
-      { user_id: user.id, items, customer, updated_at: updatedAt },
+      { user_id: user.id, store_id: storeId, items, customer, updated_at: updatedAt },
       { onConflict: "user_id" }
     )
   return error ? null : updatedAt
@@ -56,6 +67,8 @@ export async function watchCart(
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return () => {}
+  const storeId = await currentStoreId()
+  if (!storeId) return () => {}
 
   const channel = supabase
     .channel("cart-changes")
@@ -65,7 +78,7 @@ export async function watchCart(
         event: "UPDATE",
         schema: "public",
         table: "carts",
-        filter: `user_id=eq.${user.id}`,
+        filter: `user_id=eq.${user.id} and store_id=eq.${storeId}`,
       },
       (payload) => {
         const row = payload.new as {

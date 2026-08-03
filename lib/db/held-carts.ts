@@ -10,6 +10,7 @@ export type HeldCart = {
   label: string
   item_count: number
   created_at: string
+  items: CartItem[]
 }
 
 export type HeldCartDetail = {
@@ -24,7 +25,13 @@ export async function getHeldCarts(): Promise<HeldCart[]> {
     .select("id, label, items, created_at")
     .order("created_at", { ascending: false })
   return ((data ?? []) as { id: string; label: string; items: CartItem[]; created_at: string }[]).map(
-    (r) => ({ id: r.id, label: r.label, item_count: r.items.length, created_at: r.created_at })
+    (r) => ({
+      id: r.id,
+      label: r.label,
+      item_count: r.items.length,
+      created_at: r.created_at,
+      items: r.items,
+    })
   )
 }
 
