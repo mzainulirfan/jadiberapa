@@ -27,6 +27,7 @@ import {
 import { ProductDialog } from "./product-dialog"
 import { StockAdjustDialog } from "./stock-adjust-dialog"
 import { BulkImportDialog } from "./bulk-import-dialog"
+import { BulkEditDialog } from "./bulk-edit-dialog"
 import {
   getProducts,
   getCategories,
@@ -142,6 +143,7 @@ export function ProductList() {
   const [scanOpen, setScanOpen] = useState(false)
   const [addBarcode, setAddBarcode] = useState<string | null>(null)
   const [bulkOpen, setBulkOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
@@ -393,6 +395,17 @@ export function ProductList() {
             title={selectMode ? "Selesai" : "Pilih"}
           >
             {selectMode ? <Check className="size-4" /> : <CheckCircle className="size-4" />}
+          </Button>
+        )}
+        {canManage && (
+          <Button
+            variant="outline"
+            className="rounded-full px-2.5"
+            onClick={() => setEditOpen(true)}
+            aria-label="Edit banyak barang"
+            title="Edit massal"
+          >
+            <Pencil className="size-4" />
           </Button>
         )}
         {canManage && (
@@ -1090,6 +1103,12 @@ export function ProductList() {
         open={bulkOpen}
         onOpenChange={setBulkOpen}
         onSaved={reload}
+      />
+      <BulkEditDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        onSaved={reload}
+        selectedIds={selectedIds}
       />
     </div>
   )

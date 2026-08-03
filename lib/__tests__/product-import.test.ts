@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest"
 import {
   parseProductImport,
   productImportTemplateCsv,
+  parseProductEdit,
+  productsToEditCsv,
   type ImportProductRow,
 } from "@/lib/import/products"
 
@@ -118,5 +120,54 @@ describe("parseProductImport", () => {
       sku: "IDM-001",
       barcode: "8990000000000",
     })
+  })
+})
+
+describe("parseProductEdit & productsToEditCsv", () => {
+  const sample = [
+    { id: "p1", name: "Indomie Goreng", category: "Makanan", priceBuy: 2500, priceSell: 3000, minStock: 5, unit: "pcs", sku: "IDM-001", barcode: "8990000000000" },
+    { id: "p2", name: "Teh Botol", category: "Minuman", priceBuy: 2000, priceSell: 3000, minStock: 2, unit: "botol", sku: "TH-001", barcode: "" },
+  ]
+
+  it("ekspor memuat header ID & Nama, dan stok tidak ikut", () => {
+    const csv = productsToEditCsv(sample)
+    expect(csv).toContain("sep=;")
+    expect(csv).toContain("ID;Nama;Kategori;Harga Beli;Harga Jual;Stok Minimum;Satuan;SKU;Barcode")
+    expect(csv).not.toContain("Stok;") // header tidak memuat kolom Stok
+    expect(csv).toContain("p1;Indomie Goreng;Makanan;2500;3000;5;pcs;IDM-001;8990000000000")
+  })
+
+  it("round-trip: hasil ekspor bisa diparse ulang dengan id & nilai yang sama", () => {
+    const csv = productsToEditCsv(sample)
+    const { rows, headerError } = parseProductEdit(csv)
+    expect(headerError).toBeUndefined()
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toMatchObject({
+      id: "p1",
+      name: "Indomie Goreng",
+      category: "Makanan",
+      priceBuy: 2500,
+      priceSell: 3000,
+      minStock: 5,
+      unit: "pcs",
+      sku: "IDM-001",
+      barcode: "8990000000000",
+    })
+  })
+
+  it("filter ids hanya mengekspor produk yang dipilih", () => {
+    const csv = productsToEditCsv(sample, ["p2"])
+    expect(csv).not.toContain("p1;")
+    expect(csv).toContain("p2;Teh Botol")
+  })
+
+  it("menandai baris tanpa ID sebagai error", () => {
+    const { rows } = parseProductEdit("ID;Nama;Harga Jual\n;Baru,1000\n")
+    expect(rows[0].error).toMatch(/ID kosong/)
+  })
+
+  it("menandai harga jual <= 0 sebagai error", () => {
+    const { rows } = parseProductEdit("ID;Nama;Harga Jual\np1;Aqua;0\n")
+    expect(rows[0].error).toMatch(/Harga jual/)
   })
 })

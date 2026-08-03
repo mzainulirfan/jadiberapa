@@ -350,6 +350,90 @@ export async function resetCatalog(includeCategories: boolean) {
   }
 }
 
+export type BulkEditRow = {
+  id: string
+  name: string
+  category: string
+  priceBuy: number
+  priceSell: number
+  minStock: number
+  unit: string
+  sku: string
+  barcode: string
+}
+
+// Edit massal: perbarui field yang boleh diubah (nama, kategori, harga beli,
+// harga jual, stok minimum, satuan, sku, barcode) untuk produk yang sudah ada.
+// Baris dengan ID tidak dikenal diabaikan dan dilaporkan. Stok tidak diubah.
+export async function bulkUpdateProducts(rows: BulkEditRow[]) {
+  if (!(await isOwner())) return { error: "Hanya pemilik toko yang bisa edit massal", updated: 0, errors: [] }
+  if (!rows.length) return { error: "Tidak ada baris untuk diedit", updated: 0, errors: [] }
+  const supabase = await createClient()
+
+  // Resolve kategori: pakai yang sudah ada, buat yang belum.
+  const names = [...new Set(rows.map((r) => r.category.trim()).filter(Boolean))]
+  const catId = new Map<string, string>()
+  if (names.length) {
+    const { data: existing = [], error: exErr } = await supabase
+      .from("categories")
+      .select("id, name")
+      .in("name", names)
+    if (exErr) return { error: exErr.message, updated: 0, errors: [] }
+    for (const c of existing ?? []) catId.set(c.name, c.id)
+    const missing = names.filter((n) => !catId.has(n))
+    if (missing.length) {
+      const { data: created = [], error: crErr } = await supabase
+        .from("categories")
+        .insert(missing.map((name) => ({ name })))
+        .select("id, name")
+      if (crErr) return { error: crErr.message, updated: 0, errors: [] }
+      for (const c of created ?? []) catId.set(c.name, c.id)
+    }
+  }
+
+  let updated = 0
+  const errors: string[] = []
+  for (const r of rows) {
+    if (!r.id) {
+      errors.push(`${r.name || "(tanpa nama)"}: ID kosong`)
+      continue
+    }
+    const { data: existing, error: readErr } = await supabase
+      .from("products")
+      .select("id")
+      .eq("id", r.id)
+      .maybeSingle()
+    if (readErr) {
+      errors.push(`${r.name || r.id}: ${readErr.message}`)
+      continue
+    }
+    if (!existing) {
+      errors.push(`${r.name || r.id}: barang tidak ditemukan (mungkin sudah dihapus)`)
+      continue
+    }
+    const category = r.category.trim()
+    const { error: updErr } = await supabase
+      .from("products")
+      .update({
+        name: r.name.trim(),
+        category_id: category ? (catId.get(category) ?? null) : null,
+        price_buy: Number(r.priceBuy) || 0,
+        price_sell: Number(r.priceSell) || 0,
+        min_stock: Math.max(0, Math.round(Number(r.minStock) || 0)),
+        unit: r.unit.trim() || "pcs",
+        sku: r.sku.trim() || null,
+        barcode: r.barcode.trim() || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", r.id)
+    if (updErr) errors.push(`${r.name || r.id}: ${updErr.message}`)
+    else updated++
+  }
+
+  for (const path of ["/products", "/dashboard"]) revalidatePath(path)
+  return { error: null, updated, errors }
+}
+
 // Stok masuk (restock/pembelian): tambah stok, opsional perbarui harga beli
 // (harga beli terakhir), lalu catat jejak audit pergerakan stok.
 export async function addStock(

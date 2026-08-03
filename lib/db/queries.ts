@@ -539,6 +539,20 @@ export async function getProducts(params: {
   return { data: (data ?? []) as unknown as BxProduct[], total: count ?? 0 }
 }
 
+// Ambil seluruh barang toko aktif (opsional dibatasi daftar id) — dipakai untuk
+// ekspor edit massal. Filtrasi toko ditangani RLS.
+export async function getAllProducts(ids?: string[]): Promise<BxProduct[]> {
+  let q = supabase
+    .from("products")
+    .select(
+      "id, name, category_id, price_buy, price_sell, stock, min_stock, is_favorite, unit, sku, barcode, image_url, created_at, updated_at, categories(name)"
+    )
+    .order("name", { ascending: true })
+  if (ids && ids.length) q = q.in("id", ids)
+  const { data } = await q
+  return (data ?? []) as unknown as BxProduct[]
+}
+
 export async function getProductVariants(productIds: string[]): Promise<BxVariant[]> {
   if (productIds.length === 0) return []
   const { data } = await supabase

@@ -131,3 +131,148 @@ export function productImportTemplateCsv(): string {
   const example = ["Indomie Goreng", "Makanan", "2500", "3000", "50", "5", "pcs", "IDM-001", "8990000000000"].join(sep)
   return `\uFEFFsep=${sep}\n${header}\n${example}\n`
 }
+
+// ---------------------------------------------------------------------------
+// Edit massal (bulk edit): unduh produk sebagai CSV, ubah lewat Excel, unggah
+// kembali. Hanya kolom-kolom berikut yang boleh diubah; `ID` hanya penanda baris
+// dan stok tidak ikut (stok dijaga lewat riwayat pergerakan stok).
+// ---------------------------------------------------------------------------
+
+export type EditProductRow = {
+  line: number
+  id: string
+  name: string
+  category: string
+  priceBuy: number
+  priceSell: number
+  minStock: number
+  unit: string
+  sku: string
+  barcode: string
+  error?: string
+}
+
+export type EditParseResult = {
+  rows: EditProductRow[]
+  headerError?: string
+}
+
+// Urutan kolom CSV edit. `id` penanda baris, `stok` sengaja tidak disertakan.
+const EDIT_COLUMNS = [
+  "id",
+  "nama",
+  "kategori",
+  "hargabeli",
+  "hargajual",
+  "stokminimum",
+  "satuan",
+  "sku",
+  "barcode",
+]
+
+const EDIT_HEADER = [
+  "ID",
+  "Nama",
+  "Kategori",
+  "Harga Beli",
+  "Harga Jual",
+  "Stok Minimum",
+  "Satuan",
+  "SKU",
+  "Barcode",
+]
+
+// Ekspor daftar produk ke CSV edit (bisa difilter `ids` bila ingin hanya produk
+// yang dipilih). Stok TIDAK ikut agar tidak bisa diubah lewat edit massal.
+export function productsToEditCsv(
+  rows: {
+    id: string
+    name: string
+    category: string
+    priceBuy: number
+    priceSell: number
+    minStock: number
+    unit: string
+    sku: string
+    barcode: string
+  }[],
+  ids?: string[]
+): string {
+  const sep = ";"
+  const selected = ids?.length
+    ? rows.filter((r) => ids.includes(r.id))
+    : rows
+  const header = EDIT_HEADER.join(sep)
+  const body = selected
+    .map((r) =>
+      [r.id, r.name, r.category, r.priceBuy, r.priceSell, r.minStock, r.unit, r.sku || "", r.barcode || ""].join(sep)
+    )
+    .join("\n")
+  return `\uFEFFsep=${sep}\n${header}\n${body}\n`
+}
+
+export function parseProductEdit(text: string): EditParseResult {
+  const lines: { text: string; no: number }[] = []
+  text.split(/\r?\n/).forEach((l, i) => {
+    if (l.trim() !== "") lines.push({ text: l.trimEnd(), no: i + 1 })
+  })
+  if (lines.length === 0) return { rows: [], headerError: "Teks kosong" }
+
+  let start = 0
+  if (/^sep=/i.test(lines[0].text.trim())) start = 1
+
+  const delim = detectDelimiter(lines[start].text)
+  const hasHeader = /id|nama/.test(lines[start].text.toLowerCase())
+  const header = hasHeader ? splitLine(lines[start].text, delim) : EDIT_COLUMNS
+
+  const colIndex: Record<string, number> = {}
+  header.forEach((h, i) => {
+    const key = normalizeHeader(h)
+    if (key) colIndex[key] = i
+  })
+
+  const nameIdx = colIndex["nama"]
+  const sellIdx = colIndex["hargajual"]
+  if (hasHeader && (nameIdx === undefined || sellIdx === undefined)) {
+    return { rows: [], headerError: "Header harus memuat kolom ID dan Harga Jual" }
+  }
+
+  const get = (cells: string[], key: string) => {
+    const i = colIndex[key]
+    return i === undefined ? "" : (cells[i] ?? "").trim()
+  }
+
+  const rows: EditProductRow[] = []
+  for (const { text, no } of lines.slice(start + (hasHeader ? 1 : 0))) {
+    const cells = splitLine(text, delim)
+
+    const id = get(cells, "id")
+    const name = get(cells, "nama")
+    const priceSell = parseNumber(get(cells, "hargajual"))
+    const priceBuy = parseNumber(get(cells, "hargabeli"))
+    const minStock = Math.round(parseNumber(get(cells, "stokminimum")) ?? 0)
+
+    let error: string | undefined
+    if (!id) error = "ID kosong; edit massal hanya untuk barang yang sudah ada"
+    else if (!name) error = "Nama wajib diisi"
+    else if (priceSell === null || priceSell <= 0) error = "Harga jual harus angka > 0"
+    else if (minStock < 0) error = "Stok minimum tidak boleh negatif"
+    else if (priceBuy !== null && priceBuy < 0) error = "Harga beli tidak boleh negatif"
+
+    rows.push({
+      line: no,
+      id,
+      name,
+      category: get(cells, "kategori"),
+      priceBuy: priceBuy && priceBuy > 0 ? priceBuy : 0,
+      priceSell: priceSell ?? 0,
+      minStock,
+      unit: get(cells, "satuan") || "pcs",
+      sku: get(cells, "sku"),
+      barcode: get(cells, "barcode"),
+      error,
+    })
+  }
+
+  return { rows }
+}
