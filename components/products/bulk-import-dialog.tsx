@@ -28,7 +28,7 @@ import {
   type ImportProductRow,
 } from "@/lib/import/products"
 
-const MAX_ROWS = 500
+const MAX_ROWS = 1000
 
 function downloadTemplate() {
   const blob = new Blob([productImportTemplateCsv()], { type: "text/csv;charset=utf-8" })

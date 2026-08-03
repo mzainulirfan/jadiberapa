@@ -9,7 +9,7 @@ export type ProductSort = "name-asc" | "price-asc" | "price-desc" | "stock-asc" 
 const PAGE_SIZE = 20
 
 // Batas aman jumlah barang per import massal.
-const MAX_IMPORT_ROWS = 500
+const MAX_IMPORT_ROWS = 1000
 
 export type BulkProductRow = {
   name: string
