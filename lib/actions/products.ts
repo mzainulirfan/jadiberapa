@@ -8,6 +8,75 @@ export type ProductSort = "name-asc" | "price-asc" | "price-desc" | "stock-asc" 
 
 const PAGE_SIZE = 20
 
+// Batas aman jumlah barang per import massal.
+const MAX_IMPORT_ROWS = 500
+
+export type BulkProductRow = {
+  name: string
+  category: string
+  priceBuy: number
+  priceSell: number
+  stock: number
+  minStock: number
+  unit: string
+  sku: string
+  barcode: string
+}
+
+// Import massal barang: buat kategori yang belum ada, lalu insert batch produk
+// dalam satu panggilan. Klien mengirim hanya baris yang sudah lulus validasi.
+export async function bulkCreateProducts(rows: BulkProductRow[]) {
+  if (!(await isOwner())) return { created: 0, errors: ["Hanya pemilik toko yang bisa import barang"] }
+  if (!rows.length) return { created: 0, errors: ["Tidak ada baris untuk diimport"] }
+
+  const supabase = await createClient()
+
+  // Resolve kategori: pakai yang sudah ada, buat yang belum.
+  const names = [...new Set(rows.map((r) => r.category.trim()).filter(Boolean))]
+  const catId = new Map<string, string>()
+  if (names.length) {
+    const { data: existing = [], error: exErr } = await supabase
+      .from("categories")
+      .select("id, name")
+      .in("name", names)
+    if (exErr) return { created: 0, errors: [exErr.message] }
+    for (const c of existing ?? []) catId.set(c.name, c.id)
+
+    const missing = names.filter((n) => !catId.has(n))
+    if (missing.length) {
+      const { data: created = [], error: crErr } = await supabase
+        .from("categories")
+        .insert(missing.map((name) => ({ name })))
+        .select("id, name")
+      if (crErr) return { created: 0, errors: [crErr.message] }
+      for (const c of created ?? []) catId.set(c.name, c.id)
+    }
+  }
+
+  const products = rows.slice(0, MAX_IMPORT_ROWS).map((r) => {
+    const category = r.category.trim()
+    return {
+      name: r.name.trim(),
+      category_id: category ? (catId.get(category) ?? null) : null,
+      price_buy: Number(r.priceBuy) || 0,
+      price_sell: Number(r.priceSell) || 0,
+      stock: Math.max(0, Math.round(Number(r.stock) || 0)),
+      min_stock: Math.max(0, Math.round(Number(r.minStock) || 0)),
+      unit: r.unit.trim() || "pcs",
+      sku: r.sku.trim() || null,
+      barcode: r.barcode.trim() || null,
+    }
+  })
+
+  if (!products.length) return { created: 0, errors: ["Tidak ada baris valid"] }
+
+  const { error } = await supabase.from("products").insert(products)
+  if (error) return { created: 0, errors: [error.message] }
+
+  revalidatePath("/products")
+  return { created: products.length, errors: [] }
+}
+
 // Parsing JSON daftar varian dari field tersembunyi form produk.
 function parseVariants(json?: string) {
   if (!json) return []

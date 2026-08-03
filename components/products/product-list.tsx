@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/popover"
 import { ProductDialog } from "./product-dialog"
 import { StockAdjustDialog } from "./stock-adjust-dialog"
+import { BulkImportDialog } from "./bulk-import-dialog"
 import {
   getProducts,
   getCategories,
@@ -38,7 +39,7 @@ import {
   deleteProduct,
   type ProductSort,
 } from "@/lib/actions/products"
-import { Search, Plus, Pencil, Trash, Check, ChevronDown, Grid, List, X, Package, Printer, Barcode as BarcodeIcon, Star } from "@/components/ui/icons"
+import { Search, Plus, Pencil, Trash, Check, ChevronDown, Grid, List, X, Package, Printer, Barcode as BarcodeIcon, Star, Upload } from "@/components/ui/icons"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { fmtRp } from "@/lib/format"
@@ -139,6 +140,7 @@ export function ProductList() {
   const [favOnly, setFavOnly] = useState(false)
   const [scanOpen, setScanOpen] = useState(false)
   const [addBarcode, setAddBarcode] = useState<string | null>(null)
+  const [bulkOpen, setBulkOpen] = useState(false)
   const [summary, setSummary] = useState<{ count: number; stockValue: number; lowStock: number } | null>(null)
   const [variants, setVariants] = useState<BxVariant[]>([])
   // Varian di-render hanya jika cocok dengan produk yang sedang dibuka, agar
@@ -351,6 +353,17 @@ export function ProductList() {
             </button>
           </div>
         </div>
+        {canManage && (
+          <Button
+            variant="outline"
+            className="rounded-full px-2.5"
+            onClick={() => setBulkOpen(true)}
+            aria-label="Upload barang massal"
+            title="Upload barang massal"
+          >
+            <Upload className="size-4" />
+          </Button>
+        )}
         {canManage && (
           <ProductDialog product={null} onSaved={reload}>
             <Button className="rounded-full size-9 p-0">
@@ -951,6 +964,11 @@ export function ProductList() {
           setAddBarcode(null)
           reload()
         }}
+      />
+      <BulkImportDialog
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        onSaved={reload}
       />
     </div>
   )
