@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { getProducts, resolveDiscountAmount } from "@/lib/db/queries"
-import { cartKey, priceOf, maxQtyFor, useCart } from "@/components/cart/cart-provider"
+import { cartKey, priceOf, maxQtyFor, useCart, type CartItem } from "@/components/cart/cart-provider"
 import {
   getHeldCarts,
   getHeldCart,
@@ -40,6 +40,7 @@ export function CartView() {
   const [pop, setPop] = useState<{ id: string; key: number } | null>(null)
   const popKeyRef = useRef(0)
   const router = useRouter()
+  const [qtyEdit, setQtyEdit] = useState<{ key: string; raw: string } | null>(null)
 
   const [heldCarts, setHeldCarts] = useState<HeldCart[]>([])
   const [heldOpen, setHeldOpen] = useState(false)
@@ -71,6 +72,13 @@ export function CartView() {
     addItem(p)
     popKeyRef.current += 1
     setPop({ id: p.id, key: popKeyRef.current })
+  }
+
+  function commitQty(key: string) {
+    if (!qtyEdit || qtyEdit.key !== key) return
+    const n = parseInt(qtyEdit.raw, 10)
+    updateQty(key, Number.isNaN(n) ? 1 : n)
+    setQtyEdit(null)
   }
 
   function handleClear() {
@@ -219,107 +227,165 @@ export function CartView() {
         </div>
       ) : (
         <>
-          <div className="flex-1 overflow-y-auto p-4 pt-0 space-y-1">
-            {items.map((item) => {
-              const { product, qty } = item
-              const key = cartKey(item)
-              const price = priceOf(item)
-              const atMax = qty >= maxQtyFor(item)
-              return (
-                <div
-                  key={key}
-                  className="flex items-center gap-3 rounded-xl bg-canvas border border-hairline p-3"
-                >
-                  <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-canvas-soft text-ink-faint">
-                    {product.image_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={product.image_url}
-                        alt={product.name}
-                        className="size-full object-cover"
-                      />
-                    ) : (
-                      <Package className="size-6" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-ink truncate">{product.name}</p>
-                    {item.variant && (
-                      <p className="text-xs text-ink-muted mt-0.5">Varian: {item.variant.name}</p>
-                    )}
-                    {item.unit && (
-                      <p className="text-xs text-ink-muted mt-0.5">
-                        {item.unit.name} (= {item.unit.factor} {product.unit || "pcs"})
-                      </p>
-                    )}
-                    <p className="text-xs text-ink-muted mt-0.5">
-                      Rp{price.toLocaleString()}
-                    </p>
-                    <div className="flex items-center gap-1.5 mt-2">
-                      <button
-                        onClick={() => updateQty(key, qty - 1)}
-                        className="flex size-7 items-center justify-center rounded-md border border-hairline text-ink-muted active:bg-canvas-soft"
-                        aria-label="Kurangi"
-                      >
-                        <Minus className="size-3.5" />
-                      </button>
-                      <span className="w-7 text-center text-sm font-semibold text-ink">{qty}</span>
-                      <button
-                        onClick={() => updateQty(key, qty + 1)}
-                        disabled={atMax}
-                        className="flex size-7 items-center justify-center rounded-md border border-hairline text-ink-muted active:bg-canvas-soft disabled:opacity-40"
-                        aria-label="Tambah"
-                      >
-                        <Plus className="size-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end gap-2">
-                    <button
-                      onClick={() => removeItem(key)}
-                      className="rounded-md p-1 text-ink-muted active:bg-canvas-soft"
-                      aria-label="Hapus"
+          <div className="flex-1 overflow-y-auto p-4 pt-0 space-y-4">
+            {(() => {
+              const order: string[] = []
+              const map = new Map<string, CartItem[]>()
+              for (const item of items) {
+                const cat = item.product.categories?.name ?? ""
+                if (!map.has(cat)) {
+                  map.set(cat, [])
+                  order.push(cat)
+                }
+                ;(map.get(cat) as CartItem[]).push(item)
+              }
+              return order.map((cat) => ({
+                cat,
+                group: map.get(cat) as CartItem[],
+              }))
+            })().map(({ cat, group }) => (
+              <div key={cat || "__none__"} className="space-y-1">
+                <p className="px-1 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
+                  {cat || "Tanpa Kategori"}
+                </p>
+                {group.map((item) => {
+                  const { product, qty } = item
+                  const key = cartKey(item)
+                  const price = priceOf(item)
+                  const maxQty = maxQtyFor(item)
+                  const atMax = qty >= maxQty
+                  return (
+                    <div
+                      key={key}
+                      className="flex items-center gap-3 rounded-xl bg-canvas border border-hairline p-3"
                     >
-                      <Trash className="size-4" />
-                    </button>
-                    <div className="text-right">
-                      {(() => {
-                        const disc = resolveDiscountAmount(product.id, price, discounts) * qty
-                        const subtotal = price * qty
-                        return disc > 0 ? (
-                          <>
-                            <p className="text-xs text-ink-faint line-through">
-                              Rp{subtotal.toLocaleString()}
-                            </p>
-                            <p className="text-sm font-semibold text-primary">
-                              Rp{(subtotal - disc).toLocaleString()}
-                            </p>
-                          </>
+                      <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-canvas-soft text-ink-faint">
+                        {product.image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={product.image_url}
+                            alt={product.name}
+                            className="size-full object-cover"
+                          />
                         ) : (
-                          <p className="text-sm font-semibold text-ink">
-                            Rp{subtotal.toLocaleString()}
+                          <Package className="size-6" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-ink truncate">{product.name}</p>
+                        {item.variant && (
+                          <p className="text-xs text-ink-muted mt-0.5">Varian: {item.variant.name}</p>
+                        )}
+                        {item.unit && (
+                          <p className="text-xs text-ink-muted mt-0.5">
+                            {item.unit.name} (= {item.unit.factor} {product.unit || "pcs"})
                           </p>
-                        )
-                      })()}
+                        )}
+                        <p className="text-xs text-primary mt-0.5 font-medium">
+                          Rp{price.toLocaleString()}
+                        </p>
+                        <div className="flex items-center gap-1.5 mt-2">
+                          <button
+                            onClick={() => updateQty(key, qty - 1)}
+                            className="flex size-7 items-center justify-center rounded-md border border-hairline text-ink-muted active:bg-canvas-soft"
+                            aria-label="Kurangi"
+                          >
+                            <Minus className="size-3.5" />
+                          </button>
+                          {qtyEdit?.key === key ? (
+                            <Input
+                              autoFocus
+                              type="number"
+                              inputMode="numeric"
+                              min={1}
+                              max={maxQty}
+                              value={qtyEdit.raw}
+                              onChange={(e) => setQtyEdit({ key, raw: e.target.value })}
+                              onBlur={() => commitQty(key)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") commitQty(key)
+                                else if (e.key === "Escape") setQtyEdit(null)
+                              }}
+                              className="h-7 w-12 rounded-md px-1 text-center text-sm font-semibold"
+                            />
+                          ) : (
+                            <button
+                              onClick={() => setQtyEdit({ key, raw: String(qty) })}
+                              className="w-7 text-center text-sm font-semibold text-ink active:text-primary"
+                              aria-label="Ubah jumlah"
+                            >
+                              {qty}
+                            </button>
+                          )}
+                          <button
+                            onClick={() => updateQty(key, qty + 1)}
+                            disabled={atMax}
+                            className="flex size-7 items-center justify-center rounded-md border border-hairline text-ink-muted active:bg-canvas-soft disabled:opacity-40"
+                            aria-label="Tambah"
+                          >
+                            <Plus className="size-3.5" />
+                          </button>
+                        </div>
+                        {maxQty < Number.MAX_SAFE_INTEGER && (
+                          <p
+                            className={
+                              atMax
+                                ? "mt-1 text-[10px] font-medium text-accent-orange"
+                                : "mt-1 text-[10px] text-ink-faint"
+                            }
+                          >
+                            {atMax ? `Stok dibatasi (tersisa ${maxQty})` : `Sisa stok ${maxQty}`}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex shrink-0 flex-col items-end gap-2">
+                        <button
+                          onClick={() => removeItem(key)}
+                          className="rounded-md p-1 text-ink-muted active:bg-canvas-soft"
+                          aria-label="Hapus"
+                        >
+                          <Trash className="size-4" />
+                        </button>
+                        <div className="text-right">
+                          {(() => {
+                            const disc = resolveDiscountAmount(product.id, price, discounts) * qty
+                            const subtotal = price * qty
+                            return disc > 0 ? (
+                              <>
+                                <p className="text-xs text-ink-faint line-through">
+                                  Rp{subtotal.toLocaleString()}
+                                </p>
+                                <p className="text-sm font-semibold text-primary">
+                                  Rp{(subtotal - disc).toLocaleString()}
+                                </p>
+                              </>
+                            ) : (
+                              <p className="text-sm font-semibold text-ink">
+                                Rp{subtotal.toLocaleString()}
+                              </p>
+                            )
+                          })()}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              )
-            })}
+                  )
+                })}
+              </div>
+            ))}
           </div>
 
-          <div className="shrink-0 border-t border-hairline bg-canvas p-4 space-y-3">
-            <div className="flex items-end justify-between">
+          <div className="shrink-0 border-t border-hairline bg-canvas p-3 pb-[calc(1rem+env(safe-area-inset-bottom))] space-y-2">
+            <div className="flex items-end justify-between px-1">
               <span className="text-ink-muted text-sm pb-1">Total ({count} item)</span>
               <span className="text-2xl font-bold tracking-tight text-ink">
                 Rp{netTotal.toLocaleString()}
               </span>
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
               <Button
-                variant="outline"
+                variant="ghost"
                 onClick={() => router.push("/cashier")}
-                className="w-36 rounded-full h-12 text-base shrink-0"
+                className="h-12 shrink-0 rounded-full px-4 text-sm text-ink-muted"
               >
                 Belanja Lagi
               </Button>
