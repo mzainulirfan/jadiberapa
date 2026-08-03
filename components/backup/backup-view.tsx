@@ -8,8 +8,10 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { createClient } from "@/lib/supabase/client"
 import { restoreStoreBackup } from "@/lib/actions/backup"
+import { resetCatalog } from "@/lib/actions/products"
 import type { StoreBackupBundle, StoreBackupCounts } from "@/lib/backup/types"
 import { AlertTriangle, Receipt, Store } from "@/components/ui/icons"
+import { cn } from "@/lib/utils"
 
 const APP_VERSION = "Saberaha v1.0.0"
 
@@ -169,6 +171,10 @@ export function BackupView() {
   const [restoreOpen, setRestoreOpen] = useState(false)
   const [restoreBundle, setRestoreBundle] = useState<StoreBackupBundle | null>(null)
   const [restoring, setRestoring] = useState(false)
+  const [resetOpen, setResetOpen] = useState(false)
+  const [resetCategories, setResetCategories] = useState(false)
+  const [resetConfirm, setResetConfirm] = useState("")
+  const [resetting, setResetting] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -245,6 +251,24 @@ export function BackupView() {
 
   const restoreCounts = restoreBundle ? countBundle(restoreBundle) : emptyCounts()
 
+  async function confirmReset() {
+    if (resetConfirm.trim().toLowerCase() !== "reset") return
+    setResetting(true)
+    const res = await resetCatalog(resetCategories)
+    setResetting(false)
+    if (res?.error) {
+      toast.error(res.error)
+      return
+    }
+    toast.success(
+      `${res.deletedProducts} barang dihapus` +
+        (resetCategories ? `, ${res.deletedCategories} kategori` : "")
+    )
+    setResetOpen(false)
+    setResetConfirm("")
+    window.location.reload()
+  }
+
   return (
     <div className="space-y-4 p-4">
       <div className="rounded-2xl border border-hairline bg-canvas p-4">
@@ -320,6 +344,64 @@ export function BackupView() {
         </p>
       </div>
 
+      <div className="rounded-2xl border border-destructive/30 bg-canvas p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <span className="flex size-8 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+            <AlertTriangle className="size-4" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-ink">Reset Data Barang</p>
+            <p className="text-xs text-ink-faint">Hapus seluruh barang (dan kategori) toko aktif.</p>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={() => setResetCategories(false)}
+            className={cn(
+              "flex items-center gap-3 rounded-xl border p-3 text-left text-sm",
+              !resetCategories ? "border-primary bg-primary/10" : "border-hairline bg-canvas-soft"
+            )}
+          >
+            <span className="flex size-5 items-center justify-center rounded-full border-2 border-ink-faint">
+              {!resetCategories && <span className="size-2.5 rounded-full bg-primary" />}
+            </span>
+            <span className="flex-1">
+              <span className="block font-medium text-ink">Reset barang saja</span>
+              <span className="text-xs text-ink-muted">Hapus semua produk, kategori tetap dipertahankan.</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setResetCategories(true)}
+            className={cn(
+              "flex items-center gap-3 rounded-xl border px-3 py-3 text-left text-sm",
+              resetCategories
+                ? "border-primary bg-primary/10"
+                : "border-hairline bg-canvas-soft"
+            )}
+          >
+            <span className="flex size-5 items-center justify-center rounded-full border-2 border-ink-faint">
+              {resetCategories && <span className="size-2.5 rounded-full bg-primary" />}
+            </span>
+            <span className="flex-1">
+              <span className="block font-medium text-ink">Reset barang + kategori</span>
+              <span className="text-xs text-ink-muted">Hapus semua produk dan semua kategori sekaligus.</span>
+            </span>
+          </button>
+        </div>
+
+        <Button
+          variant="destructive"
+          className="w-full rounded-full"
+          disabled={loading || !hasSnapshot}
+          onClick={() => setResetOpen(true)}
+        >
+          Reset Data
+        </Button>
+      </div>
+
       <Dialog open={restoreOpen} onOpenChange={(o) => !restoring && setRestoreOpen(o)}>
         <DialogContent showCloseButton={false}>
           <DialogHeader>
@@ -341,6 +423,41 @@ export function BackupView() {
             </Button>
             <Button variant="destructive" onClick={confirmRestore} disabled={restoring || !restoreBundle}>
               {restoring ? "Memulihkan..." : "Pulihkan"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={resetOpen} onOpenChange={(o) => !resetting && setResetOpen(o)}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Reset data barang?</DialogTitle>
+            <DialogDescription>
+              {resetCategories
+                ? "Semua produk dan kategori toko aktif akan dihapus permanen."
+                : "Semua produk toko aktif akan dihapus permanen."}{" "}
+              Ketik <span className="font-mono font-semibold text-destructive">reset</span> untuk melanjutkan.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center gap-2">
+            <Input
+              value={resetConfirm}
+              onChange={(e) => setResetConfirm(e.target.value)}
+              placeholder="ketik: reset"
+              autoCapitalize="none"
+              autoCorrect="off"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResetOpen(false)} disabled={resetting}>
+              Batal
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmReset}
+              disabled={resetting || resetConfirm.trim().toLowerCase() !== "reset"}
+            >
+              {resetting ? "Mereset..." : "Reset Sekarang"}
             </Button>
           </DialogFooter>
         </DialogContent>

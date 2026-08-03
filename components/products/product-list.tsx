@@ -37,9 +37,10 @@ import {
 } from "@/lib/db/queries"
 import {
   deleteProduct,
+  deleteProducts,
   type ProductSort,
 } from "@/lib/actions/products"
-import { Search, Plus, Pencil, Trash, Check, ChevronDown, Grid, List, X, Package, Printer, Barcode as BarcodeIcon, Star, Upload } from "@/components/ui/icons"
+import { Search, Plus, Pencil, Trash, Check, ChevronDown, Grid, List, X, Package, Printer, Barcode as BarcodeIcon, Star, Upload, CheckCircle } from "@/components/ui/icons"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { fmtRp } from "@/lib/format"
@@ -141,6 +142,9 @@ export function ProductList() {
   const [scanOpen, setScanOpen] = useState(false)
   const [addBarcode, setAddBarcode] = useState<string | null>(null)
   const [bulkOpen, setBulkOpen] = useState(false)
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
   const [summary, setSummary] = useState<{ count: number; stockValue: number; lowStock: number } | null>(null)
   const [variants, setVariants] = useState<BxVariant[]>([])
   // Varian di-render hanya jika cocok dengan produk yang sedang dibuka, agar
@@ -270,6 +274,33 @@ export function ProductList() {
     toast.success("Barang dihapus")
   }
 
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function exitSelectMode() {
+    setSelectMode(false)
+    setSelectedIds(new Set())
+  }
+
+  async function handleBulkDelete() {
+    if (selectedIds.size === 0) return
+    const res = await deleteProducts([...selectedIds])
+    if (res?.error) {
+      toast.error("Gagal menghapus barang")
+      return
+    }
+    toast.success(`${selectedIds.size} barang dihapus`)
+    setBulkDeleteOpen(false)
+    exitSelectMode()
+    reload()
+  }
+
   async function resolveCode(term: string): Promise<BxProduct | null> {
     const { data } = await getProducts({ search: term, pageSize: PAGE_SIZE })
     return (
@@ -353,6 +384,17 @@ export function ProductList() {
             </button>
           </div>
         </div>
+        {canManage && (
+          <Button
+            variant={selectMode ? "default" : "outline"}
+            className="rounded-full px-2.5"
+            onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
+            aria-label={selectMode ? "Selesai pilih barang" : "Pilih banyak barang"}
+            title={selectMode ? "Selesai" : "Pilih"}
+          >
+            {selectMode ? <Check className="size-4" /> : <CheckCircle className="size-4" />}
+          </Button>
+        )}
         {canManage && (
           <Button
             variant="outline"
@@ -517,6 +559,30 @@ export function ProductList() {
         </div>
       )}
 
+      {selectMode && (
+        <div className="flex items-center gap-2 rounded-xl border border-hairline bg-canvas p-2.5">
+          <p className="min-w-0 flex-1 truncate text-sm text-ink">
+            <span className="font-bold text-primary">{selectedIds.size}</span> dipilih
+          </p>
+          <Button
+            variant="outline"
+            className="rounded-full px-3"
+            onClick={exitSelectMode}
+          >
+            Batal
+          </Button>
+          <Button
+            variant="destructive"
+            className="rounded-full px-4 gap-1.5"
+            disabled={selectedIds.size === 0}
+            onClick={() => setBulkDeleteOpen(true)}
+          >
+            <Trash className="size-4" />
+            Hapus
+          </Button>
+        </div>
+      )}
+
       {loading ? (
         view === "grid" ? (
           <div className="grid grid-cols-2 gap-2">
@@ -589,13 +655,29 @@ export function ProductList() {
               <div
                 key={p.id}
                 className={cn(
-                  "flex flex-col overflow-hidden rounded-2xl border bg-canvas shadow-[0_1px_0_rgba(0,0,0,0.02)] transition-colors",
-                  p.stock <= 0 ? "border-destructive/20 bg-canvas-soft/60" : "border-hairline"
+                  "relative flex flex-col overflow-hidden rounded-2xl border bg-canvas shadow-[0_1px_0_rgba(0,0,0,0.02)] transition-colors",
+                  p.stock <= 0 ? "border-destructive/20 bg-canvas-soft/60" : "border-hairline",
+                  selectMode && selectedIds.has(p.id) && "border-primary ring-1 ring-primary"
                 )}
               >
+                {selectMode && (
+                  <button
+                    type="button"
+                    onClick={() => toggleSelect(p.id)}
+                    aria-label={selectedIds.has(p.id) ? `Batalkan pilihan ${p.name}` : `Pilih ${p.name}`}
+                    className={cn(
+                      "absolute left-2 top-2 z-10 flex size-6 items-center justify-center rounded-full border-2 bg-canvas/90 shadow-sm",
+                      selectedIds.has(p.id)
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-ink-faint text-transparent"
+                    )}
+                  >
+                    <Check className="size-3.5" />
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={() => setSelected(p)}
+                  onClick={() => (selectMode ? toggleSelect(p.id) : setSelected(p))}
                   className="flex flex-1 flex-col text-left active:bg-canvas-soft"
                 >
                   <ProductThumb
@@ -663,13 +745,29 @@ export function ProductList() {
               <div
                 key={p.id}
                 className={cn(
-                  "flex items-center gap-3 rounded-2xl border bg-canvas p-2.5 transition-colors",
-                  p.stock <= 0 ? "border-destructive/20 bg-canvas-soft/60" : "border-hairline"
+                  "flex items-center gap-1.5 rounded-2xl border bg-canvas p-2.5 transition-colors",
+                  p.stock <= 0 ? "border-destructive/20 bg-canvas-soft/60" : "border-hairline",
+                  selectMode && selectedIds.has(p.id) && "border-primary ring-1 ring-primary"
                 )}
               >
+                {selectMode && (
+                  <button
+                    type="button"
+                    onClick={() => toggleSelect(p.id)}
+                    aria-label={selectedIds.has(p.id) ? `Batalkan pilihan ${p.name}` : `Pilih ${p.name}`}
+                    className={cn(
+                      "flex size-6 shrink-0 items-center justify-center rounded-full border-2",
+                      selectedIds.has(p.id)
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-ink-faint text-transparent"
+                    )}
+                  >
+                    <Check className="size-3.5" />
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={() => setSelected(p)}
+                  onClick={() => (selectMode ? toggleSelect(p.id) : setSelected(p))}
                   className="flex min-w-0 flex-1 items-center gap-3 rounded-xl text-left active:bg-canvas-soft"
                 >
                   <ProductThumb
@@ -934,6 +1032,29 @@ export function ProductList() {
               Batal
             </Button>
             <Button variant="destructive" onClick={handleDelete}>
+              Hapus
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={bulkDeleteOpen}
+        onOpenChange={(o) => !o && setBulkDeleteOpen(false)}
+      >
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Hapus {selectedIds.size} barang?</DialogTitle>
+            <DialogDescription>
+              Barang yang dipilih akan dihapus permanen beserta varian dan riwayat
+              stoknya, dan tidak bisa dikembalikan.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkDeleteOpen(false)}>
+              Batal
+            </Button>
+            <Button variant="destructive" onClick={handleBulkDelete}>
               Hapus
             </Button>
           </DialogFooter>

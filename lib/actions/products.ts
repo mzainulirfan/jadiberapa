@@ -300,6 +300,56 @@ export async function deleteProduct(id: string) {
   return { error: null }
 }
 
+// Hapus banyak barang sekaligus (bulk delete). Menghapus produk otomatis
+// membersihkan relasinya (varian, riwayat stok, item transaksi, dll) via cascade.
+export async function deleteProducts(ids: string[]) {
+  if (!(await isOwner())) return { error: "Hanya pemilik toko yang bisa menghapus barang" }
+  if (!ids.length) return { error: null, deleted: 0 }
+  const supabase = await createClient()
+  const { error } = await supabase.from("products").delete().in("id", ids)
+  if (error) return { error: error.message }
+  revalidatePath("/products")
+  revalidatePath("/dashboard")
+  return { error: null, deleted: ids.length }
+}
+
+// Reset katalog: hapus seluruh barang toko aktif (+ opsional semua kategori).
+// Menghapus produk ikut membersihkan data turunannya (varian, riwayat stok,
+// item transaksi, dsb) lewat foreign key cascade.
+export async function resetCatalog(includeCategories: boolean) {
+  if (!(await isOwner())) return { error: "Hanya pemilik toko yang bisa reset katalog" }
+  const supabase = await createClient()
+  const { data: storeId } = await supabase.rpc("current_store_id")
+  if (!storeId) return { error: "Toko aktif tidak ditemukan" }
+
+  const { data: prod, error: pErr } = await supabase
+    .from("products")
+    .delete()
+    .eq("store_id", String(storeId))
+    .select("id")
+  if (pErr) return { error: pErr.message }
+
+  let deletedCategories = 0
+  if (includeCategories) {
+    const { data: cats, error: cErr } = await supabase
+      .from("categories")
+      .delete()
+      .eq("store_id", String(storeId))
+      .select("id")
+    if (cErr) return { error: cErr.message }
+    deletedCategories = cats?.length ?? 0
+  }
+
+  for (const path of ["/products", "/categories", "/backup", "/more", "/dashboard"]) {
+    revalidatePath(path)
+  }
+  return {
+    error: null,
+    deletedProducts: prod?.length ?? 0,
+    deletedCategories,
+  }
+}
+
 // Stok masuk (restock/pembelian): tambah stok, opsional perbarui harga beli
 // (harga beli terakhir), lalu catat jejak audit pergerakan stok.
 export async function addStock(
