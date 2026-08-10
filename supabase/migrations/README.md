@@ -1,12 +1,12 @@
 # Panduan Migrasi Database
 
-Skema database dikelola lewat 28 file SQL berurutan (`00001`–`00028`) di folder ini.
+Skema database dikelola lewat 29 file SQL berurutan (`00001`–`00029`) di folder ini.
 Setiap file dibuat **idempoten** (aman dijalankan ulang) namun punya **dependensi
 urutan**, jadi wajib diterapkan dari nomor terkecil ke terbesar.
 
 ## Status penerapan
 
-Repository berisi migration sampai `00028`. Status production harus diverifikasi
+Repository berisi migration sampai `00029`. Status production harus diverifikasi
 di `supabase_migrations.schema_migrations` sebelum deploy; jangan mengasumsikan
 database production sudah memiliki migration terakhir.
 
@@ -42,6 +42,7 @@ database production sudah memiliki migration terakhir.
 | 00026 | `00026_preserve_history_and_fix_cogs.sql` | Snapshot produk historis + perbaikan modal satuan turunan |
 | 00027 | `00027_financial_rpc_boundary.sql` | Batas RPC/RLS finansial + stok dan pembeli atomik |
 | 00028 | `00028_checkout_errors_and_overflow.sql` | Checkout kanonik, proteksi overflow, dan kode error antrean |
+| 00029 | `00029_fix_security_definer_ownership.sql` | Normalisasi owner RPC setelah hardening privilege tabel |
 
 ## Cara 1 — Manual (Supabase SQL Editor)
 
