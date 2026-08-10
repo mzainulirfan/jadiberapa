@@ -1,199 +1,102 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
+import { randomUUID } from "node:crypto"
 import { revalidatePath } from "next/cache"
-import { computeRedeem, computeTotals } from "@/lib/pricing"
+import { createClient } from "@/lib/supabase/server"
+import { isRetryableDatabaseError } from "@/lib/transactions/errors"
+import { normalizeTransactionItems } from "@/lib/transactions/input"
 
+export type CreateTransactionResult = {
+  error: string | null
+  id?: string | null
+  duplicate?: boolean
+  errorCode?: string | null
+  retryable?: boolean
+}
+
+function pgInteger(value: number | undefined, fallback = 0) {
+  const rounded = Math.round(value ?? fallback)
+  return Number.isSafeInteger(rounded) && rounded >= 0 && rounded <= 2147483647
+    ? rounded
+    : null
+}
+
+// Server Action ini sengaja tipis. Harga, stok, total, dan loyalty dihitung di
+// RPC database agar satu request tidak bisa menghasilkan data setengah jadi.
 export async function createTransaction(
-  items: {
-    product_id: string
-    qty: number
-    price_sell: number
-    subtotal: number
-    discount?: number
-    variant_id?: string | null
-    variant_name?: string | null
-    unit_name?: string | null
-    factor?: number
-  }[],
+  items: unknown,
   payment_method: string = "cash",
   customer_id?: string | null,
-  // Jumlah yang benar-benar dibayar saat checkout. Untuk metode "utang" ini bisa
-  // 0 (murni utang) atau sebagian (DP). Undefined = dianggap lunas penuh.
   paid_amount?: number,
-  // Diskon per nota (nominal rupiah). total disimpan sebagai nilai neto (setelah diskon).
   discount?: number,
-  // Biaya layanan / pajak per nota (nominal rupiah). Masuk ke total yang dibayar.
   fee?: number,
-  // Jumlah poin loyalitas yang ditukar jadi diskon nota (nominal dihitung server).
-  points_redeemed?: number
-) {
+  points_redeemed?: number,
+  idempotencyKey?: string
+): Promise<CreateTransactionResult> {
   const supabase = await createClient()
-
-  // Siapa kasir yang membuat transaksi (untuk detail transaksi & struk).
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  const rawName = user?.email?.split("@")[0] ?? ""
-  const cashierName = rawName
-    ? rawName.charAt(0).toUpperCase() + rawName.slice(1)
-    : null
-
-  // Normalisasi item: diskon per item dibatasi ≤ subtotal baris (anti nilai negatif).
-  const normItems = items.map((i) => ({
-    product_id: i.product_id,
-    qty: i.qty,
-    price_sell: i.price_sell,
-    subtotal: i.subtotal,
-    discount: Math.max(0, Math.min(Math.round(i.discount ?? 0), i.subtotal)),
-    variant_id: i.variant_id || null,
-    variant_name: i.variant_name || null,
-    unit_name: i.unit_name || null,
-    factor: Math.max(1, Math.round(i.factor ?? 1)),
-  }))
-  const gross = normItems.reduce((sum, i) => sum + i.subtotal, 0)
-  const itemDisc = normItems.reduce((sum, i) => sum + i.discount, 0)
-  const disc = Math.max(0, Math.min(gross - itemDisc, Math.round(discount ?? 0)))
-  const feeAmount = Math.max(0, Math.round(fee ?? 0))
-
-  // Loyalitas: baca rasio poin & saldo pembeli (server-authoritative), lalu hitung
-  // nilai tukar poin yang dipotong dari total. Klausa dibatasi saldo & sisa tagihan.
-  let loyaltyConfig = { earnPer: 1000, redeemValue: 100, enabled: true }
-  let pointsUsed = 0
-  let pointsValue = 0
-  if (customer_id) {
-    const [settingsRes, custRes] = await Promise.all([
-      supabase.from("settings").select("key, value"),
-      supabase.from("customers").select("points").eq("id", customer_id).maybeSingle(),
-    ])
-    const map: Record<string, string> = {}
-    for (const row of (settingsRes.data ?? []) as { key: string; value: string }[]) map[row.key] = row.value
-    loyaltyConfig = {
-      earnPer: Number(map.loyalty_earn_per) || 1000,
-      redeemValue: Number(map.loyalty_redeem_value) || 100,
-      enabled: map.loyalty_enabled !== "0",
-    }
-    if (loyaltyConfig.enabled && points_redeemed) {
-      const balance = Number((custRes.data as { points?: number } | null)?.points) || 0
-      const redeem = computeRedeem({
-        loyaltyEnabled: loyaltyConfig.enabled,
-        pointsRequested: points_redeemed,
-        customerPoints: balance,
-        redeemValue: loyaltyConfig.redeemValue,
-        remainingAfterNotaDisc: gross - itemDisc - disc,
-      })
-      pointsUsed = redeem.redeemMax
-      pointsValue = redeem.pointsValue
-    }
+  const normalized = normalizeTransactionItems(items)
+  if ("error" in normalized) {
+    return { error: normalized.error, errorCode: "INVALID_INPUT", retryable: false }
+  }
+  const key = idempotencyKey?.trim() || randomUUID()
+  if (key.length > 128) {
+    return { error: "Kunci transaksi tidak valid", errorCode: "INVALID_INPUT", retryable: false }
+  }
+  const paid = paid_amount == null ? null : pgInteger(paid_amount)
+  const noteDiscount = pgInteger(discount)
+  const serviceFee = pgInteger(fee)
+  const points = pgInteger(points_redeemed)
+  if (
+    (paid_amount != null && paid == null) ||
+    noteDiscount == null ||
+    serviceFee == null ||
+    points == null
+  ) {
+    return { error: "Nominal transaksi tidak valid", errorCode: "INVALID_INPUT", retryable: false }
   }
 
-  const { netTotal: total } = computeTotals({
-    netBeforeNota: gross - itemDisc,
-    discountAmount: disc,
-    pointsValue,
-    feeType: "rp",
-    feeInput: feeAmount,
+  const { data, error } = await supabase.rpc("create_transaction", {
+    p_items: normalized.items.map((item) => ({
+      product_id: item.product_id,
+      qty: Math.round(item.qty),
+      unit_id: item.unit_id || null,
+      unit_name: item.unit_name || null,
+      variant_id: item.variant_id || null,
+      discount: Math.max(0, Math.round(item.discount ?? 0)),
+      discount_mode: item.discount_mode,
+    })),
+    p_payment_method: payment_method,
+    p_customer_id: customer_id || null,
+    p_paid_amount: paid,
+    p_discount: noteDiscount,
+    p_fee: serviceFee,
+    p_points_redeemed: points,
+    p_idempotency_key: key,
   })
 
-  const isUtang = payment_method === "utang"
-  const paid = isUtang
-    ? Math.max(0, Math.min(total, Math.round(paid_amount ?? 0)))
-    : total
-  const status = paid >= total ? "lunas" : "utang"
-
-  const { data: transaction, error: txError } = await supabase
-    .from("transactions")
-    .insert({
-      total,
-      discount: disc,
-      fee: feeAmount,
-      payment_method,
-      customer_id: customer_id || null,
-      paid_amount: paid,
-      status,
-      user_id: user?.id ?? null,
-      cashier_name: cashierName,
-    })
-    .select()
-    .single()
-
-  if (txError) return { error: txError.message }
-  if (!transaction) return { error: "Gagal membuat transaksi" }
-
-  // Catat DP awal ke buku pembayaran agar riwayat pelunasan utang lengkap.
-  if (isUtang && paid > 0) {
-    await supabase
-      .from("payments")
-      .insert({ transaction_id: transaction.id, amount: paid, method: "cash", note: "DP" })
-  }
-
-  await supabase
-    .from("transactions")
-    .update({ number: transaction.id.slice(0, 8).toUpperCase() })
-    .eq("id", transaction.id)
-
-  // Snapshot harga beli (cost) agar laba historis akurat & hitung laba
-  // dashboard tak perlu join ke products. Untuk item bervarian pakai harga beli
-  // varian (jika ada); kalau tidak, pakai harga beli produk.
-  const productIds = [...new Set(normItems.map((i) => i.product_id))]
-  const variantIds = [...new Set(normItems.map((i) => i.variant_id).filter(Boolean))]
-
-  const [productRes, variantRes] = await Promise.all([
-    supabase.from("products").select("id, price_buy").in("id", productIds),
-    variantIds.length > 0
-      ? supabase.from("product_variants").select("id, price_buy").in("id", variantIds)
-      : Promise.resolve({ data: [] }),
-  ])
-
-  const costMap = new Map(
-    (productRes.data ?? []).map((p) => [p.id as string, (p.price_buy as number) ?? 0])
-  )
-  const variantCostMap = new Map(
-    (variantRes.data ?? []).map((v) => [v.id as string, (v.price_buy as number) ?? 0])
-  )
-
-  const txItems = normItems.map((i) => ({
-    ...i,
-    transaction_id: transaction.id,
-    price_buy:
-      (i.variant_id && variantCostMap.get(i.variant_id)) ?? costMap.get(i.product_id) ?? 0,
-  }))
-  const { error: itemError } = await supabase.from("transaction_items").insert(txItems)
-
-  if (itemError) return { error: itemError.message }
-
-  for (const item of normItems) {
-    // Stok dikurangi dalam satuan DASAR: qty × faktor (mis. 1 dus × 12 = 12 pcs).
-    await supabase.rpc("decrement_stock", { pid: item.product_id, qty: item.qty * item.factor })
-  }
-
-  // Jejak audit stok keluar akibat penjualan (qty negatif = berkurang, satuan dasar).
-  await supabase.from("stock_movements").insert(
-    normItems.map((i) => ({
-      product_id: i.product_id,
-      type: "out" as const,
-      qty: -(i.qty * i.factor),
-      note: "Penjualan",
-    }))
-  )
-
-  // Loyalitas: potong poin yang ditukar, lalu beri poin baru dari total belanja.
-  if (customer_id) {
-    if (pointsUsed > 0) {
-      await supabase.rpc("redeem_loyalty_points", {
-        p_customer_id: customer_id,
-        p_points: pointsUsed,
-        p_transaction_id: transaction.id,
-      })
+  if (error) {
+    return {
+      error: error.message,
+      errorCode: error.code ?? "DATABASE_ERROR",
+      retryable: isRetryableDatabaseError(error),
     }
-    const earned = Math.min(1000, Math.floor(total / loyaltyConfig.earnPer))
-    if (loyaltyConfig.enabled && earned > 0) {
-      await supabase.rpc("award_loyalty_points", {
-        p_customer_id: customer_id,
-        p_points: earned,
-        p_transaction_id: transaction.id,
-      })
+  }
+  const result = (data ?? {}) as {
+    error?: string | null
+    error_code?: string | null
+    retryable?: boolean
+    id?: string | null
+    duplicate?: boolean
+  }
+  if (result.error) {
+    return {
+      error: result.error,
+      errorCode: result.error_code ?? "TRANSACTION_REJECTED",
+      retryable: result.retryable === true,
     }
+  }
+  if (!result.id) {
+    return { error: "Gagal membuat transaksi", errorCode: "INVALID_RESPONSE", retryable: true }
   }
 
   revalidatePath("/cashier")
@@ -201,10 +104,10 @@ export async function createTransaction(
   revalidatePath("/reports")
   revalidatePath("/debts")
   revalidatePath("/customers")
-  return { error: null, id: transaction.id }
+  return { error: null, id: result.id, duplicate: result.duplicate === true }
 }
 
-// Mencatat pembayaran (cicilan/pelunasan) untuk transaksi utang.
+// Mencatat pembayaran (cicilan/pelunasan) dengan row lock di database.
 export async function recordPayment(
   transactionId: string,
   amount: number,
@@ -213,38 +116,28 @@ export async function recordPayment(
 ) {
   const supabase = await createClient()
   const amt = Math.round(amount)
-  if (!Number.isFinite(amt) || amt <= 0) return { error: "Nominal tidak valid" }
+  if (!Number.isSafeInteger(amt) || amt <= 0 || amt > 2147483647) {
+    return { error: "Nominal tidak valid" }
+  }
 
-  const { data: tx, error: txErr } = await supabase
-    .from("transactions")
-    .select("total, paid_amount")
-    .eq("id", transactionId)
-    .single()
+  const { data, error } = await supabase.rpc("record_payment", {
+    p_transaction_id: transactionId,
+    p_amount: amt,
+    p_method: method,
+    p_note: note || null,
+  })
+  if (error) return { error: error.message }
 
-  if (txErr) return { error: txErr.message }
-  if (!tx) return { error: "Transaksi tidak ditemukan" }
-
-  const total = (tx.total as number) ?? 0
-  const prevPaid = (tx.paid_amount as number) ?? 0
-  const applied = Math.min(amt, Math.max(0, total - prevPaid))
-  if (applied <= 0) return { error: "Utang sudah lunas" }
-
-  const { error: payErr } = await supabase
-    .from("payments")
-    .insert({ transaction_id: transactionId, amount: applied, method, note: note || null })
-  if (payErr) return { error: payErr.message }
-
-  const newPaid = prevPaid + applied
-  const status = newPaid >= total ? "lunas" : "utang"
-  const { error: updErr } = await supabase
-    .from("transactions")
-    .update({ paid_amount: newPaid, status })
-    .eq("id", transactionId)
-  if (updErr) return { error: updErr.message }
+  const result = (data ?? {}) as {
+    error?: string | null
+    paid_amount?: number
+    status?: string
+  }
+  if (result.error) return { error: result.error }
 
   revalidatePath("/debts")
   revalidatePath(`/transactions/${transactionId}`)
-  return { error: null, paid_amount: newPaid, status }
+  return { error: null, paid_amount: result.paid_amount, status: result.status }
 }
 
 export async function getTransactions() {
@@ -258,4 +151,3 @@ export async function getTransactions() {
   if (error) return { error: error.message, transactions: [] }
   return { error: null, transactions: data ?? [] }
 }
-

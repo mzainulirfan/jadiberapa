@@ -62,13 +62,15 @@ export function CashierPage() {
     const inCartBaseQty = items
       .filter((i) => i.product.id === p.id)
       .reduce((sum, i) => sum + i.qty * (i.unit?.factor ?? 1), 0)
-    if (inCartBaseQty >= p.stock) {
+    const requestedBaseQty = Math.max(1, Math.round(unit?.factor ?? 1))
+    if (inCartBaseQty + requestedBaseQty > p.stock) {
       toast.info(`Stok ${p.name} maksimal`)
-      return
+      return false
     }
     addItem(p, variant, unit)
     popKeyRef.current += 1
     setPop({ id: p.id, key: popKeyRef.current })
+    return true
   }
 
   function openUnitPicker(p: BxProduct, variant?: BxVariant) {
@@ -124,8 +126,7 @@ export function CashierPage() {
   async function handleScan(code: string) {
     const p = await resolveCode(code)
     if (p) {
-      addToCart(p)
-      toast.success(`+ ${p.name}`)
+      if (addToCart(p)) toast.success(`+ ${p.name}`)
     } else {
       setScanOpen(false)
       setUnknownCode(code)

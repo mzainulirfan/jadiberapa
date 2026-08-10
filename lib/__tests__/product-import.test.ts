@@ -44,9 +44,21 @@ describe("parseProductImport", () => {
   })
 
   it("memparsing angka desimal koma", () => {
-    const { rows } = parseProductImport("Nama,Harga Jual\nBeras 1kg,2500,5\n")
+    const { rows } = parseProductImport("Nama;Harga Jual\nBeras 1kg;2500,5\n")
     const v = validRows(rows)
-    expect(v[0].priceSell).toBe(2500)
+    expect(v[0].priceSell).toBe(2500.5)
+  })
+
+  it("memparse field CSV yang mengandung delimiter dan kutip", () => {
+    const { rows } = parseProductImport(
+      'Nama,Kategori,Harga Jual\n"Kopi, Susu","Minuman ""Spesial""",7000\n'
+    )
+
+    expect(validRows(rows)[0]).toMatchObject({
+      name: "Kopi, Susu",
+      category: 'Minuman "Spesial"',
+      priceSell: 7000,
+    })
   })
 
   it("mendeteksi baris tanpa header memakai urutan kolom default", () => {
@@ -121,6 +133,15 @@ describe("parseProductImport", () => {
       barcode: "8990000000000",
     })
   })
+
+  it("mengabaikan baris kosong setelah petunjuk separator", () => {
+    const { rows, headerError } = parseProductImport(
+      "sep=;\n\nNama;Harga Jual\nAqua;3000\n"
+    )
+
+    expect(headerError).toBeUndefined()
+    expect(validRows(rows)[0]).toMatchObject({ name: "Aqua", priceSell: 3000 })
+  })
 })
 
 describe("parseProductEdit & productsToEditCsv", () => {
@@ -155,6 +176,22 @@ describe("parseProductEdit & productsToEditCsv", () => {
     })
   })
 
+  it("round-trip aman untuk delimiter, kutip, dan baris baru", () => {
+    const special = [{
+      ...sample[0],
+      name: 'Kopi; "Susu"',
+      category: "Minuman\nDingin",
+    }]
+    const { rows, headerError } = parseProductEdit(productsToEditCsv(special))
+
+    expect(headerError).toBeUndefined()
+    expect(rows[0]).toMatchObject({
+      id: "p1",
+      name: 'Kopi; "Susu"',
+      category: "Minuman\nDingin",
+    })
+  })
+
   it("filter ids hanya mengekspor produk yang dipilih", () => {
     const csv = productsToEditCsv(sample, ["p2"])
     expect(csv).not.toContain("p1;")
@@ -169,5 +206,10 @@ describe("parseProductEdit & productsToEditCsv", () => {
   it("menandai harga jual <= 0 sebagai error", () => {
     const { rows } = parseProductEdit("ID;Nama;Harga Jual\np1;Aqua;0\n")
     expect(rows[0].error).toMatch(/Harga jual/)
+  })
+
+  it("menolak header edit tanpa kolom ID", () => {
+    const { headerError } = parseProductEdit("Nama;Harga Jual\nAqua;3000\n")
+    expect(headerError).toMatch(/ID/)
   })
 })

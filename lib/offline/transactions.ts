@@ -9,17 +9,22 @@ const STORE_NAME = "queued-transactions"
 export type OfflineTransactionItem = {
   product_id: string
   qty: number
-  price_sell: number
-  subtotal: number
-  discount?: number
-  variant_id?: string | null
-  variant_name?: string | null
+  unit_id?: string | null
   unit_name?: string | null
+  discount?: number
+  discount_mode?: "manual"
+  variant_id?: string | null
+  // Field berikut dipertahankan agar antrean lama tetap bisa dibaca. Server
+  // tidak mempercayai nilainya untuk menghitung transaksi baru.
+  price_sell?: number
+  subtotal?: number
+  variant_name?: string | null
   factor?: number
 }
 
 export type OfflineTransactionDraft = {
   id: string
+  idempotency_key?: string
   createdAt: string
   items: OfflineTransactionItem[]
   payment_method: string
@@ -33,6 +38,10 @@ export type OfflineTransactionDraft = {
   customerName?: string | null
   cashierName?: string | null
   error?: string | null
+  errorCode?: string | null
+  syncStatus?: "pending" | "retry_wait" | "blocked"
+  attemptCount?: number
+  lastAttemptAt?: string | null
 }
 
 function emitQueueChange() {
@@ -60,9 +69,15 @@ async function withStore<T>(mode: IDBTransactionMode, fn: (store: IDBObjectStore
     const tx = db.transaction(STORE_NAME, mode)
     const store = tx.objectStore(STORE_NAME)
     const req = fn(store)
-    req.onsuccess = () => resolve(req.result)
+    let result: T
+    req.onsuccess = () => {
+      result = req.result
+    }
     req.onerror = () => reject(req.error)
-    tx.oncomplete = () => db.close()
+    tx.oncomplete = () => {
+      db.close()
+      resolve(result)
+    }
     tx.onerror = () => {
       db.close()
       reject(tx.error)
@@ -111,8 +126,10 @@ export async function updateQueuedTransaction(id: string, patch: Partial<Offline
 export async function queueOfflineTransaction(
   draft: Omit<OfflineTransactionDraft, "id" | "createdAt"> & { id?: string; createdAt?: string }
 ) {
+  const id = draft.id ?? crypto.randomUUID()
   const item: OfflineTransactionDraft = {
-    id: draft.id ?? crypto.randomUUID(),
+    id,
+    idempotency_key: draft.idempotency_key ?? id,
     createdAt: draft.createdAt ?? new Date().toISOString(),
     items: draft.items,
     payment_method: draft.payment_method,
@@ -126,19 +143,26 @@ export async function queueOfflineTransaction(
     customerName: draft.customerName ?? null,
     cashierName: draft.cashierName ?? null,
     error: draft.error ?? null,
+    errorCode: draft.errorCode ?? null,
+    syncStatus: draft.syncStatus ?? "pending",
+    attemptCount: draft.attemptCount ?? 0,
+    lastAttemptAt: draft.lastAttemptAt ?? null,
   }
   return saveQueuedTransaction(item)
 }
 
-export async function syncQueuedTransactions() {
+let activeSync: Promise<{ synced: number; remaining: number }> | null = null
+
+async function runQueueSync() {
   if (typeof navigator !== "undefined" && !navigator.onLine) {
-    return { synced: 0, remaining: 0 }
+    return { synced: 0, remaining: (await listQueuedTransactions()).length }
   }
 
   const queued = await listQueuedTransactions()
   let synced = 0
 
   for (const item of queued) {
+    if (item.syncStatus === "blocked") continue
     try {
       const res = await createTransaction(
         item.items,
@@ -147,23 +171,46 @@ export async function syncQueuedTransactions() {
         item.paid_amount,
         item.discount,
         item.fee,
-        item.points_redeemed
+        item.points_redeemed,
+        item.idempotency_key ?? item.id
       )
       if (res?.error) {
-        await updateQueuedTransaction(item.id, { error: res.error })
+        const attemptCount = (item.attemptCount ?? 0) + 1
+        const blocked = !res.retryable || attemptCount >= 5
+        await updateQueuedTransaction(item.id, {
+          error: res.error,
+          errorCode: res.errorCode ?? null,
+          syncStatus: blocked ? "blocked" : "retry_wait",
+          attemptCount,
+          lastAttemptAt: new Date().toISOString(),
+        })
         continue
       }
       await deleteQueuedTransaction(item.id)
       synced += 1
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gagal sinkron transaksi offline"
-      await updateQueuedTransaction(item.id, { error: message })
+      const attemptCount = (item.attemptCount ?? 0) + 1
+      await updateQueuedTransaction(item.id, {
+        error: message,
+        errorCode: "NETWORK_ERROR",
+        syncStatus: attemptCount >= 5 ? "blocked" : "retry_wait",
+        attemptCount,
+        lastAttemptAt: new Date().toISOString(),
+      })
     }
   }
 
-  emitQueueChange()
   const remaining = (await listQueuedTransactions()).length
   return { synced, remaining }
+}
+
+export function syncQueuedTransactions() {
+  if (activeSync) return activeSync
+  activeSync = runQueueSync().finally(() => {
+    activeSync = null
+  })
+  return activeSync
 }
 
 export function onQueuedTransactionsChange(handler: () => void) {

@@ -170,13 +170,23 @@ export async function getProductsPage(params: {
 
 export async function uploadProductImage(formData: FormData) {
   if (!(await isOwner())) return { url: null, error: "Hanya pemilik toko yang bisa unggah gambar" }
-  const file = formData.get("file") as File | null
-  if (!file) return { url: null, error: "Tidak ada file" }
-  if (!file.type.startsWith("image/")) return { url: null, error: "File harus berupa gambar" }
+  const file = formData.get("file")
+  if (!(file instanceof File)) return { url: null, error: "Tidak ada file" }
+  if (file.size <= 0 || file.size > 5 * 1024 * 1024) {
+    return { url: null, error: "Ukuran gambar maksimal 5 MB" }
+  }
+  const extensions: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+  }
+  const ext = extensions[file.type]
+  if (!ext) return { url: null, error: "Format gambar harus JPG, PNG, atau WebP" }
 
   const supabase = await createClient()
-  const ext = (file.name.split(".").pop() || "jpg").toLowerCase()
-  const path = `${crypto.randomUUID()}.${ext}`
+  const { data: storeId, error: storeError } = await supabase.rpc("current_store_id")
+  if (storeError || !storeId) return { url: null, error: "Toko aktif tidak ditemukan" }
+  const path = `${storeId}/${crypto.randomUUID()}.${ext}`
 
   const { error } = await supabase.storage.from("product-images").upload(path, file, {
     cacheControl: "3600",
@@ -296,26 +306,28 @@ export async function deleteProduct(id: string) {
   const supabase = await createClient()
   const { error } = await supabase.from("products").delete().eq("id", id)
   if (error) return { error: error.message }
-  revalidatePath("/products")
+  for (const path of ["/products", "/transactions", "/purchases", "/reports", "/dashboard", "/backup"]) {
+    revalidatePath(path)
+  }
   return { error: null }
 }
 
-// Hapus banyak barang sekaligus (bulk delete). Menghapus produk otomatis
-// membersihkan relasinya (varian, riwayat stok, item transaksi, dll) via cascade.
+// Hapus banyak barang sekaligus. Detail transaksi/pembelian tetap disimpan
+// memakai snapshot nama; data katalog turunannya dibersihkan via cascade.
 export async function deleteProducts(ids: string[]) {
   if (!(await isOwner())) return { error: "Hanya pemilik toko yang bisa menghapus barang" }
   if (!ids.length) return { error: null, deleted: 0 }
   const supabase = await createClient()
   const { error } = await supabase.from("products").delete().in("id", ids)
   if (error) return { error: error.message }
-  revalidatePath("/products")
-  revalidatePath("/dashboard")
+  for (const path of ["/products", "/transactions", "/purchases", "/reports", "/dashboard", "/backup"]) {
+    revalidatePath(path)
+  }
   return { error: null, deleted: ids.length }
 }
 
 // Reset katalog: hapus seluruh barang toko aktif (+ opsional semua kategori).
-// Menghapus produk ikut membersihkan data turunannya (varian, riwayat stok,
-// item transaksi, dsb) lewat foreign key cascade.
+// Nota transaksi/pembelian tetap utuh dengan snapshot nama produk.
 export async function resetCatalog(includeCategories: boolean) {
   if (!(await isOwner())) return { error: "Hanya pemilik toko yang bisa reset katalog" }
   const supabase = await createClient()
@@ -340,7 +352,7 @@ export async function resetCatalog(includeCategories: boolean) {
     deletedCategories = cats?.length ?? 0
   }
 
-  for (const path of ["/products", "/categories", "/backup", "/more", "/dashboard"]) {
+  for (const path of ["/products", "/categories", "/backup", "/more", "/dashboard", "/transactions", "/purchases", "/reports"]) {
     revalidatePath(path)
   }
   return {
@@ -444,23 +456,24 @@ export async function addStock(
 ) {
   const supabase = await createClient()
   const q = Math.round(qty)
-  if (!Number.isFinite(q) || q <= 0) return { error: "Jumlah stok masuk tidak valid" }
-
-  const { error: incErr } = await supabase.rpc("increment_stock", { pid: productId, qty: q })
-  if (incErr) return { error: incErr.message }
-
-  // Harga beli baru hanya boleh diubah pemilik (kasir cukup mencatat stok masuk).
+  if (!Number.isSafeInteger(q) || q <= 0 || q > 2147483647) {
+    return { error: "Jumlah stok masuk tidak valid" }
+  }
   const canSetPrice = await isOwner()
-  if (canSetPrice && priceBuy != null && Number.isFinite(priceBuy) && priceBuy >= 0) {
-    await supabase
-      .from("products")
-      .update({ price_buy: Math.round(priceBuy), updated_at: new Date().toISOString() })
-      .eq("id", productId)
+  const nextPrice = priceBuy == null ? null : Math.round(priceBuy)
+  if (nextPrice != null && (!Number.isSafeInteger(nextPrice) || nextPrice < 0 || nextPrice > 2147483647)) {
+    return { error: "Harga beli tidak valid" }
   }
 
-  await supabase
-    .from("stock_movements")
-    .insert({ product_id: productId, type: "in", qty: q, note: note || null })
+  const { data, error } = await supabase.rpc("add_stock", {
+    p_product_id: productId,
+    p_qty: q,
+    p_price_buy: canSetPrice ? nextPrice : null,
+    p_note: note?.trim() || null,
+  })
+  if (error) return { error: error.message }
+  const result = (data ?? {}) as { error?: string | null }
+  if (result.error) return { error: result.error }
 
   revalidatePath("/products")
   revalidatePath("/dashboard")
@@ -473,29 +486,18 @@ export async function adjustStock(productId: string, newStock: number, note?: st
   if (!(await isOwner())) return { error: "Hanya pemilik toko yang bisa stok opname" }
   const supabase = await createClient()
   const target = Math.round(newStock)
-  if (!Number.isFinite(target) || target < 0) return { error: "Stok hasil opname tidak valid" }
+  if (!Number.isSafeInteger(target) || target < 0 || target > 2147483647) {
+    return { error: "Stok hasil opname tidak valid" }
+  }
 
-  const { data: prod, error: readErr } = await supabase
-    .from("products")
-    .select("stock")
-    .eq("id", productId)
-    .single()
-  if (readErr) return { error: readErr.message }
-  if (!prod) return { error: "Barang tidak ditemukan" }
-
-  const prev = (prod.stock as number) ?? 0
-  const delta = target - prev
-  if (delta === 0) return { error: null }
-
-  const { error: updErr } = await supabase
-    .from("products")
-    .update({ stock: target, updated_at: new Date().toISOString() })
-    .eq("id", productId)
-  if (updErr) return { error: updErr.message }
-
-  await supabase
-    .from("stock_movements")
-    .insert({ product_id: productId, type: "adjust", qty: delta, note: note || null })
+  const { data, error } = await supabase.rpc("adjust_stock", {
+    p_product_id: productId,
+    p_new_stock: target,
+    p_note: note?.trim() || null,
+  })
+  if (error) return { error: error.message }
+  const result = (data ?? {}) as { error?: string | null }
+  if (result.error) return { error: result.error }
 
   revalidatePath("/products")
   revalidatePath("/dashboard")

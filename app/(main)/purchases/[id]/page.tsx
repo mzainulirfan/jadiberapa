@@ -1,3 +1,4 @@
+import { OwnerGuard } from "@/components/auth/owner-guard"
 import { PurchaseDetail } from "@/components/purchases/purchase-detail"
 
 export default async function PurchaseDetailPage({
@@ -6,5 +7,9 @@ export default async function PurchaseDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  return <PurchaseDetail id={id} />
+  return (
+    <OwnerGuard>
+      <PurchaseDetail id={id} />
+    </OwnerGuard>
+  )
 }

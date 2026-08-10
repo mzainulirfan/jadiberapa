@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Package, Tag } from "@/components/ui/icons"
@@ -12,6 +13,7 @@ import { createStoreForCurrentUser } from "@/lib/actions/stores"
 import { createClient } from "@/lib/supabase/client"
 
 export function NewStoreForm() {
+  const router = useRouter()
   const [storeName, setStoreName] = useState("")
   const [templateKey, setTemplateKey] = useState("kelontong")
   const [error, setError] = useState<string | null>(null)
@@ -22,7 +24,7 @@ export function NewStoreForm() {
 
   async function handleLogout() {
     await createClient().auth.signOut()
-    window.location.assign("/login")
+    router.push("/login")
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -42,7 +44,7 @@ export function NewStoreForm() {
     }
 
     invalidateAllDataCaches()
-    window.location.assign("/dashboard")
+    router.push("/dashboard")
   }
 
   return (

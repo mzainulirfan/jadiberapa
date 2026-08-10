@@ -64,6 +64,13 @@ export async function createPurchase(
   if (!(await isOwner())) return { error: "Hanya pemilik toko yang bisa catat pembelian" }
   const supabase = await createClient()
 
+  if (items.some((i) =>
+    !Number.isSafeInteger(i.qty) || i.qty <= 0 || i.qty > 2147483647 ||
+    !Number.isSafeInteger(i.price_buy) || i.price_buy < 0 || i.price_buy > 2147483647
+  )) {
+    return { error: "Item pembelian tidak valid" }
+  }
+
   const normItems = items
     .map((i) => ({
       product_id: i.product_id,
@@ -74,6 +81,9 @@ export async function createPurchase(
   if (normItems.length === 0) return { error: "Pembelian minimal 1 item" }
 
   const paid = Math.max(0, Math.round(paidAmount ?? 0))
+  if (!Number.isSafeInteger(paid) || paid > 2147483647) {
+    return { error: "Nominal pembayaran tidak valid" }
+  }
   const { data, error } = await supabase.rpc("create_purchase", {
     p_supplier_id: supplierId || null,
     p_items: normItems,
@@ -101,7 +111,9 @@ export async function recordSupplierPayment(
   const supabase = await createClient()
 
   const amt = Math.round(amount)
-  if (!Number.isFinite(amt) || amt <= 0) return { error: "Nominal tidak valid" }
+  if (!Number.isSafeInteger(amt) || amt <= 0 || amt > 2147483647) {
+    return { error: "Nominal tidak valid" }
+  }
 
   const { data, error } = await supabase.rpc("record_supplier_payment", {
     p_purchase_id: purchaseId,

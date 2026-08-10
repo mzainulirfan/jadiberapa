@@ -1,13 +1,14 @@
 # Panduan Migrasi Database
 
-Skema database dikelola lewat 15 file SQL berurutan (`00001`–`00015`) di folder ini.
+Skema database dikelola lewat 28 file SQL berurutan (`00001`–`00028`) di folder ini.
 Setiap file dibuat **idempoten** (aman dijalankan ulang) namun punya **dependensi
 urutan**, jadi wajib diterapkan dari nomor terkecil ke terbesar.
 
-## Status penerapan saat ini
+## Status penerapan
 
-- **Sudah diterapkan** di DB produksi: `00001`–`00013`
-- **Tertunda (belum dijalankan):** `00014_loyalty.sql` dan `00015_product_units.sql`
+Repository berisi migration sampai `00028`. Status production harus diverifikasi
+di `supabase_migrations.schema_migrations` sebelum deploy; jangan mengasumsikan
+database production sudah memiliki migration terakhir.
 
 ## Daftar file (urutan wajib)
 
@@ -28,6 +29,19 @@ urutan**, jadi wajib diterapkan dari nomor terkecil ke terbesar.
 | 00013 | `00013_analytics.sql` | Analitik lanjutan & saran restock |
 | 00014 | `00014_loyalty.sql` | Poin loyalitas & follow-up pembeli |
 | 00015 | `00015_product_units.sql` | Satuan produk (eceran/bulk) |
+| 00016 | `00016_store_member_approval.sql` | Persetujuan member kasir |
+| 00017 | `00017_cart_store.sql` | Isolasi keranjang per toko |
+| 00018 | `00018_atomic_checkout_security.sql` | Checkout atomic, idempotensi, integrity, dan security policy |
+| 00019 | `00019_audit_logs.sql` | Audit trail aktivitas sensitif |
+| 00020 | `00020_fix_store_link_trigger.sql` | Perbaikan trigger relasi lintas toko |
+| 00021 | `00021_fix_ambiguous_stock.sql` | Perbaikan referensi kolom stok dan shift |
+| 00022 | `00022_fix_product_table_reference.sql` | Perbaikan referensi tabel produk pada checkout |
+| 00023 | `00023_fix_checkout_update_alias.sql` | Hotfix alias UPDATE checkout |
+| 00024 | `00024_fix_checkout_product_alias.sql` | Hotfix alias produk checkout |
+| 00025 | `00025_fix_checkout_customer_and_supplier_payment.sql` | Pulihkan validasi pembeli checkout + lock pembayaran supplier |
+| 00026 | `00026_preserve_history_and_fix_cogs.sql` | Snapshot produk historis + perbaikan modal satuan turunan |
+| 00027 | `00027_financial_rpc_boundary.sql` | Batas RPC/RLS finansial + stok dan pembeli atomik |
+| 00028 | `00028_checkout_errors_and_overflow.sql` | Checkout kanonik, proteksi overflow, dan kode error antrean |
 
 ## Cara 1 — Manual (Supabase SQL Editor)
 
@@ -35,11 +49,10 @@ urutan**, jadi wajib diterapkan dari nomor terkecil ke terbesar.
 2. Salin **seluruh isi** satu file, tempel, lalu **Run**. Tunggu pesan sukses sebelum lanjut.
 3. Ulangi untuk file berikutnya sesuai urutan nomor.
 
-**DB yang sudah berjalan** (skema sudah terpasang): cukup jalankan yang tertunda, urut:
-1. `00014_loyalty.sql`
-2. `00015_product_units.sql`
+**DB yang sudah berjalan**: jalankan hanya migration yang belum tercatat, urut,
+dimulai dari versi terakhir yang berhasil.
 
-**DB baru / fresh install**: jalankan semua file dari `00001` sampai `00015` berurutan.
+**DB baru / fresh install**: jalankan semua file dari `00001` sampai migration terakhir berurutan.
 
 > Aturan aman:
 > - Jangan mengubah atau menjalankan ulang migrasi lama di DB yang sudah terisi.
@@ -62,11 +75,12 @@ CLI akan menanyakan password database.
 
 ### 2. Tandai migrasi yang sudah ter-apply
 
-Agar `db push` hanya menjalankan yang tertunda, tandai dulu versi yang sudah
-terpasang di DB (di sini `00001`–`00013`):
+Agar `db push` hanya menjalankan yang tertunda, pastikan versi yang sudah
+terpasang tercatat di `supabase_migrations.schema_migrations`. Gunakan
+`migration repair` hanya untuk versi yang benar-benar sudah diterapkan:
 
 ```bash
-supabase migration repair 00001 00002 00003 00004 00005 00006 00007 00008 00009 00010 00011 00012 00013 --status applied
+supabase migration repair <versi-yang-sudah-diterapkan> --status applied
 ```
 
 ### 3. Terapkan migrasi yang tertunda
@@ -76,7 +90,7 @@ supabase db push --dry-run   # lihat dulu apa yang akan dijalankan
 supabase db push
 ```
 
-`db push` menjalankan `00014` & `00015` lalu mencatatnya di tabel
+`db push` menjalankan migration yang belum tercatat lalu mencatatnya di tabel
 `supabase_migrations.schema_migrations`. Migrasi yang sudah tercatat tidak
 dijalankan ulang.
 

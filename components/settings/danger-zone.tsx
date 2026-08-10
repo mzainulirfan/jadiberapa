@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -24,6 +25,7 @@ import {
 import { deleteCurrentStore } from "@/lib/actions/stores"
 
 export function DangerZone({ storeName }: { storeName: string }) {
+  const router = useRouter()
   const [stats, setStats] = useState<StoreDeletionStats | null>(null)
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState<1 | 2>(1)
@@ -71,12 +73,12 @@ export function DangerZone({ storeName }: { storeName: string }) {
     if ((res.remaining ?? 0) > 0 && res.nextStoreId) {
       await setActiveStore(res.nextStoreId)
       toast.success(`Toko "${res.deletedName}" dihapus`)
-      window.location.assign("/dashboard")
+      router.push("/dashboard")
       return
     }
 
     toast.success(`Toko "${res.deletedName}" dihapus`)
-    window.location.assign("/stores/new")
+    router.push("/stores/new")
   }
 
   const nameMatches = confirmName.trim() === storeName.trim()

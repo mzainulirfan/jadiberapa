@@ -723,7 +723,7 @@ function AnalyticsContent({
                   const loss = m.profit < 0
                   const thin = !loss && m.marginPct < 10
                   return (
-                    <div key={m.id} className="space-y-1">
+                    <div key={`${m.id ?? "deleted"}:${m.name}`} className="space-y-1">
                       <div className="flex items-center justify-between gap-2 text-xs">
                         <span className="flex min-w-0 items-center gap-1.5">
                           <span className="truncate text-ink-muted">{m.name}</span>

@@ -4,6 +4,7 @@ import {
   computeRedeem,
   computeTotals,
   maxQtyFor,
+  maxQtyForCartLine,
   priceOf,
 } from "@/lib/pricing"
 import type { BxProduct, BxProductUnit, BxVariant } from "@/components/products/types"
@@ -61,6 +62,21 @@ describe("maxQtyFor", () => {
     expect(maxQtyFor({ product: product({ stock: 24 }), unit: dus })).toBe(2)
     expect(maxQtyFor({ product: product({ stock: 24 }) })).toBe(24)
     expect(maxQtyFor({ product: product({ stock: 0 }) })).toBe(0)
+  })
+
+  it("memperhitungkan stok yang dipakai baris satuan lain", () => {
+    const p = product({ stock: 25 })
+    const items = [{ product: p, unit: dus, qty: 2 }]
+
+    expect(maxQtyForCartLine(items, { product: p })).toBe(1)
+    expect(maxQtyForCartLine(items, { product: p, unit: dus })).toBe(2)
+  })
+
+  it("mengembalikan nol jika sisa stok tidak cukup untuk faktor satuan", () => {
+    const p = product({ stock: 10 })
+    const items = [{ product: p, qty: 1 }]
+
+    expect(maxQtyForCartLine(items, { product: p, unit: dus })).toBe(0)
   })
 })
 

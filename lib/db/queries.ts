@@ -1048,6 +1048,8 @@ export async function getPurchase(id: string): Promise<{
     created_at: string
     purchase_items: {
       id: string
+      product_id: string | null
+      product_name: string | null
       qty: number
       price_buy: number
       subtotal: number
@@ -1080,7 +1082,7 @@ export async function getPurchase(id: string): Promise<{
         qty: i.qty,
         price_buy: i.price_buy,
         subtotal: i.subtotal,
-        product_name: i.products?.name ?? null,
+        product_name: i.product_name ?? i.products?.name ?? null,
       })),
       payments: (p.supplier_payments ?? []).map((pm) => ({
         id: pm.id,
@@ -1168,9 +1170,9 @@ export async function getPurchasesReport(from?: string, to?: string): Promise<Bx
 }
 
 export type BxMarginProduct = {
-  id: string
+  id: string | null
   name: string
-  stock: number
+  stock: number | null
   qty: number
   revenue: number
   cost: number
@@ -1224,7 +1226,7 @@ export async function getAnalytics(from?: string, to?: string): Promise<BxAnalyt
     margins: (r.margins ?? []).map((m) => ({
       id: m.id,
       name: m.name,
-      stock: Number(m.stock) || 0,
+      stock: m.stock == null ? null : Number(m.stock) || 0,
       qty: Number(m.qty) || 0,
       revenue: Number(m.revenue) || 0,
       cost: Number(m.cost) || 0,

@@ -32,10 +32,14 @@ import { isBluetoothPrintSupported, printReceiptBluetooth } from "@/lib/bluetoot
 type Transaction = NonNullable<Awaited<ReturnType<typeof getTransaction>>["transaction"]>
 type TxItem = {
   id: string
+  product_id?: string | null
+  product_name?: string | null
   qty: number
   subtotal: number
   discount?: number
   variant_name?: string | null
+  unit_name?: string | null
+  factor?: number
   products?: { name?: string } | null
 }
 
@@ -75,6 +79,14 @@ function feeOf(tx: Transaction) {
 }
 
 const fmtRp = (n: number) => `Rp${n.toLocaleString("id-ID")}`
+
+function itemName(item: TxItem) {
+  return item.product_name ?? item.products?.name ?? "Produk dihapus"
+}
+
+function itemQty(item: TxItem) {
+  return item.unit_name ? `${item.qty} ${item.unit_name}` : String(item.qty)
+}
 
 function formatDate(d: Date) {
   const date = d.toLocaleDateString("id-ID", {
@@ -136,8 +148,7 @@ function buildStrukLines(tx: Transaction, settings: Record<string, string>): str
   )
   lines.push(sep)
   for (const item of tx.transaction_items as TxItem[]) {
-    const name = item.products?.name ?? "Produk dihapus"
-    const label = `${item.qty} x ${name}${item.variant_name ? ` (${item.variant_name})` : ""}`
+    const label = `${itemQty(item)} x ${itemName(item)}${item.variant_name ? ` (${item.variant_name})` : ""}`
     lines.push(twoCol(label, fmtRp(item.subtotal - (item.discount ?? 0))))
   }
   lines.push(sep)
@@ -264,7 +275,7 @@ function StrukSheet({
                 {(tx.transaction_items as TxItem[]).map((item) => (
                   <div key={item.id} className="flex items-baseline justify-between gap-2">
                     <p className="min-w-0 flex-1 truncate text-xs text-ink">
-                      {item.qty} x {item.products?.name ?? "Produk dihapus"}
+                      {itemQty(item)} x {itemName(item)}
                       {item.variant_name ? ` (${item.variant_name})` : ""}
                     </p>
                     <p className="shrink-0 text-xs text-ink-muted">
@@ -486,7 +497,7 @@ ${settings.show_nota_number !== "0" ? `No. ${notaNo(tx)}\n` : ""}${cashierNameOf
 ${(tx.transaction_items as TxItem[])
   .map(
     (item) =>
-      `${item.qty} x ${item.products?.name ?? "Produk dihapus"}${
+      `${itemQty(item)} x ${itemName(item)}${
         item.variant_name ? ` (${item.variant_name})` : ""
       } = ${fmtRp(item.subtotal - (item.discount ?? 0))}`
   )
@@ -713,13 +724,13 @@ ${settings.receipt_footer?.trim() || "Terima kasih"}`
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-ink">
-                          {item.products?.name ?? "Produk dihapus"}
+                          {itemName(item)}
                         </p>
                         {item.variant_name && (
                           <p className="text-xs text-ink-muted">Varian: {item.variant_name}</p>
                         )}
                         <p className="text-xs text-ink-muted">
-                          {item.qty} × {fmtRp(item.subtotal / item.qty)}
+                          {itemQty(item)} × {fmtRp(item.subtotal / item.qty)}
                         </p>
                       </div>
                       <div className="shrink-0 text-right">

@@ -26,6 +26,22 @@ export function maxQtyFor(i: PricedItem) {
   return Math.floor(i.product.stock / factor)
 }
 
+export type StockedCartItem = PricedItem & { qty: number }
+
+// Maksimum qty untuk satu baris setelah stok yang dipakai baris lain dari
+// produk yang sama dikonversi ke satuan dasar.
+export function maxQtyForCartLine(items: StockedCartItem[], target: PricedItem) {
+  const targetKey = cartKey(target)
+  const usedByOtherLines = items
+    .filter((item) => item.product.id === target.product.id && cartKey(item) !== targetKey)
+    .reduce(
+      (sum, item) => sum + item.qty * Math.max(1, Math.round(item.unit?.factor ?? 1)),
+      0
+    )
+  const factor = Math.max(1, Math.round(target.unit?.factor ?? 1))
+  return Math.max(0, Math.floor((target.product.stock - usedByOtherLines) / factor))
+}
+
 // Klaim poin loyalitas: dibatasi saldo, jumlah yang diminta, dan sisa tagihan
 // (agar total tidak negatif). Sumber kebenaran tunggal untuk checkout & server.
 export type RedeemMath = { redeemMax: number; pointsValue: number }

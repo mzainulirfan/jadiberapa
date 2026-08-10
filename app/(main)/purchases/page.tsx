@@ -1,3 +1,4 @@
+import { OwnerGuard } from "@/components/auth/owner-guard"
 import { PurchasesView } from "@/components/purchases/purchases-view"
 
 export default async function PurchasesPage({
@@ -6,5 +7,9 @@ export default async function PurchasesPage({
   searchParams: Promise<{ supplier?: string }>
 }) {
   const sp = await searchParams
-  return <PurchasesView initialSupplierId={sp.supplier ?? null} />
+  return (
+    <OwnerGuard>
+      <PurchasesView initialSupplierId={sp.supplier ?? null} />
+    </OwnerGuard>
+  )
 }

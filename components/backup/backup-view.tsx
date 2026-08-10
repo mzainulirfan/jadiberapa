@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { createClient } from "@/lib/supabase/client"
 import { restoreStoreBackup } from "@/lib/actions/backup"
 import { resetCatalog } from "@/lib/actions/products"
+import { normalizeBackupBundle } from "@/lib/backup/normalize"
 import type { StoreBackupBundle, StoreBackupCounts } from "@/lib/backup/types"
 import { AlertTriangle, Receipt, Store } from "@/components/ui/icons"
 import { cn } from "@/lib/utils"
@@ -47,10 +48,10 @@ function countBundle(bundle: StoreBackupBundle): StoreBackupCounts {
     product_units: (bundle.product_units ?? []).length,
     product_variants: bundle.product_variants.length,
     customers: bundle.customers.length,
-    suppliers: bundle.suppliers.length,
-    purchases: bundle.purchases.length,
-    purchase_items: bundle.purchase_items.length,
-    supplier_payments: bundle.supplier_payments.length,
+    suppliers: (bundle.suppliers ?? []).length,
+    purchases: (bundle.purchases ?? []).length,
+    purchase_items: (bundle.purchase_items ?? []).length,
+    supplier_payments: (bundle.supplier_payments ?? []).length,
     expenses: bundle.expenses.length,
     discounts: bundle.discounts.length,
     discount_products: bundle.discount_products.length,
@@ -224,7 +225,7 @@ export function BackupView() {
       if (!bundle?.meta?.exported_at || !bundle?.settings || !bundle?.products) {
         throw new Error("Struktur backup tidak valid")
       }
-      setRestoreBundle(bundle)
+      setRestoreBundle(normalizeBackupBundle(bundle))
       setRestoreOpen(true)
     } catch {
       toast.error("File backup tidak valid")
@@ -250,6 +251,7 @@ export function BackupView() {
   }
 
   const restoreCounts = restoreBundle ? countBundle(restoreBundle) : emptyCounts()
+  const restoreTotalRows = Object.values(restoreCounts).reduce((sum, value) => sum + value, 0)
 
   async function confirmReset() {
     if (resetConfirm.trim().toLowerCase() !== "reset") return
@@ -369,7 +371,7 @@ export function BackupView() {
             </span>
             <span className="flex-1">
               <span className="block font-medium text-ink">Reset barang saja</span>
-              <span className="text-xs text-ink-muted">Hapus semua produk, kategori tetap dipertahankan.</span>
+              <span className="text-xs text-ink-muted">Hapus semua produk; nota transaksi dan pembelian tetap utuh.</span>
             </span>
           </button>
           <button
@@ -407,7 +409,7 @@ export function BackupView() {
           <DialogHeader>
             <DialogTitle>Pulihkan data dari backup?</DialogTitle>
             <DialogDescription>
-              Snapshot ini berisi {restoreBundle ? totalRows : 0} baris data. Data saat ini akan ditimpa.
+              Snapshot ini berisi {restoreBundle ? restoreTotalRows : 0} baris data. Data saat ini akan ditimpa.
             </DialogDescription>
           </DialogHeader>
           {restoreBundle && (
@@ -436,6 +438,7 @@ export function BackupView() {
               {resetCategories
                 ? "Semua produk dan kategori toko aktif akan dihapus permanen."
                 : "Semua produk toko aktif akan dihapus permanen."}{" "}
+              Nota transaksi dan pembelian tetap disimpan. {" "}
               Ketik <span className="font-mono font-semibold text-destructive">reset</span> untuk melanjutkan.
             </DialogDescription>
           </DialogHeader>

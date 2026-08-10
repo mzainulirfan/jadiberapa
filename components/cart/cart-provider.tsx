@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import type { BxProduct, BxVariant, BxProductUnit } from "@/components/products/types"
-import { cartKey, priceOf, maxQtyFor } from "@/lib/pricing"
+import { cartKey, priceOf, maxQtyFor, maxQtyForCartLine } from "@/lib/pricing"
 import { getCart, saveCart, watchCart } from "@/lib/db/cart"
 import {
   getDiscounts,
@@ -151,11 +151,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setItems((prev) => {
         const key = cartKey({ product, variant, unit })
         const existing = prev.find((i) => cartKey(i) === key)
+        const maxQty = maxQtyForCartLine(prev, { product, variant, unit })
         if (existing) {
+          if (existing.qty >= maxQty) return prev
           return prev.map((i) =>
-            cartKey(i) === key ? { ...i, qty: Math.min(i.qty + 1, maxQtyFor(i)) } : i
+            cartKey(i) === key ? { ...i, qty: i.qty + 1 } : i
           )
         }
+        if (maxQty < 1) return prev
         return [
           ...prev,
           { product, variant: variant || undefined, unit: unit || undefined, qty: 1 },
@@ -166,11 +169,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   )
 
   const updateQty = React.useCallback((key: string, qty: number) => {
-    setItems((prev) =>
-      qty <= 0
-        ? prev.filter((i) => cartKey(i) !== key)
-        : prev.map((i) => (cartKey(i) === key ? { ...i, qty: Math.min(qty, maxQtyFor(i)) } : i))
-    )
+    setItems((prev) => {
+      if (qty <= 0) return prev.filter((i) => cartKey(i) !== key)
+      const target = prev.find((i) => cartKey(i) === key)
+      if (!target) return prev
+      const nextQty = Math.min(qty, maxQtyForCartLine(prev, target))
+      if (nextQty <= 0) return prev.filter((i) => cartKey(i) !== key)
+      return prev.map((i) => (cartKey(i) === key ? { ...i, qty: nextQty } : i))
+    })
   }, [])
 
   const removeItem = React.useCallback((key: string) => {

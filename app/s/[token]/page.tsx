@@ -18,6 +18,8 @@ type PublicReceipt = {
   items: {
     name: string
     variant_name?: string | null
+    unit_name?: string | null
+    factor?: number
     qty: number
     price_sell: number
     subtotal: number
@@ -99,7 +101,7 @@ export default async function PublicReceiptPage({
               {r.items.map((it, i) => (
                 <div key={i}>
                   <p className="text-xs">
-                    {it.qty} x {it.name}
+                    {it.qty}{it.unit_name ? ` ${it.unit_name}` : ""} x {it.name}
                     {it.variant_name ? ` (${it.variant_name})` : ""}
                   </p>
                   <p className="text-xs text-ink-muted text-right">

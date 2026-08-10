@@ -9,6 +9,7 @@ import { getTransactions, getTransactionsSummary, type BxTransaction } from "@/l
 import {
   listQueuedTransactions,
   onQueuedTransactionsChange,
+  deleteQueuedTransaction,
   syncQueuedTransactions,
   type OfflineTransactionDraft,
 } from "@/lib/offline/transactions"
@@ -232,6 +233,12 @@ export function TransactionsView() {
     }
   }
 
+  async function handleDiscardQueued(id: string) {
+    if (!window.confirm("Hapus transaksi ini dari antrean offline?")) return
+    await deleteQueuedTransaction(id)
+    setQueuedTransactions((prev) => prev.filter((item) => item.id !== id))
+  }
+
   async function loadMore() {
     setLoadingMore(true)
     const dateFrom = dateFromFor(range)
@@ -256,7 +263,7 @@ export function TransactionsView() {
       {hasQueued && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="font-semibold">{queuedTransactions.length} transaksi menunggu sinkronisasi</span>
+            <span className="font-semibold">{queuedTransactions.length} transaksi dalam antrean</span>
             <Button
               type="button"
               variant="outline"
@@ -280,7 +287,20 @@ export function TransactionsView() {
                   </span>
                 </div>
                 {tx.error && (
-                  <p className="mt-1 text-[11px] text-red-700">Gagal sync: {tx.error}</p>
+                  <div className="mt-1 flex items-center justify-between gap-2">
+                    <p className="text-[11px] text-red-700">
+                      {tx.syncStatus === "blocked" ? "Perlu tindakan" : "Akan dicoba lagi"}: {tx.error}
+                    </p>
+                    {tx.syncStatus === "blocked" && (
+                      <button
+                        type="button"
+                        className="shrink-0 text-[11px] font-semibold text-red-700 underline"
+                        onClick={() => handleDiscardQueued(tx.id)}
+                      >
+                        Hapus antrean
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             ))}

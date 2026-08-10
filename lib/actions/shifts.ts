@@ -7,17 +7,14 @@ import { revalidatePath } from "next/cache"
 export async function openShift(opening: number) {
   const supabase = await createClient()
   const open = Math.max(0, Math.round(opening || 0))
+  if (!Number.isSafeInteger(open) || open > 2147483647) {
+    return { error: "Saldo awal tidak valid" }
+  }
 
-  const { data: active } = await supabase
-    .from("cash_sessions")
-    .select("id")
-    .is("closed_at", null)
-    .limit(1)
-    .maybeSingle()
-  if (active) return { error: "Masih ada shift yang terbuka." }
-
-  const { error } = await supabase.from("cash_sessions").insert({ opening: open })
+  const { data, error } = await supabase.rpc("open_shift", { p_opening: open })
   if (error) return { error: error.message }
+  const result = (data ?? {}) as { error?: string | null }
+  if (result.error) return { error: result.error }
 
   revalidatePath("/shift")
   revalidatePath("/dashboard")
@@ -27,35 +24,18 @@ export async function openShift(opening: number) {
 // Tutup sesi: hitung kas fisik (closing) vs perkiraan sistem (expected), simpan selisih.
 export async function closeShift(id: string, closing: number, note?: string) {
   const supabase = await createClient()
-
-  const { data: session, error: getErr } = await supabase
-    .from("cash_sessions")
-    .select("id, opening, opened_at, closed_at")
-    .eq("id", id)
-    .single()
-  if (getErr) return { error: getErr.message }
-  if (!session) return { error: "Shift tidak ditemukan." }
-  if (session.closed_at) return { error: "Shift sudah ditutup." }
-
-  const { data: summary } = await supabase.rpc("get_shift_summary", {
-    p_opened_at: session.opened_at,
-  })
-  const cashSales = (summary as { cashSales?: number } | null)?.cashSales ?? 0
-  const expected = (session.opening as number) + cashSales
   const close = Math.max(0, Math.round(closing || 0))
-  const diff = close - expected
-
-  const { error } = await supabase
-    .from("cash_sessions")
-    .update({
-      closing: close,
-      expected,
-      diff,
-      note: note?.trim() || null,
-      closed_at: new Date().toISOString(),
-    })
-    .eq("id", id)
+  if (!Number.isSafeInteger(close) || close > 2147483647) {
+    return { error: "Saldo akhir tidak valid" }
+  }
+  const { data, error } = await supabase.rpc("close_shift", {
+    p_id: id,
+    p_closing: close,
+    p_note: note?.trim() || null,
+  })
   if (error) return { error: error.message }
+  const result = (data ?? {}) as { error?: string | null }
+  if (result.error) return { error: result.error }
 
   revalidatePath("/shift")
   revalidatePath("/dashboard")

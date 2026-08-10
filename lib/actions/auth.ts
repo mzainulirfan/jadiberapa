@@ -41,6 +41,15 @@ export async function resetMemberPasscode(userId: string, newPasscode: string) {
   if (!(await isOwner())) return { error: "Hanya pemilik toko yang bisa reset passcode." }
   if (!isPasscodeValid(newPasscode)) return { error: "Passcode harus 6 digit angka." }
 
+  const supabase = await createClient()
+  const { data: isMember, error: memberError } = await supabase.rpc(
+    "is_current_store_kasir",
+    { p_user_id: userId }
+  )
+  if (memberError || !isMember) {
+    return { error: "Kasir tidak ditemukan di toko aktif." }
+  }
+
   const admin = createAdminClient()
   const { error } = await admin.auth.admin.updateUserById(userId, {
     password: newPasscode,
@@ -59,6 +68,14 @@ export async function deleteAccount() {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user?.id) return { error: "Sesi tidak ditemukan" }
+
+  const { data: hasMembership, error: membershipError } = await supabase.rpc(
+    "has_approved_membership"
+  )
+  if (membershipError) return { error: membershipError.message }
+  if (hasMembership) {
+    return { error: "Keluar dari semua toko terlebih dahulu sebelum menghapus akun." }
+  }
 
   const admin = createAdminClient()
   const { error } = await admin.auth.admin.deleteUser(user.id)

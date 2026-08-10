@@ -34,7 +34,6 @@ import {
 } from "@/components/ui/icons"
 import { cn } from "@/lib/utils"
 import {
-  onQueuedTransactionsChange,
   queueOfflineTransaction,
   syncQueuedTransactions,
 } from "@/lib/offline/transactions"
@@ -92,11 +91,9 @@ export function CheckoutView() {
 
     syncNow()
     window.addEventListener("online", syncNow)
-    const unsubscribe = onQueuedTransactionsChange(syncNow)
 
     return () => {
       window.removeEventListener("online", syncNow)
-      unsubscribe()
     }
   }, [])
 
@@ -117,7 +114,14 @@ export function CheckoutView() {
     const auto = resolveDiscountAmount(i.product.id, price, discounts) * i.qty
     const manual =
       Number(itemDiscounts[key]?.replace(/[^\d]/g, "") ?? "") || 0
-    return { key, id: i.product.id, subtotal, disc: Math.min(auto + manual, subtotal), auto }
+    return {
+      key,
+      id: i.product.id,
+      subtotal,
+      manual: Math.min(manual, Math.max(0, subtotal - auto)),
+      disc: Math.min(auto + manual, subtotal),
+      auto,
+    }
   })
   const itemDiscTotal = itemDiscTotals.reduce((s, x) => s + x.disc, 0)
 
@@ -212,24 +216,29 @@ export function CheckoutView() {
     setLoading(true)
     setError(null)
     const payload = items.map((i) => {
-      const price = priceOf(i)
+      const line = itemDiscTotals.find((x) => x.key === cartKey(i))
       return {
         product_id: i.product.id,
         qty: i.qty,
-        price_sell: price,
-        subtotal: price * i.qty,
-        discount: itemDiscTotals.find((x) => x.key === cartKey(i))?.disc ?? 0,
+        // Harga dan subtotal tidak lagi dikirim sebagai sumber kebenaran.
+        // Database membaca ulang harga dari produk/varian/satuan.
+        discount: line?.manual ?? 0,
+        discount_mode: "manual" as const,
         variant_id: i.variant?.id ?? null,
-        variant_name: i.variant?.name ?? null,
+        unit_id: i.unit?.id ?? null,
         unit_name: i.unit?.name ?? null,
-        factor: i.unit?.factor ?? 1,
       }
     })
     const dp = method === "utang" ? Math.min(paidAmount, netTotal) : undefined
+    // Kunci yang sama dipakai untuk request online dan fallback offline. Jika
+    // response hilang, retry tidak membuat nota kedua.
+    const idempotencyKey = crypto.randomUUID()
 
     const queueDraft = async () => {
       try {
         await queueOfflineTransaction({
+          id: idempotencyKey,
+          idempotency_key: idempotencyKey,
           items: payload,
           payment_method: method,
           customer_id: customer?.id ?? null,
@@ -243,7 +252,7 @@ export function CheckoutView() {
         })
         setDone(true)
         clearCart()
-        toast.success("Transaksi disimpan offline")
+        toast.success("Transaksi masuk antrean offline")
         router.push("/transactions")
       } catch {
         setError("Gagal menyimpan transaksi offline")
@@ -258,31 +267,32 @@ export function CheckoutView() {
     }
 
     try {
-      const { error: err, id } = await createTransaction(
+      const result = await createTransaction(
         payload,
         method,
         customer?.id ?? null,
         dp,
         discountAmount,
         feeAmount,
-        pointsDiscount > 0 ? redeemMax : 0
+        pointsDiscount > 0 ? redeemMax : 0,
+        idempotencyKey
       )
-      if (err) {
-        setError(err)
+      if (result.error) {
+        if (result.retryable) {
+          await queueDraft()
+          return
+        }
+        setError(result.error)
         setLoading(false)
         return
       }
       setDone(true)
       clearCart()
-      router.push(`/transactions/${id}`)
-    } catch (e) {
-      const message = e instanceof Error ? e.message : ""
-      if (/fetch|network|offline|failed to fetch/i.test(message)) {
-        await queueDraft()
-        return
-      }
-      setError(message || "Gagal memproses transaksi")
-      setLoading(false)
+      router.push(`/transactions/${result.id}`)
+    } catch {
+      // Hasil request tidak diketahui. Simpan dengan idempotency key yang sama;
+      // retry aman meskipun transaksi sebenarnya sudah commit di server.
+      await queueDraft()
     }
   }
 

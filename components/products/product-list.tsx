@@ -1004,7 +1004,8 @@ export function ProductList() {
           <DialogHeader>
             <DialogTitle>Hapus Barang?</DialogTitle>
             <DialogDescription>
-              &quot;{deleteTarget?.name}&quot; akan dihapus permanen dan tidak bisa dikembalikan.
+              &quot;{deleteTarget?.name}&quot; akan dihapus permanen. Riwayat transaksi dan
+              pembelian tetap tersimpan dengan nama barang ini.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -1027,7 +1028,7 @@ export function ProductList() {
             <DialogTitle>Hapus {selectedIds.size} barang?</DialogTitle>
             <DialogDescription>
               Barang yang dipilih akan dihapus permanen beserta varian dan riwayat
-              stoknya, dan tidak bisa dikembalikan.
+              stoknya. Nota transaksi dan pembelian tetap tersimpan.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
