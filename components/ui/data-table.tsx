@@ -57,9 +57,23 @@ export function DataTable<T>({
             <tr
               key={rowKey(row)}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
+              onKeyDown={
+                onRowClick
+                  ? (e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault()
+                        onRowClick(row)
+                      }
+                    }
+                  : undefined
+              }
+              tabIndex={onRowClick ? 0 : undefined}
+              role={onRowClick ? "button" : undefined}
+              aria-label={onRowClick ? "Buka detail" : undefined}
               className={cn(
                 "border-b border-hairline last:border-0",
-                onRowClick && "cursor-pointer hover:bg-canvas-soft"
+                onRowClick &&
+                  "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring hover:bg-canvas-soft"
               )}
             >
               {columns.map((c) => (
