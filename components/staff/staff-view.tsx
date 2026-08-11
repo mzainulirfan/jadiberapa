@@ -372,6 +372,7 @@ export function StaffView() {
                             setResetError(null)
                           }}
                           aria-label={`Reset passcode ${m.username}`}
+                          title={`Reset passcode ${m.username}`}
                           className="flex size-8 items-center justify-center rounded-lg text-ink-muted hover:bg-canvas-soft"
                         >
                           <KeyRound className="size-4" />
@@ -379,6 +380,7 @@ export function StaffView() {
                         <button
                           onClick={() => setRemoveTarget(m)}
                           aria-label={`Hapus ${m.username}`}
+                          title={`Hapus ${m.username}`}
                           className="flex size-8 items-center justify-center rounded-lg text-ink-muted hover:bg-canvas-soft"
                         >
                           <Trash className="size-4" />
@@ -390,6 +392,7 @@ export function StaffView() {
                           onClick={() => handleApprove(m)}
                           disabled={approvingId === m.user_id}
                           aria-label={`Setujui ${m.username}`}
+                          title={`Setujui ${m.username}`}
                           className="flex size-8 items-center justify-center rounded-lg text-primary hover:bg-primary/10 disabled:opacity-50"
                         >
                           <Check className="size-4" />
@@ -397,6 +400,7 @@ export function StaffView() {
                         <button
                           onClick={() => setRemoveTarget(m)}
                           aria-label={`Tolak ${m.username}`}
+                          title={`Tolak ${m.username}`}
                           className="flex size-8 items-center justify-center rounded-lg text-ink-muted hover:bg-canvas-soft"
                         >
                           <Trash className="size-4" />

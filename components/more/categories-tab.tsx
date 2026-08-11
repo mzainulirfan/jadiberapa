@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog"
 import { getCategories, getCategoryProductCounts, invalidateCategories } from "@/lib/db/queries"
 import { createCategory, updateCategory, deleteCategory } from "@/lib/actions/products"
+import { DataTable } from "@/components/ui/data-table"
 import { Pencil, Trash, Plus, Tag } from "@/components/ui/icons"
 
 type Cat = { id: string; name: string }
@@ -173,7 +174,63 @@ export function CategoriesTab() {
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <>
+          <DataTable
+            className="mb-2"
+            rowKey={(c) => c.id}
+            rows={cats}
+            columns={[
+              {
+                key: "name",
+                label: "Kategori",
+                render: (c) => (
+                  <span className="flex items-center gap-2 font-medium text-ink">
+                    <Tag className="size-4 shrink-0 text-ink-muted" />
+                    <span className="truncate">{c.name}</span>
+                  </span>
+                ),
+              },
+              {
+                key: "count",
+                label: "Jumlah Barang",
+                align: "right",
+                render: (c) => (
+                  <span className="rounded-full bg-canvas-soft px-2 py-0.5 text-[11px] text-ink-muted">
+                    {counts[c.id] ?? 0} barang
+                  </span>
+                ),
+              },
+              {
+                key: "actions",
+                label: "",
+                align: "right",
+                render: (c) => (
+                  <div className="flex justify-end gap-1">
+                    <button
+                      onClick={() => {
+                        setEdit(c)
+                        setOpen(true)
+                      }}
+                      aria-label={`Edit ${c.name}`}
+                      title={`Edit ${c.name}`}
+                      className="flex size-8 items-center justify-center rounded-lg text-ink-muted hover:bg-canvas-soft"
+                    >
+                      <Pencil className="size-4" />
+                    </button>
+                    <button
+                      onClick={() => setDeleteTarget(c)}
+                      aria-label={`Hapus ${c.name}`}
+                      title={`Hapus ${c.name}`}
+                      className="flex size-8 items-center justify-center rounded-lg text-ink-muted hover:bg-canvas-soft"
+                    >
+                      <Trash className="size-4" />
+                    </button>
+                  </div>
+                ),
+              },
+            ]}
+          />
+          <div className="space-y-2 lg:hidden">
           {cats.map((c) => (
             <div
               key={c.id}
@@ -203,7 +260,8 @@ export function CategoriesTab() {
               </button>
             </div>
           ))}
-        </div>
+          </div>
+        </>
       )}
 
       <Dialog open={deleteTarget !== null} onOpenChange={(o) => !o && setDeleteTarget(null)}>

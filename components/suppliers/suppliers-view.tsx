@@ -244,6 +244,7 @@ export function SuppliersView() {
                       type="button"
                       onClick={() => openEdit(s)}
                       aria-label="Ubah supplier"
+                      title="Ubah supplier"
                       className="shrink-0 rounded-lg p-1.5 text-ink-muted hover:bg-canvas-soft"
                     >
                       <Pencil className="size-4" />
@@ -252,7 +253,7 @@ export function SuppliersView() {
                       type="button"
                       onClick={() => setDeleteTarget(s)}
                       aria-label="Hapus supplier"
-                      className="shrink-0 rounded-lg p-1.5 text-ink-muted hover:bg-canvas-soft"
+                      title="Hapus supplier"
                     >
                       <Trash className="size-4" />
                     </button>
@@ -288,6 +289,7 @@ export function SuppliersView() {
                   type="button"
                   onClick={() => openEdit(s)}
                   aria-label="Ubah supplier"
+                  title="Ubah supplier"
                   className="shrink-0 rounded-lg p-1.5 text-ink-muted active:bg-canvas-soft"
                 >
                   <Pencil className="size-4" />
