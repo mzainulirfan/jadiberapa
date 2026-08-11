@@ -165,6 +165,7 @@ export function MoreView() {
         </div>
       ) : (
         <>
+          <div className="lg:hidden">
           {groups.map((g) => (
             <div key={g.title} className="space-y-1.5">
               <p className="px-1 text-xs font-semibold tracking-wide text-ink-faint uppercase">
@@ -191,6 +192,7 @@ export function MoreView() {
               </div>
             </div>
           ))}
+          </div>
 
           <div className="divide-y divide-hairline rounded-xl border border-hairline bg-canvas">
             <button

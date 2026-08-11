@@ -610,8 +610,8 @@ ${settings.receipt_footer?.trim() || "Terima kasih"}`
         ) : error || !tx ? (
           <p className="text-destructive text-sm">{error ?? "Transaksi tidak ditemukan"}</p>
         ) : (
-          <div className="space-y-3">
-            <div className="rounded-xl bg-canvas border border-hairline p-4">
+          <div className="space-y-3 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] lg:items-start lg:gap-4 lg:space-y-0">
+            <div className="rounded-xl bg-canvas border border-hairline p-4 lg:col-start-1 lg:row-span-2 lg:row-start-1">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-ink-muted">Total</span>
                 <span className="text-lg font-bold text-ink">{fmtRp(tx.total)}</span>
@@ -720,7 +720,7 @@ ${settings.receipt_footer?.trim() || "Terima kasih"}`
               </div>
             </div>
 
-            <div className="rounded-xl bg-canvas border border-hairline">
+            <div className="rounded-xl bg-canvas border border-hairline lg:col-start-2 lg:row-start-1">
               <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
                 <h2 className="text-sm font-semibold text-ink">Item</h2>
                 <span className="text-xs text-ink-faint">{items.length} barang</span>
@@ -773,7 +773,7 @@ ${settings.receipt_footer?.trim() || "Terima kasih"}`
             </div>
 
             {payments.length > 0 && (
-              <div className="rounded-xl bg-canvas border border-hairline">
+              <div className="rounded-xl bg-canvas border border-hairline lg:col-start-2 lg:row-start-2">
                 <div className="px-4 pt-3.5 pb-2">
                   <h2 className="text-sm font-semibold text-ink">Riwayat Pembayaran</h2>
                 </div>

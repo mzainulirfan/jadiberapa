@@ -116,8 +116,8 @@ export function PurchaseDetail({ id }: { id: string }) {
         ) : error || !purchase ? (
           <p className="text-sm text-destructive">{error ?? "Pembelian tidak ditemukan"}</p>
         ) : (
-          <div className="space-y-3">
-            <div className="rounded-xl border border-hairline bg-canvas p-4">
+          <div className="space-y-3 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] lg:items-start lg:gap-4 lg:space-y-0">
+            <div className="rounded-xl border border-hairline bg-canvas p-4 lg:col-start-1 lg:row-span-2 lg:row-start-1">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-ink-muted">Total</span>
                 <span className="text-lg font-bold text-ink">{fmtRp(purchase.total)}</span>
@@ -177,7 +177,7 @@ export function PurchaseDetail({ id }: { id: string }) {
               </div>
             </div>
 
-            <div className="rounded-xl border border-hairline bg-canvas">
+            <div className="rounded-xl border border-hairline bg-canvas lg:col-start-2 lg:row-start-1">
               <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
                 <h2 className="text-sm font-semibold text-ink">Barang</h2>
                 <span className="text-xs text-ink-faint">{purchase.items.length} item</span>
@@ -210,7 +210,7 @@ export function PurchaseDetail({ id }: { id: string }) {
             </div>
 
             {payments.length > 0 && (
-              <div className="rounded-xl border border-hairline bg-canvas">
+              <div className="rounded-xl border border-hairline bg-canvas lg:col-start-2 lg:row-start-2">
                 <div className="px-4 pt-3.5 pb-2">
                   <h2 className="text-sm font-semibold text-ink">Riwayat Pembayaran</h2>
                 </div>
