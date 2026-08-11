@@ -594,7 +594,15 @@ export function CheckoutView() {
             <p className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
               Barang
             </p>
-            <span className="text-xs text-ink-faint">{items.length} item</span>
+            <span className="flex items-center gap-2 text-xs">
+              <span className="text-ink-faint">{items.length} item</span>
+              <Link
+                href="/cart"
+                className="font-medium text-primary underline-offset-2 hover:underline"
+              >
+                Ubah Keranjang
+              </Link>
+            </span>
           </div>
           <div className="divide-y divide-hairline">
             {items.map((i) => {
