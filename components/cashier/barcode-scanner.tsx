@@ -12,6 +12,8 @@ type Props = {
   onDetect: (code: string) => void
   /** true = tetap memindai (kasir); false = tutup setelah satu barcode terbaca */
   continuous?: boolean
+  /** Konten panel bawah saat mode split (mobile). Kamera di atas, panel ini di bawah. */
+  bottomContent?: React.ReactNode
 }
 
 type ScanMode = "all" | "barcode" | "qr"
@@ -22,7 +24,7 @@ const SCAN_MODES: { id: ScanMode; label: string }[] = [
   { id: "qr", label: "QR" },
 ]
 
-export function BarcodeScanner({ open, onOpenChange, onDetect, continuous = false }: Props) {
+export function BarcodeScanner({ open, onOpenChange, onDetect, continuous = false, bottomContent }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const lastRef = useRef<{ code: string; time: number }>({ code: "", time: 0 })
   const confirmRef = useRef<{ code: string; count: number }>({ code: "", count: 0 })
@@ -208,96 +210,109 @@ export function BarcodeScanner({ open, onOpenChange, onDetect, continuous = fals
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted
-        className="absolute inset-0 size-full object-cover"
-      />
-      <div className="absolute inset-0 bg-black/30" />
-      {!error && (
-        <div className="pointer-events-none absolute left-1/2 top-1/2 h-40 w-72 max-w-[80%] -translate-x-1/2 -translate-y-1/2 rounded-2xl border-2 border-white/85 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" />
-      )}
-      {!error && (
-        <div className="absolute left-1/2 top-[calc(50%+108px)] z-20 -translate-x-1/2">
-          <div className="flex items-center gap-1 rounded-full bg-black/55 p-1 backdrop-blur-sm">
-            {SCAN_MODES.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => setMode(m.id)}
-                className={cn(
-                  "rounded-full px-3 py-1 text-xs font-semibold transition-colors",
-                  mode === m.id ? "bg-white text-ink" : "text-white/75 active:text-white"
-                )}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="relative z-10 flex items-center justify-between p-4 pt-[calc(1rem+env(safe-area-inset-top))]">
-        <p className="text-base font-semibold text-white">Pindai Barcode</p>
-        <button
-          type="button"
-          onClick={() => onOpenChange(false)}
-          className="rounded-full bg-white/15 p-2 text-white active:bg-white/25"
-          aria-label="Tutup"
-        >
-          <X className="size-5" />
-        </button>
-      </div>
-
-      <div className="relative z-10 flex flex-1 items-center justify-center px-6">
-        {error ? (
-          <div className="w-full max-w-xs rounded-2xl bg-canvas p-5 text-center">
-            <p className="text-sm text-ink">{error}</p>
-            <button
-              type="button"
-              onClick={() => {
-                setError(null)
-                setRetry((r) => r + 1)
-              }}
-              className="mt-4 h-9 w-full rounded-full bg-primary text-sm font-semibold text-primary-foreground active:bg-primary-active"
-            >
-              Coba lagi
-            </button>
-          </div>
-        ) : (
-          <div className="mt-auto mb-2 space-y-1 text-center text-xs text-white/80">
-            <p>
-              Arahkan kamera ke barcode
-              {continuous ? " · scan beberapa barang berturut-turut" : ""}
-            </p>
-            <p className="text-white/60">Geser ↕ senter · geser ↔ tutup</p>
+      <div
+        className={cn(
+          "relative flex min-h-0 flex-col overflow-hidden",
+          bottomContent ? "h-[50dvh] shrink-0" : "flex-1"
+        )}
+      >
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className="absolute inset-0 size-full object-cover"
+        />
+        <div className="absolute inset-0 bg-black/30" />
+        {!error && (
+          <div className="pointer-events-none absolute left-1/2 top-1/2 h-40 w-72 max-w-[80%] -translate-x-1/2 -translate-y-1/2 rounded-2xl border-2 border-white/85 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" />
+        )}
+        {!error && (
+          <div className="absolute left-1/2 top-[calc(50%+108px)] z-20 -translate-x-1/2">
+            <div className="flex items-center gap-1 rounded-full bg-black/55 p-1 backdrop-blur-sm">
+              {SCAN_MODES.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setMode(m.id)}
+                  className={cn(
+                    "rounded-full px-3 py-1 text-xs font-semibold transition-colors",
+                    mode === m.id ? "bg-white text-ink" : "text-white/75 active:text-white"
+                  )}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
-      </div>
 
-      <div className="relative z-10 flex items-center justify-center gap-3 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-        {torchSupported && (
+        <div className="relative z-10 flex items-center justify-between p-4 pt-[calc(1rem+env(safe-area-inset-top))]">
+          <p className="text-base font-semibold text-white">Pindai Barcode</p>
           <button
             type="button"
-            onClick={toggleTorch}
-            className={cn(
-              "flex h-10 items-center gap-1.5 rounded-full px-4 text-sm font-semibold active:opacity-80",
-              torchOn ? "bg-white text-ink" : "bg-white/15 text-white"
-            )}
+            onClick={() => onOpenChange(false)}
+            className="rounded-full bg-white/15 p-2 text-white active:bg-white/25"
+            aria-label="Tutup"
           >
-            <Zap className="size-4" /> Senter
+            <X className="size-5" />
           </button>
-        )}
-        <button
-          type="button"
-          onClick={() => onOpenChange(false)}
-          className="flex h-10 items-center rounded-full bg-white px-6 text-sm font-semibold text-ink active:bg-white/85"
-        >
-          Selesai
-        </button>
+        </div>
+
+        <div className="relative z-10 flex flex-1 items-center justify-center px-6">
+          {error ? (
+            <div className="w-full max-w-xs rounded-2xl bg-canvas p-5 text-center">
+              <p className="text-sm text-ink">{error}</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setError(null)
+                  setRetry((r) => r + 1)
+                }}
+                className="mt-4 h-9 w-full rounded-full bg-primary text-sm font-semibold text-primary-foreground active:bg-primary-active"
+              >
+                Coba lagi
+              </button>
+            </div>
+          ) : (
+            <div className="mt-auto mb-2 space-y-1 text-center text-xs text-white/80">
+              <p>
+                Arahkan kamera ke barcode
+                {continuous ? " · scan beberapa barang berturut-turut" : ""}
+              </p>
+              <p className="text-white/60">Geser ↕ senter · geser ↔ tutup</p>
+            </div>
+          )}
+        </div>
+
+        <div className="relative z-10 flex items-center justify-center gap-3 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          {torchSupported && (
+            <button
+              type="button"
+              onClick={toggleTorch}
+              className={cn(
+                "flex h-10 items-center gap-1.5 rounded-full px-4 text-sm font-semibold active:opacity-80",
+                torchOn ? "bg-white text-ink" : "bg-white/15 text-white"
+              )}
+            >
+              <Zap className="size-4" /> Senter
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="flex h-10 items-center rounded-full bg-white px-6 text-sm font-semibold text-ink active:bg-white/85"
+          >
+            Selesai
+          </button>
+        </div>
       </div>
+
+      {bottomContent && (
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-t border-white/10 bg-canvas">
+          {bottomContent}
+        </div>
+      )}
     </div>,
     document.body
   )

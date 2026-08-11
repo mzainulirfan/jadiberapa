@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { getProducts, getCategories, resolveDiscountAmount, getProductVariants, getProductUnits } from "@/lib/db/queries"
 import { useCart } from "@/components/cart/cart-provider"
 import { CartPanel } from "@/components/cart/cart-panel"
+import { ScanCartPanel } from "@/components/cart/scan-cart-panel"
 import { useMediaQuery } from "@/lib/hooks/use-media-query"
 import { ProductCard, ProductRow } from "./product-card"
 import { BarcodeScanner } from "./barcode-scanner"
@@ -460,6 +461,14 @@ export function CashierPage() {
         onOpenChange={setScanOpen}
         onDetect={handleScan}
         continuous
+        bottomContent={
+          !isDesktop ? (
+            <ScanCartPanel
+              onDone={() => setScanOpen(false)}
+              onCheckout={() => router.push("/checkout")}
+            />
+          ) : undefined
+        }
       />
 
       <Dialog open={pickProduct !== null} onOpenChange={(v) => !v && setPickProduct(null)}>
