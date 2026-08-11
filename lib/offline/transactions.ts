@@ -1,6 +1,8 @@
 "use client"
 
 import { createTransaction } from "@/lib/actions/transactions"
+import { getCashierDelegationStatus } from "@/lib/db/delegation"
+import { delegationSyncDecision } from "@/lib/delegation/context"
 
 const DB_NAME = "saberaha-offline"
 const DB_VERSION = 1
@@ -37,6 +39,7 @@ export type OfflineTransactionDraft = {
   itemCount: number
   customerName?: string | null
   cashierName?: string | null
+  delegationId?: string | null
   error?: string | null
   errorCode?: string | null
   syncStatus?: "pending" | "retry_wait" | "blocked"
@@ -142,6 +145,7 @@ export async function queueOfflineTransaction(
     itemCount: draft.itemCount,
     customerName: draft.customerName ?? null,
     cashierName: draft.cashierName ?? null,
+    delegationId: draft.delegationId ?? null,
     error: draft.error ?? null,
     errorCode: draft.errorCode ?? null,
     syncStatus: draft.syncStatus ?? "pending",
@@ -159,10 +163,21 @@ async function runQueueSync() {
   }
 
   const queued = await listQueuedTransactions()
+  const delegationStatus = await getCashierDelegationStatus()
   let synced = 0
 
   for (const item of queued) {
     if (item.syncStatus === "blocked") continue
+    const delegationDecision = delegationSyncDecision(item.delegationId, delegationStatus)
+    if (delegationDecision) {
+      await updateQueuedTransaction(item.id, {
+        error: delegationDecision.message,
+        errorCode: "DELEGATION_CONTEXT_MISMATCH",
+        syncStatus: delegationDecision.type === "blocked" ? "blocked" : "retry_wait",
+        lastAttemptAt: new Date().toISOString(),
+      })
+      continue
+    }
     try {
       const res = await createTransaction(
         item.items,
@@ -172,9 +187,19 @@ async function runQueueSync() {
         item.discount,
         item.fee,
         item.points_redeemed,
-        item.idempotency_key ?? item.id
+        item.idempotency_key ?? item.id,
+        item.delegationId ?? null
       )
       if (res?.error) {
+        if (res.errorCode === "DELEGATION_CONTEXT_MISMATCH" && !item.delegationId) {
+          await updateQueuedTransaction(item.id, {
+            error: "Transaksi owner menunggu sampai mode kasir diakhiri.",
+            errorCode: res.errorCode,
+            syncStatus: "retry_wait",
+            lastAttemptAt: new Date().toISOString(),
+          })
+          continue
+        }
         const attemptCount = (item.attemptCount ?? 0) + 1
         const blocked = !res.retryable || attemptCount >= 5
         await updateQueuedTransaction(item.id, {

@@ -5,6 +5,7 @@ import { Header } from "@/components/header/header"
 import { PullToRefresh } from "@/components/pull-to-refresh/pull-to-refresh"
 import { ViewportHeight } from "@/components/viewport-height/viewport-height"
 import { NoStoreGuard } from "@/components/auth/no-store-guard"
+import { CashierModeBanner, CashierModeProvider } from "@/components/auth/cashier-mode"
 
 export default function MainLayout({
   children,
@@ -12,20 +13,23 @@ export default function MainLayout({
   children: React.ReactNode
 }) {
   return (
-    <NoStoreGuard>
+    <CashierModeProvider>
       <div
         className="flex flex-col"
         style={{ height: "var(--app-h, 100dvh)" }}
       >
         <ViewportHeight />
         <CartProvider>
-          <LockProvider>
-            <Header />
-            <PullToRefresh className="flex-1">{children}</PullToRefresh>
-            <BottomNav />
-          </LockProvider>
+          <CashierModeBanner />
+          <NoStoreGuard>
+            <LockProvider>
+              <Header />
+              <PullToRefresh className="flex-1">{children}</PullToRefresh>
+              <BottomNav />
+            </LockProvider>
+          </NoStoreGuard>
         </CartProvider>
       </div>
-    </NoStoreGuard>
+    </CashierModeProvider>
   )
 }

@@ -26,7 +26,9 @@ import {
 } from "@/lib/db/queries"
 import { useRole } from "@/lib/hooks/use-role"
 import { resetMemberPasscode } from "@/lib/actions/auth"
-import { Plus, Trash, User, KeyRound, Share, Copy, Check } from "@/components/ui/icons"
+import { startCashierDelegation } from "@/lib/actions/delegation"
+import { useCashierMode } from "@/components/auth/cashier-mode"
+import { Plus, Trash, User, KeyRound, Share, Copy, Check, Eye } from "@/components/ui/icons"
 
 function AddKasirForm({ onDone }: { onDone: () => void }) {
   const [username, setUsername] = useState("")
@@ -78,6 +80,7 @@ function AddKasirForm({ onDone }: { onDone: () => void }) {
 
 export function StaffView() {
   const role = useRole()
+  const { refresh: refreshCashierMode } = useCashierMode()
   const router = useRouter()
   const [members, setMembers] = useState<BxStaffMember[]>([])
   const [loading, setLoading] = useState(true)
@@ -92,6 +95,10 @@ export function StaffView() {
   const [resetPasscode, setResetPasscode] = useState("")
   const [resetError, setResetError] = useState<string | null>(null)
   const [resetting, setResetting] = useState(false)
+  const [delegateTarget, setDelegateTarget] = useState<BxStaffMember | null>(null)
+  const [ownerPasscode, setOwnerPasscode] = useState("")
+  const [delegateError, setDelegateError] = useState<string | null>(null)
+  const [delegating, setDelegating] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -194,6 +201,25 @@ export function StaffView() {
     setResetTarget(null)
     setResetPasscode("")
     toast.success(`Passcode @${resetTarget.username} direset`)
+  }
+
+  async function handleDelegate() {
+    if (!delegateTarget) return
+    if (ownerPasscode.length !== 6) {
+      setDelegateError("Passcode owner harus 6 digit angka.")
+      return
+    }
+    setDelegating(true)
+    setDelegateError(null)
+    const result = await startCashierDelegation(delegateTarget.user_id, ownerPasscode)
+    setDelegating(false)
+    if (result.error) {
+      setDelegateError(result.error)
+      return
+    }
+    refreshCashierMode()
+    router.push("/cashier")
+    router.refresh()
   }
 
   if (role !== "owner") return null
@@ -312,6 +338,18 @@ export function StaffView() {
                   <>
                     <button
                       onClick={() => {
+                        setDelegateTarget(m)
+                        setOwnerPasscode("")
+                        setDelegateError(null)
+                      }}
+                      aria-label={`Masuk sebagai ${m.username}`}
+                      title="Masuk sebagai kasir"
+                      className="flex size-8 shrink-0 items-center justify-center rounded-lg text-primary active:bg-primary/10"
+                    >
+                      <Eye className="size-4" />
+                    </button>
+                    <button
+                      onClick={() => {
                         setResetTarget(m)
                         setResetPasscode("")
                         setResetError(null)
@@ -405,6 +443,41 @@ export function StaffView() {
                 disabled={resetting || resetPasscode.length < 4}
               >
                 {resetting ? "Menyimpan..." : "Reset Passcode"}
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={delegateTarget !== null}
+        onOpenChange={(next) => !next && !delegating && setDelegateTarget(null)}
+      >
+        <DialogContent className="rounded-xl">
+          <DialogHeader>
+            <DialogTitle>Masuk sebagai @{delegateTarget?.username}</DialogTitle>
+            <DialogDescription>
+              Sesi owner tetap tersimpan, tetapi akses dan transaksi selama 30 menit akan dicatat sebagai kasir ini. Keranjang harus kosong.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              type="password"
+              inputMode="numeric"
+              autoComplete="current-password"
+              placeholder="Passcode owner (6 digit)"
+              value={ownerPasscode}
+              onChange={(event) => setOwnerPasscode(event.target.value.replace(/\D/g, ""))}
+              maxLength={6}
+              autoFocus
+            />
+            {delegateError && <p className="text-sm text-destructive">{delegateError}</p>}
+            <DialogFooter className="gap-2 sm:justify-end">
+              <Button variant="outline" onClick={() => setDelegateTarget(null)} disabled={delegating}>
+                Batal
+              </Button>
+              <Button onClick={handleDelegate} disabled={delegating || ownerPasscode.length !== 6}>
+                {delegating ? "Memverifikasi..." : "Masuk sebagai Kasir"}
               </Button>
             </DialogFooter>
           </div>

@@ -58,6 +58,15 @@ function cashierNameOf(tx: Transaction) {
   return (tx as Transaction & { cashier_name?: string | null }).cashier_name
 }
 
+function delegatedActorNameOf(tx: Transaction) {
+  const attributed = tx as Transaction & {
+    actor_name?: string | null
+    delegation_id?: string | null
+    was_delegated?: boolean | null
+  }
+  return attributed.delegation_id || attributed.was_delegated ? attributed.actor_name : null
+}
+
 function paidOf(tx: Transaction) {
   return (tx as Transaction & { paid_amount?: number }).paid_amount ?? tx.total
 }
@@ -694,6 +703,12 @@ ${settings.receipt_footer?.trim() || "Terima kasih"}`
                   <div className="flex items-center justify-between">
                     <span className="text-ink-muted">Kasir</span>
                     <span className="font-medium text-ink">{cashierNameOf(tx)}</span>
+                  </div>
+                )}
+                {delegatedActorNameOf(tx) && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-ink-muted">Owner yang bertugas</span>
+                    <span className="font-medium text-ink">{delegatedActorNameOf(tx)}</span>
                   </div>
                 )}
                 {buyerName(tx) && (

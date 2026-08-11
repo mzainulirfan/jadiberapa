@@ -31,7 +31,8 @@ export async function createTransaction(
   discount?: number,
   fee?: number,
   points_redeemed?: number,
-  idempotencyKey?: string
+  idempotencyKey?: string,
+  expectedDelegationId?: string | null
 ): Promise<CreateTransactionResult> {
   const supabase = await createClient()
   const normalized = normalizeTransactionItems(items)
@@ -55,7 +56,7 @@ export async function createTransaction(
     return { error: "Nominal transaksi tidak valid", errorCode: "INVALID_INPUT", retryable: false }
   }
 
-  const { data, error } = await supabase.rpc("create_transaction", {
+  const { data, error } = await supabase.rpc("create_transaction_with_delegation_context", {
     p_items: normalized.items.map((item) => ({
       product_id: item.product_id,
       qty: Math.round(item.qty),
@@ -72,6 +73,7 @@ export async function createTransaction(
     p_fee: serviceFee,
     p_points_redeemed: points,
     p_idempotency_key: key,
+    p_expected_delegation_id: expectedDelegationId ?? null,
   })
 
   if (error) {

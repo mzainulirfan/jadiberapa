@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js"
 
-// Client ber-peran service role: HANYA untuk operasi admin Supabase Auth yang
-// tidak bisa dilakukan lewat sesi pengguna (mis. reset passcode kasir oleh owner).
+// Client service role untuk operasi server yang tidak dapat dijalankan lewat
+// sesi user, seperti Auth admin dan RPC privileged setelah re-authentication.
 // Tidak boleh diekspos ke client; hanya dipakai di server action.
 export function createAdminClient(): SupabaseClient {
   return createClient(

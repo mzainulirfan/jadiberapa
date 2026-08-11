@@ -65,4 +65,31 @@ describe("normalizeBackupBundle", () => {
       { id: "dus", factor: 12, product_name: "Kopi" },
     ])
   })
+
+  it("membuang UUID atribusi yang tidak portabel tetapi menjaga snapshot delegasi", () => {
+    const normalized = normalizeBackupBundle(
+      backup({
+        transactions: [
+          {
+            id: "sale-1",
+            actor_user_id: "owner-id",
+            effective_user_id: "cashier-id",
+            delegation_id: "delegation-id",
+            actor_name: "pemilik",
+          },
+        ],
+      })
+    )
+
+    expect(normalized.transactions[0]).toMatchObject({
+      actor_user_id: null,
+      effective_user_id: null,
+      delegation_id: null,
+      actor_name: "__backup_restore__pemilik",
+      was_delegated: true,
+    })
+    expect(normalizeBackupBundle(normalized).transactions[0].actor_name).toBe(
+      "__backup_restore__pemilik"
+    )
+  })
 })

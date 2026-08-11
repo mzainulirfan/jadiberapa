@@ -37,6 +37,7 @@ import {
   queueOfflineTransaction,
   syncQueuedTransactions,
 } from "@/lib/offline/transactions"
+import { useCashierMode } from "@/components/auth/cashier-mode"
 
 type PaymentMethod = "cash" | "qris" | "dana" | "utang"
 
@@ -51,6 +52,7 @@ const quickAmounts = [10000, 20000, 50000, 100000, 200000]
 
 export function CheckoutView() {
   const { items, clearCart, total, discounts, customer, setCustomer } = useCart()
+  const { status: cashierModeStatus } = useCashierMode()
   const router = useRouter()
 
   const [loading, setLoading] = useState(false)
@@ -249,6 +251,9 @@ export function CheckoutView() {
           total: netTotal,
           itemCount: items.reduce((sum, item) => sum + item.qty, 0),
           customerName: customer?.name ?? null,
+          delegationId: cashierModeStatus?.active
+            ? cashierModeStatus.delegation?.id ?? null
+            : null,
         })
         setDone(true)
         clearCart()
@@ -275,7 +280,8 @@ export function CheckoutView() {
         discountAmount,
         feeAmount,
         pointsDiscount > 0 ? redeemMax : 0,
-        idempotencyKey
+        idempotencyKey,
+        cashierModeStatus?.active ? cashierModeStatus.delegation?.id ?? null : null
       )
       if (result.error) {
         if (result.retryable) {
@@ -296,7 +302,7 @@ export function CheckoutView() {
     }
   }
 
-  const canCheckout =
+  const paymentReady =
     method === "cash"
       ? paidAmount >= netTotal && paidAmount > 0
       : method === "qris"
@@ -304,6 +310,7 @@ export function CheckoutView() {
         : method === "dana"
           ? !!danaNumber
           : !!customer?.id
+  const canCheckout = cashierModeStatus !== undefined && paymentReady
 
   // Transaksi berhasil; jangan tampilkan layar kosong selama menunggu navigasi
   // ke halaman detail transaksi.
@@ -774,6 +781,9 @@ export function CheckoutView() {
           </span>
         </div>
         {error && <p className="text-destructive text-sm">{error}</p>}
+        {cashierModeStatus === undefined && (
+          <p className="text-xs text-ink-faint">Memeriksa konteks kasir...</p>
+        )}
         <Button
           onClick={handleCheckout}
           disabled={loading || !canCheckout}
