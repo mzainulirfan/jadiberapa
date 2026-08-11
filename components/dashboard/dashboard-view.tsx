@@ -20,6 +20,7 @@ import {
   AlertTriangle,
   CartAlt,
   Wallet,
+  CheckCircle,
 } from "@/components/ui/icons"
 import {
   DropdownMenu,
@@ -399,21 +400,30 @@ function DashboardContent({ data, role }: { data: BxDashboardSummary; role: User
         )}
       </div>
 
-      {data.lowStock.length > 0 && (
-        <div className="rounded-xl border border-accent-orange/20 bg-accent-orange-deep/5 p-4 lg:col-span-4">
-          <div className="mb-2 flex items-center justify-between">
-            <h2 className="flex items-center gap-1.5 text-sm font-semibold text-ink">
+      <div
+        className={cn(
+          "rounded-xl border border-hairline bg-canvas p-4 lg:col-span-4",
+          data.lowStock.length > 0 && "lg:border-accent-orange/20 lg:bg-accent-orange-deep/5"
+        )}
+      >
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold text-ink">
+            {data.lowStock.length > 0 ? (
               <AlertTriangle className="size-4 text-accent-orange" />
-              Stok Menipis
-            </h2>
-            <Link
-              href="/products"
-              className="flex items-center gap-0.5 text-xs font-medium text-primary"
-            >
-              Kelola
-              <ChevronRight className="size-3.5" />
-            </Link>
-          </div>
+            ) : (
+              <CheckCircle className="size-4 text-accent-green" />
+            )}
+            Stok Menipis
+          </h2>
+          <Link
+            href="/products"
+            className="flex items-center gap-0.5 text-xs font-medium text-primary"
+          >
+            Kelola
+            <ChevronRight className="size-3.5" />
+          </Link>
+        </div>
+        {data.lowStock.length > 0 ? (
           <div className="space-y-1.5">
             {data.lowStock.map((p) => (
               <div key={p.id} className="flex items-center justify-between text-xs">
@@ -424,8 +434,10 @@ function DashboardContent({ data, role }: { data: BxDashboardSummary; role: User
               </div>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <p className="text-xs text-ink-faint">Semua stok aman</p>
+        )}
+      </div>
 
       <div className="rounded-xl border border-hairline bg-canvas lg:col-span-12">
         <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
