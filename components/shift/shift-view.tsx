@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerClose,
-} from "@/components/ui/drawer"
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetClose,
+} from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
@@ -283,14 +283,14 @@ export function ShiftView() {
       </div>
 
       {/* Buka shift */}
-      <Drawer open={openDrawer} onOpenChange={setOpenDrawer} showSwipeHandle>
-        <DrawerContent className="rounded-t-xl">
-          <DrawerHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
-            <DrawerTitle>Buka Shift</DrawerTitle>
-            <DrawerClose className="rounded-full p-1.5 -mr-1.5 text-ink-muted active:bg-canvas-soft">
+      <Sheet open={openDrawer} onOpenChange={setOpenDrawer} showSwipeHandle>
+        <SheetContent>
+          <SheetHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
+            <SheetTitle>Buka Shift</SheetTitle>
+            <SheetClose className="rounded-full p-1.5 -mr-1.5 text-ink-muted active:bg-canvas-soft">
               <X className="size-4" />
-            </DrawerClose>
-          </DrawerHeader>
+            </SheetClose>
+          </SheetHeader>
           <div className="p-4 space-y-4">
             <div>
               <label htmlFor="opening" className="text-xs text-ink-muted mb-1 block">
@@ -322,18 +322,18 @@ export function ShiftView() {
               </Button>
             </div>
           </div>
-        </DrawerContent>
-      </Drawer>
+        </SheetContent>
+      </Sheet>
 
       {/* Tutup shift */}
-      <Drawer open={closeDrawer} onOpenChange={setCloseDrawer} showSwipeHandle>
-        <DrawerContent className="rounded-t-xl">
-          <DrawerHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
-            <DrawerTitle>Tutup Shift</DrawerTitle>
-            <DrawerClose className="rounded-full p-1.5 -mr-1.5 text-ink-muted active:bg-canvas-soft">
+      <Sheet open={closeDrawer} onOpenChange={setCloseDrawer} showSwipeHandle>
+        <SheetContent>
+          <SheetHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
+            <SheetTitle>Tutup Shift</SheetTitle>
+            <SheetClose className="rounded-full p-1.5 -mr-1.5 text-ink-muted active:bg-canvas-soft">
               <X className="size-4" />
-            </DrawerClose>
-          </DrawerHeader>
+            </SheetClose>
+          </SheetHeader>
           <div className="p-4 space-y-4">
             <div className="rounded-xl border border-hairline bg-canvas-soft p-3 text-sm space-y-1.5">
               <Row label="Saldo awal" value={fmtRp(active?.opening ?? 0)} />
@@ -404,8 +404,8 @@ export function ShiftView() {
               </Button>
             </div>
           </div>
-        </DrawerContent>
-      </Drawer>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

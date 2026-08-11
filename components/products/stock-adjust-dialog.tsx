@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react"
 import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerClose,
-} from "@/components/ui/drawer"
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetClose,
+} from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
@@ -108,17 +108,17 @@ export function StockAdjustDialog({ product, open, onOpenChange, onSaved, canAdj
   const delta = nextStock - product.stock
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} showSwipeHandle>
-      <DrawerContent className="rounded-t-xl">
-        <DrawerHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
+    <Sheet open={open} onOpenChange={onOpenChange} showSwipeHandle>
+      <SheetContent>
+        <SheetHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
           <div>
-            <DrawerTitle>Kelola Stok</DrawerTitle>
+            <SheetTitle>Kelola Stok</SheetTitle>
             <p className="truncate text-xs text-ink-muted">{product.name}</p>
           </div>
-          <DrawerClose className="rounded-full p-1.5 -mr-1.5 text-ink-muted active:bg-canvas-soft">
+          <SheetClose className="rounded-full p-1.5 -mr-1.5 text-ink-muted active:bg-canvas-soft">
             <X className="size-4" />
-          </DrawerClose>
-        </DrawerHeader>
+          </SheetClose>
+        </SheetHeader>
 
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
@@ -259,7 +259,7 @@ export function StockAdjustDialog({ product, open, onOpenChange, onSaved, canAdj
             </Button>
           </div>
         </div>
-      </DrawerContent>
-    </Drawer>
+      </SheetContent>
+    </Sheet>
   )
 }

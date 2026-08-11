@@ -6,12 +6,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerClose,
-} from "@/components/ui/drawer"
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetClose,
+} from "@/components/ui/sheet"
 import {
   Dialog,
   DialogContent,
@@ -241,14 +241,14 @@ function StrukSheet({
   bluetoothBusy: boolean
 }) {
   return (
-    <DrawerContent className="rounded-t-xl">
+    <SheetContent>
       <div className="flex min-h-0 flex-1 flex-col">
-        <DrawerHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
-          <DrawerTitle>Struk</DrawerTitle>
-          <DrawerClose className="rounded-full p-1.5 -mr-1.5 text-ink-muted active:bg-canvas-soft">
+        <SheetHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
+          <SheetTitle>Struk</SheetTitle>
+          <SheetClose className="rounded-full p-1.5 -mr-1.5 text-ink-muted active:bg-canvas-soft">
             <X className="size-4" />
-          </DrawerClose>
-        </DrawerHeader>
+          </SheetClose>
+        </SheetHeader>
 
         <div className="flex-1 overflow-y-auto p-5">
           <div className="mx-auto max-w-[280px] rounded-xl bg-canvas border border-hairline p-5 text-center">
@@ -400,7 +400,7 @@ function StrukSheet({
           </div>
         </div>
       </div>
-    </DrawerContent>
+    </SheetContent>
   )
 }
 
@@ -879,7 +879,7 @@ ${settings.receipt_footer?.trim() || "Terima kasih"}`
         </DialogContent>
       </Dialog>
 
-      <Drawer open={showStruk} onOpenChange={(o) => !o && setShowStruk(false)} showSwipeHandle>
+      <Sheet open={showStruk} onOpenChange={(o) => !o && setShowStruk(false)} showSwipeHandle>
         {tx && (
           <StrukSheet
             tx={tx}
@@ -892,7 +892,7 @@ ${settings.receipt_footer?.trim() || "Terima kasih"}`
             bluetoothBusy={btBusy}
           />
         )}
-      </Drawer>
+      </Sheet>
     </div>
   )
 }

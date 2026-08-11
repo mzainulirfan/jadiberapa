@@ -4,14 +4,14 @@ import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer"
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
 import { ChevronRight, Refresh, X } from "@/components/ui/icons"
 import {
   availableQuickActions,
@@ -151,19 +151,19 @@ function QuickActionsSheet({
   }
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} showSwipeHandle>
-      <DrawerContent className="rounded-t-xl">
-        <DrawerHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
+    <Sheet open={open} onOpenChange={onOpenChange} showSwipeHandle>
+      <SheetContent>
+        <SheetHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
           <div>
-            <DrawerTitle>Atur Aksi Cepat</DrawerTitle>
-            <DrawerDescription className="text-xs">
+            <SheetTitle>Atur Aksi Cepat</SheetTitle>
+            <SheetDescription className="text-xs">
               Pilih menu yang sering dibuka & atur urutannya.
-            </DrawerDescription>
+            </SheetDescription>
           </div>
-          <DrawerClose className="-mr-1.5 rounded-full p-1.5 text-ink-muted active:bg-canvas-soft">
+          <SheetClose className="-mr-1.5 rounded-full p-1.5 text-ink-muted active:bg-canvas-soft">
             <X className="size-5" />
-          </DrawerClose>
-        </DrawerHeader>
+          </SheetClose>
+        </SheetHeader>
 
         <div className="flex-1 space-y-2 overflow-y-auto p-4">
           {all.map((action) => {
@@ -183,15 +183,15 @@ function QuickActionsSheet({
           })}
         </div>
 
-        <DrawerFooter>
+        <SheetFooter>
           <Button variant="outline" onClick={reset}>
             <Refresh className="size-3.5" />
             Reset ke bawaan
           </Button>
           <Button onClick={save}>Simpan</Button>
-        </DrawerFooter>
-      </DrawerContent>
-    </Drawer>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   )
 }
 

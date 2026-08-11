@@ -2,13 +2,13 @@
 
 import { useEffect, useRef, useState } from "react"
 import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerClose,
-  DrawerFooter,
-} from "@/components/ui/drawer"
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetClose,
+  SheetFooter,
+} from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -140,16 +140,16 @@ export function BulkEditDialog({
   }
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} showSwipeHandle>
-      <DrawerContent className="rounded-t-xl">
-        <DrawerHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
+    <Sheet open={open} onOpenChange={onOpenChange} showSwipeHandle>
+      <SheetContent>
+        <SheetHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
           <div>
-            <DrawerTitle>Edit Barang Massal</DrawerTitle>
+            <SheetTitle>Edit Barang Massal</SheetTitle>
           </div>
-          <DrawerClose className="-mr-1.5 rounded-full p-1.5 text-ink-muted active:bg-canvas-soft">
+          <SheetClose className="-mr-1.5 rounded-full p-1.5 text-ink-muted active:bg-canvas-soft">
             <X className="size-5" />
-          </DrawerClose>
-        </DrawerHeader>
+          </SheetClose>
+        </SheetHeader>
 
         {preview === null ? (
           <>
@@ -254,7 +254,7 @@ export function BulkEditDialog({
                 ))}
               </div>
             </div>
-            <DrawerFooter>
+            <SheetFooter>
               <Button
                 className="w-full"
                 disabled={validRows.length === 0 || saving}
@@ -262,10 +262,10 @@ export function BulkEditDialog({
               >
                 {saving ? "Menyimpan..." : `Terapkan ${validRows.length} Perubahan`}
               </Button>
-            </DrawerFooter>
+            </SheetFooter>
           </>
         )}
-      </DrawerContent>
-    </Drawer>
+      </SheetContent>
+    </Sheet>
   )
 }

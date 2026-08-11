@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerClose,
-} from "@/components/ui/drawer"
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetClose,
+} from "@/components/ui/sheet"
 import {
   Dialog,
   DialogContent,
@@ -333,14 +333,14 @@ export function ExpensesView() {
         </>
       )}
 
-      <Drawer open={addOpen} onOpenChange={setAddOpen} showSwipeHandle>
-        <DrawerContent className="rounded-t-xl">
-          <DrawerHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
-            <DrawerTitle>Tambah Pengeluaran</DrawerTitle>
-            <DrawerClose className="rounded-full p-1.5 -mr-1.5 text-ink-muted active:bg-canvas-soft">
+      <Sheet open={addOpen} onOpenChange={setAddOpen} showSwipeHandle>
+        <SheetContent>
+          <SheetHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
+            <SheetTitle>Tambah Pengeluaran</SheetTitle>
+            <SheetClose className="rounded-full p-1.5 -mr-1.5 text-ink-muted active:bg-canvas-soft">
               <X className="size-4" />
-            </DrawerClose>
-          </DrawerHeader>
+            </SheetClose>
+          </SheetHeader>
 
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
@@ -405,8 +405,8 @@ export function ExpensesView() {
               </Button>
             </div>
           </div>
-        </DrawerContent>
-      </Drawer>
+        </SheetContent>
+      </Sheet>
 
       <Dialog open={deleteTarget !== null} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <DialogContent showCloseButton={false}>

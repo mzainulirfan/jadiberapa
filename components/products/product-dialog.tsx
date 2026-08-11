@@ -2,13 +2,13 @@
 
 import { useActionState, useCallback, useEffect, useRef, useState } from "react"
 import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-  DrawerClose,
-} from "@/components/ui/drawer"
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  SheetClose,
+} from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -271,7 +271,7 @@ export function ProductDialog({
 
   return (
     <>
-    <Drawer
+    <Sheet
       open={open}
       modal={!scanOpen && !photoOpen}
       disablePointerDismissal={scanOpen || photoOpen}
@@ -296,16 +296,16 @@ export function ProductDialog({
       }}
       showSwipeHandle
     >
-      {children ? <DrawerTrigger render={children as React.ReactElement} /> : null}
-      <DrawerContent className="rounded-t-xl">
-        <DrawerHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
-          <DrawerTitle>
+      {children ? <SheetTrigger render={children as React.ReactElement} /> : null}
+      <SheetContent>
+        <SheetHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
+          <SheetTitle>
             {product ? "Edit Barang" : "Tambah Barang"}
-          </DrawerTitle>
-          <DrawerClose className="rounded-full p-1.5 -mr-1.5 text-ink-muted active:bg-canvas-soft">
+          </SheetTitle>
+          <SheetClose className="rounded-full p-1.5 -mr-1.5 text-ink-muted active:bg-canvas-soft">
             <X className="size-4" />
-          </DrawerClose>
-        </DrawerHeader>
+          </SheetClose>
+        </SheetHeader>
 
         <form
           action={formAction}
@@ -647,8 +647,8 @@ export function ProductDialog({
             </Button>
           </div>
         </form>
-      </DrawerContent>
-    </Drawer>
+      </SheetContent>
+    </Sheet>
     <BarcodeScanner
       open={scanOpen}
       onOpenChange={setScanOpen}

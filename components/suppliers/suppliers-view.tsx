@@ -4,12 +4,12 @@ import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { toast } from "sonner"
 import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerClose,
-} from "@/components/ui/drawer"
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetClose,
+} from "@/components/ui/sheet"
 import {
   Dialog,
   DialogContent,
@@ -309,14 +309,14 @@ export function SuppliersView() {
         </>
       )}
 
-      <Drawer open={drawerOpen} onOpenChange={(o) => !saving && setDrawerOpen(o)} showSwipeHandle>
-        <DrawerContent className="rounded-t-xl">
-          <DrawerHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
-            <DrawerTitle>{editing ? "Ubah Supplier" : "Tambah Supplier"}</DrawerTitle>
-            <DrawerClose className="-mr-1.5 rounded-full p-1.5 text-ink-muted active:bg-canvas-soft">
+      <Sheet open={drawerOpen} onOpenChange={(o) => !saving && setDrawerOpen(o)} showSwipeHandle>
+        <SheetContent>
+          <SheetHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
+            <SheetTitle>{editing ? "Ubah Supplier" : "Tambah Supplier"}</SheetTitle>
+            <SheetClose className="-mr-1.5 rounded-full p-1.5 text-ink-muted active:bg-canvas-soft">
               <X className="size-4" />
-            </DrawerClose>
-          </DrawerHeader>
+            </SheetClose>
+          </SheetHeader>
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
               <div>
@@ -364,8 +364,8 @@ export function SuppliersView() {
               </Button>
             </div>
           </div>
-        </DrawerContent>
-      </Drawer>
+        </SheetContent>
+      </Sheet>
 
       <Dialog open={deleteTarget !== null} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <DialogContent showCloseButton={false}>

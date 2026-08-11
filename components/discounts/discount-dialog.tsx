@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-  DrawerClose,
-} from "@/components/ui/drawer"
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  SheetClose,
+} from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { getProducts, type BxDiscount } from "@/lib/db/queries"
@@ -152,17 +152,17 @@ export function DiscountDialog({
   const showPicker = type !== "global"
 
   return (
-    <Drawer open={open} modal onOpenChange={(v) => (v ? setOpen(true) : setOpen(false))} showSwipeHandle>
-      {children ? <DrawerTrigger render={children as React.ReactElement} /> : null}
-      <DrawerContent className="rounded-t-xl">
-        <DrawerHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
-          <DrawerTitle>
+    <Sheet open={open} modal onOpenChange={(v) => (v ? setOpen(true) : setOpen(false))} showSwipeHandle>
+      {children ? <SheetTrigger render={children as React.ReactElement} /> : null}
+      <SheetContent>
+        <SheetHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
+          <SheetTitle>
             {discount ? "Edit Diskon" : "Tambah Diskon"}
-          </DrawerTitle>
-          <DrawerClose className="rounded-full p-1.5 -mr-1.5 text-ink-muted active:bg-canvas-soft">
+          </SheetTitle>
+          <SheetClose className="rounded-full p-1.5 -mr-1.5 text-ink-muted active:bg-canvas-soft">
             <X className="size-4" />
-          </DrawerClose>
-        </DrawerHeader>
+          </SheetClose>
+        </SheetHeader>
 
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
@@ -311,7 +311,7 @@ export function DiscountDialog({
             </Button>
           </div>
         </div>
-      </DrawerContent>
-    </Drawer>
+      </SheetContent>
+    </Sheet>
   )
 }

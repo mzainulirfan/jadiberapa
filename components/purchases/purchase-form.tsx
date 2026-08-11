@@ -3,12 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerClose,
-} from "@/components/ui/drawer"
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetClose,
+} from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -147,14 +147,14 @@ export function PurchaseForm({
   }
 
   return (
-    <Drawer open={open} onOpenChange={(o) => !saving && onOpenChange(o)} showSwipeHandle>
-      <DrawerContent className="rounded-t-xl">
-        <DrawerHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
-          <DrawerTitle>Tambah Pembelian</DrawerTitle>
-          <DrawerClose className="-mr-1.5 rounded-full p-1.5 text-ink-muted active:bg-canvas-soft">
+    <Sheet open={open} onOpenChange={(o) => !saving && onOpenChange(o)} showSwipeHandle>
+      <SheetContent>
+        <SheetHeader className="flex flex-row items-center justify-between gap-2 border-b border-hairline text-left">
+          <SheetTitle>Tambah Pembelian</SheetTitle>
+          <SheetClose className="-mr-1.5 rounded-full p-1.5 text-ink-muted active:bg-canvas-soft">
             <X className="size-4" />
-          </DrawerClose>
-        </DrawerHeader>
+          </SheetClose>
+        </SheetHeader>
 
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
@@ -351,7 +351,7 @@ export function PurchaseForm({
             </Button>
           </div>
         </div>
-      </DrawerContent>
-    </Drawer>
+      </SheetContent>
+    </Sheet>
   )
 }
