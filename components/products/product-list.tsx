@@ -14,11 +14,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
-  Drawer,
-  DrawerContent,
-  DrawerClose,
-  DrawerTitle,
-} from "@/components/ui/drawer"
+  Sheet,
+  SheetContent,
+  SheetClose,
+  SheetTitle,
+} from "@/components/ui/sheet"
 import {
   Popover,
   PopoverContent,
@@ -421,14 +421,60 @@ export function ProductList() {
           {view === "grid" ? <List className="size-5" /> : <Grid className="size-5" />}
         </button>
         {canManage && (
-          <Popover open={actionsOpen} onOpenChange={setActionsOpen}>
-            <PopoverTrigger
-              className="flex size-9 shrink-0 items-center justify-center rounded-full border border-hairline bg-canvas text-ink transition-colors active:bg-canvas-soft"
-              aria-label="Aksi barang"
-              title="Aksi barang"
-            >
-              <DotsHorizontalRounded className="size-5" />
-            </PopoverTrigger>
+          <>
+            <div className="hidden items-center gap-1.5 lg:flex">
+              <Button
+                className="h-9 gap-1.5 rounded-full px-4"
+                onClick={() => setAddProductOpen(true)}
+              >
+                <Plus className="size-4" />
+                Tambah Barang
+              </Button>
+              <button
+                type="button"
+                onClick={() => setBulkOpen(true)}
+                title="Upload Massal"
+                aria-label="Upload massal"
+                className="flex size-9 shrink-0 items-center justify-center rounded-full border border-hairline bg-canvas text-ink-muted transition-colors active:bg-canvas"
+              >
+                <Upload className="size-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditOpen(true)}
+                title="Edit Massal"
+                aria-label="Edit massal"
+                className="flex size-9 shrink-0 items-center justify-center rounded-full border border-hairline bg-canvas text-ink-muted transition-colors active:bg-canvas"
+              >
+                <Pencil className="size-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
+                title={selectMode ? "Selesai Pilih" : "Pilih Banyak"}
+                aria-label={selectMode ? "Selesai pilih" : "Pilih banyak"}
+                className={cn(
+                  "flex size-9 shrink-0 items-center justify-center rounded-full border transition-colors",
+                  selectMode
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-hairline bg-canvas text-ink-muted active:bg-canvas"
+                )}
+              >
+                {selectMode ? (
+                  <Check className="size-5" />
+                ) : (
+                  <CheckCircle className="size-5" />
+                )}
+              </button>
+            </div>
+            <Popover open={actionsOpen} onOpenChange={setActionsOpen}>
+              <PopoverTrigger
+                className="flex size-9 shrink-0 items-center justify-center rounded-full border border-hairline bg-canvas text-ink transition-colors active:bg-canvas-soft lg:hidden"
+                aria-label="Aksi barang"
+                title="Aksi barang"
+              >
+                <DotsHorizontalRounded className="size-5" />
+              </PopoverTrigger>
             <PopoverContent align="end" className="w-52 p-1">
               <button
                 type="button"
@@ -481,6 +527,7 @@ export function ProductList() {
               </button>
             </PopoverContent>
           </Popover>
+          </>
         )}
       </div>
 
@@ -820,15 +867,15 @@ export function ProductList() {
         </Button>
       )}
 
-      <Drawer
+      <Sheet
         open={selected !== null}
         onOpenChange={(o) => !o && setSelected(null)}
         showSwipeHandle
       >
-        <DrawerContent className="rounded-t-xl">
+        <SheetContent>
           {selected && (
             <div className="flex min-h-0 flex-1 flex-col">
-              <DrawerTitle className="sr-only">{selected.name}</DrawerTitle>
+              <SheetTitle className="sr-only">{selected.name}</SheetTitle>
               <div className="relative shrink-0">
                 <div className="aspect-[16/9] w-full overflow-hidden bg-canvas-soft">
                   {selected.image_url ? (
@@ -844,9 +891,9 @@ export function ProductList() {
                     </div>
                   )}
                 </div>
-                <DrawerClose className="absolute right-3 top-3 rounded-full bg-black/35 p-2 text-white backdrop-blur-sm">
+                <SheetClose className="absolute right-3 top-3 rounded-full bg-black/35 p-2 text-white backdrop-blur-sm">
                   <X className="size-4" />
-                </DrawerClose>
+                </SheetClose>
               </div>
 
               <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
@@ -993,8 +1040,8 @@ export function ProductList() {
               </div>
             </div>
           )}
-        </DrawerContent>
-      </Drawer>
+        </SheetContent>
+      </Sheet>
 
       <Dialog
         open={deleteTarget !== null}
