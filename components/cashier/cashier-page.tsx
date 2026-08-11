@@ -461,6 +461,10 @@ export function CashierPage() {
         onOpenChange={setScanOpen}
         onDetect={handleScan}
         continuous
+        onSelesai={() => {
+          setScanOpen(false)
+          if (count > 0) router.push("/cart")
+        }}
         bottomContent={
           !isDesktop ? (
             <ScanCartPanel

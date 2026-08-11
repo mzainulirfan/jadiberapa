@@ -14,6 +14,8 @@ type Props = {
   continuous?: boolean
   /** Konten panel bawah saat mode split (mobile). Kamera di atas, panel ini di bawah. */
   bottomContent?: React.ReactNode
+  /** Aksi tombol "Selesai" di area kamera. Bila tidak diisi, cukup menutup scanner. */
+  onSelesai?: () => void
 }
 
 type ScanMode = "all" | "barcode" | "qr"
@@ -24,7 +26,7 @@ const SCAN_MODES: { id: ScanMode; label: string }[] = [
   { id: "qr", label: "QR" },
 ]
 
-export function BarcodeScanner({ open, onOpenChange, onDetect, continuous = false, bottomContent }: Props) {
+export function BarcodeScanner({ open, onOpenChange, onDetect, continuous = false, bottomContent, onSelesai }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const lastRef = useRef<{ code: string; time: number }>({ code: "", time: 0 })
   const confirmRef = useRef<{ code: string; count: number }>({ code: "", count: 0 })
@@ -300,7 +302,7 @@ export function BarcodeScanner({ open, onOpenChange, onDetect, continuous = fals
           )}
           <button
             type="button"
-            onClick={() => onOpenChange(false)}
+            onClick={() => (onSelesai ? onSelesai() : onOpenChange(false))}
             className="flex h-10 items-center rounded-full bg-white px-6 text-sm font-semibold text-ink active:bg-white/85"
           >
             Selesai
