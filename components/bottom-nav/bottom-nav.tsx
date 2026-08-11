@@ -2,22 +2,9 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import {
-  Dashboard as DashboardIcon,
-  CartAlt as CashierIcon,
-  Package as PackageIcon,
-  Receipt as ReceiptIcon,
-  DotsHorizontalRounded as MoreIcon,
-} from "@/components/ui/icons"
 import { cn } from "@/lib/utils"
 import { useCart } from "@/components/cart/cart-provider"
-
-const sideNav = [
-  { href: "/dashboard", label: "Dashboard", icon: DashboardIcon },
-  { href: "/products", label: "Barang", icon: PackageIcon },
-  { href: "/transactions", label: "Transaksi", icon: ReceiptIcon },
-  { href: "/more", label: "Lainnya", icon: MoreIcon },
-]
+import { MOBILE_TABS, NAV_CASHIER, type AppRoute } from "@/lib/navigation"
 
 function NavTab({
   href,
@@ -46,12 +33,16 @@ function NavTab({
 
 export function BottomNav() {
   const pathname = usePathname()
-  const cashierActive = pathname.startsWith("/cashier")
+  const cashierActive = pathname.startsWith(NAV_CASHIER.href)
   const { count } = useCart()
+
+  const leftTabs = MOBILE_TABS.slice(0, 2)
+  const rightTabs = MOBILE_TABS.slice(2)
+  const CashierIcon = NAV_CASHIER.icon
 
   return (
     <nav className="grid grid-cols-5 items-center border-t border-hairline bg-canvas px-2 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))]">
-      {sideNav.slice(0, 2).map((item) => (
+      {leftTabs.map((item: AppRoute) => (
         <NavTab
           key={item.href}
           href={item.href}
@@ -63,9 +54,9 @@ export function BottomNav() {
 
       <div className="flex items-center justify-center">
         <Link
-          href="/cashier"
-          aria-label="Kasir"
-className={cn(
+          href={NAV_CASHIER.href}
+          aria-label={NAV_CASHIER.label}
+          className={cn(
             "relative flex size-13 items-center justify-center rounded-full text-primary-foreground shadow-sm transition-all active:scale-95",
             cashierActive ? "bg-primary-active" : "bg-primary"
           )}
@@ -79,7 +70,7 @@ className={cn(
         </Link>
       </div>
 
-      {sideNav.slice(2).map((item) => (
+      {rightTabs.map((item: AppRoute) => (
         <NavTab
           key={item.href}
           href={item.href}
@@ -91,4 +82,3 @@ className={cn(
     </nav>
   )
 }
-

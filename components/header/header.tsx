@@ -4,44 +4,12 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useCart } from "@/components/cart/cart-provider"
 import { ShoppingBag, ChevronLeft } from "@/components/ui/icons"
-
-type RouteMeta = { title: string; back?: string; cart?: boolean }
-
-const ROUTES: Record<string, RouteMeta> = {
-  "/dashboard": { title: "Dashboard" },
-  "/cashier": { title: "Kasir", cart: true },
-  "/products": { title: "Barang" },
-  "/transactions": { title: "Transaksi" },
-  "/more": { title: "Lainnya" },
-  "/customers": { title: "Pembeli", back: "/more" },
-  "/categories": { title: "Kategori", back: "/more" },
-  "/discounts": { title: "Diskon", back: "/more" },
-  "/reports": { title: "Laporan", back: "/more" },
-  "/debts": { title: "Utang", back: "/more" },
-  "/expenses": { title: "Pengeluaran", back: "/more" },
-  "/suppliers": { title: "Supplier", back: "/more" },
-  "/purchases": { title: "Pembelian", back: "/more" },
-  "/shift": { title: "Shift Kasir", back: "/more" },
-  "/settings": { title: "Pengaturan", back: "/more" },
-  "/staff": { title: "Kelola Kasir", back: "/more" },
-  "/cart": { title: "Keranjang", back: "/cashier" },
-  "/checkout": { title: "Pembayaran", back: "/cart" },
-}
-
-function resolveMeta(pathname: string): RouteMeta {
-  if (pathname.startsWith("/transactions/") && pathname !== "/transactions") {
-    return { title: "Detail Transaksi", back: "/transactions" }
-  }
-  if (pathname.startsWith("/purchases/") && pathname !== "/purchases") {
-    return { title: "Detail Pembelian", back: "/purchases" }
-  }
-  return ROUTES[pathname] ?? { title: "Saberaha" }
-}
+import { resolveRoute } from "@/lib/navigation"
 
 export function Header() {
   const pathname = usePathname()
   const { count } = useCart()
-  const meta = resolveMeta(pathname)
+  const meta = resolveRoute(pathname)
 
   return (
     <header className="flex min-h-[3.25rem] items-center gap-1 border-b border-hairline bg-canvas px-3 pb-2.5 pt-[max(0.625rem,env(safe-area-inset-top))]">
@@ -56,10 +24,10 @@ export function Header() {
       )}
 
       <h1 className="flex-1 truncate text-[17px] font-bold tracking-[-0.3px] text-ink">
-        {meta.title}
+        {meta.label}
       </h1>
 
-      {meta.cart && (
+      {meta.cartBadge && (
         <Link
           href="/cart"
           className="relative -mr-1 flex size-9 items-center justify-center rounded-full bg-black/[0.05] text-ink transition-transform duration-150 active:scale-90"

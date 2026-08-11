@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getProducts, getCategories, resolveDiscountAmount, getProductVariants, getProductUnits } from "@/lib/db/queries"
 import { useCart } from "@/components/cart/cart-provider"
+import { CartPanel } from "@/components/cart/cart-panel"
+import { useMediaQuery } from "@/lib/hooks/use-media-query"
 import { ProductCard, ProductRow } from "./product-card"
 import { BarcodeScanner } from "./barcode-scanner"
 import { ProductDialog } from "@/components/products/product-dialog"
@@ -47,6 +49,13 @@ export function CashierPage() {
   const popKeyRef = useRef(0)
   const { items, addItem, count, netTotal, discounts } = useCart()
   const router = useRouter()
+  const searchRef = useRef<HTMLInputElement>(null)
+  const isDesktop = useMediaQuery("(min-width: 1024px)")
+
+  // Fokus pencarian saat desktop: membantu scanner barcode USB bekerja langsung.
+  useEffect(() => {
+    if (isDesktop) searchRef.current?.focus()
+  }, [isDesktop])
 
   const discOf = (p: BxProduct) => resolveDiscountAmount(p.id, p.price_sell, discounts)
 
@@ -232,7 +241,7 @@ export function CashierPage() {
         ))}
       </div>
     ) : (
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-[repeat(auto-fill,minmax(150px,1fr))] lg:gap-3">
         {products.map((p) => (
           <ProductCard
             key={p.id}
@@ -268,7 +277,7 @@ export function CashierPage() {
         ))}
       </div>
     ) : (
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-[repeat(auto-fill,minmax(150px,1fr))] lg:gap-3">
         {[1, 2, 3, 4].map((i) => (
           <div key={i} className="overflow-hidden rounded-xl border border-hairline bg-canvas">
             <Skeleton className="aspect-[4/3] w-full rounded-none" />
@@ -283,13 +292,15 @@ export function CashierPage() {
     )
 
   return (
-    <div className="relative flex h-full flex-col">
+    <div className="flex h-full">
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="p-4 pb-3">
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-ink-faint" />
             <Input
               id="cashier-search"
+              ref={searchRef}
               placeholder="Cari / scan barcode..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -401,7 +412,7 @@ export function CashierPage() {
         )}
       </div>
 
-      <div className={cn("flex-1 overflow-y-auto p-4 pt-2", count > 0 && "pb-28")}>
+      <div className={cn("flex-1 overflow-y-auto p-4 pt-2", count > 0 && "pb-28 lg:pb-6")}>
         {isIdle ? (
           <div className="space-y-3">
             {loading ? (
@@ -425,7 +436,7 @@ export function CashierPage() {
       </div>
 
       {count > 0 && (
-        <div className="absolute inset-x-0 bottom-0 z-10 rounded-t-2xl border-t border-hairline bg-canvas px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-6px_24px_rgba(0,0,0,0.08)]">
+        <div className="absolute inset-x-0 bottom-0 z-10 rounded-t-2xl border-t border-hairline bg-canvas px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-6px_24px_rgba(0,0,0,0.08)] lg:hidden">
           <button
             type="button"
             onClick={() => router.push("/cart")}
@@ -439,6 +450,10 @@ export function CashierPage() {
           </button>
         </div>
       )}
+
+      </div>
+
+      <CartPanel className="hidden w-[380px] shrink-0 lg:flex xl:w-[420px]" />
 
       <BarcodeScanner
         open={scanOpen}

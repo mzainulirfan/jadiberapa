@@ -14,9 +14,11 @@ const RESISTANCE = 0.5 // hambatan agar tarikan terasa natural
 export function PullToRefresh({
   children,
   className,
+  disabled,
 }: {
   children: React.ReactNode
   className?: string
+  disabled?: boolean
 }) {
   const scrollRef = React.useRef<HTMLDivElement>(null)
   const [pull, setPull] = React.useState(0)
@@ -38,6 +40,8 @@ export function PullToRefresh({
   }, [])
 
   React.useEffect(() => {
+    // Pada desktop, scroller memakai scroll biasa dan gesture ditarik mati.
+    if (disabled) return
     const el = scrollRef.current
     if (!el) return
 
@@ -119,7 +123,7 @@ export function PullToRefresh({
       el.removeEventListener("touchend", onEnd)
       el.removeEventListener("touchcancel", onEnd)
     }
-  }, [applyPull])
+  }, [applyPull, disabled])
 
   const eased = !dragging
   const progress = Math.min(1, pull / THRESHOLD)
