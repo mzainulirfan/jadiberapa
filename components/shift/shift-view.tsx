@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
 import { Skeleton } from "@/components/ui/skeleton"
+import { DataTable } from "@/components/ui/data-table"
 import {
   getActiveShift,
   getShifts,
@@ -209,7 +210,56 @@ export function ShiftView() {
         {history.length === 0 ? (
           <p className="py-8 text-center text-sm text-ink-faint">Belum ada shift yang ditutup</p>
         ) : (
-          <div className="space-y-2">
+          <>
+            <DataTable
+              className="mb-2"
+              rowKey={(s) => s.id}
+              rows={history}
+              columns={[
+                {
+                  key: "opened",
+                  label: "Buka",
+                  render: (s) => <span className="text-sm font-medium text-ink">{fmtDate(s.opened_at)}</span>,
+                },
+                {
+                  key: "closed",
+                  label: "Tutup",
+                  render: (s) => (
+                    <span className="text-xs text-ink-muted">{s.closed_at ? fmtDate(s.closed_at) : "-"}</span>
+                  ),
+                },
+                {
+                  key: "opening",
+                  label: "Saldo Awal",
+                  align: "right",
+                  render: (s) => <span className="text-sm text-ink-muted">{fmtRp(s.opening)}</span>,
+                },
+                {
+                  key: "expected",
+                  label: "Seharusnya",
+                  align: "right",
+                  render: (s) => <span className="text-sm text-ink-muted">{fmtRp(s.expected ?? 0)}</span>,
+                },
+                {
+                  key: "closing",
+                  label: "Fisik",
+                  align: "right",
+                  render: (s) => <span className="text-sm text-ink-muted">{fmtRp(s.closing ?? 0)}</span>,
+                },
+                {
+                  key: "diff",
+                  label: "Selisih",
+                  align: "right",
+                  render: (s) => <DiffBadge diff={s.diff ?? 0} />,
+                },
+                {
+                  key: "note",
+                  label: "Catatan",
+                  render: (s) => <span className="truncate text-xs text-ink-muted">{s.note || "-"}</span>,
+                },
+              ]}
+            />
+            <div className="space-y-2 lg:hidden">
             {history.map((s) => (
               <div key={s.id} className="rounded-xl border border-hairline bg-canvas p-3.5">
                 <div className="flex items-center justify-between">
@@ -227,7 +277,8 @@ export function ShiftView() {
                 {s.note && <p className="mt-2 text-xs text-ink-muted">Catatan: {s.note}</p>}
               </div>
             ))}
-          </div>
+            </div>
+            </>
         )}
       </div>
 

@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
 import { Skeleton } from "@/components/ui/skeleton"
+import { DataTable } from "@/components/ui/data-table"
 import { getExpenses, type BxExpense } from "@/lib/db/queries"
 import { createExpense, deleteExpense } from "@/lib/actions/expenses"
 import { Plus, Trash, ChevronDown, Dollar, X } from "@/components/ui/icons"
@@ -253,7 +254,60 @@ export function ExpensesView() {
           <p className="mt-1 text-xs text-ink-faint">Catat biaya operasional agar laba bersih akurat.</p>
         </div>
       ) : (
-        <div className="divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-canvas">
+        <>
+          <DataTable
+            className="mb-2"
+            rowKey={(e) => e.id}
+            rows={expenses}
+            columns={[
+              {
+                key: "category",
+                label: "Kategori",
+                render: (e) => (
+                  <span className="flex items-center gap-2 font-medium text-ink">
+                    <span className={cn("size-2.5 shrink-0 rounded-full", categoryColor(e.category))} />
+                    {e.category}
+                  </span>
+                ),
+              },
+              {
+                key: "note",
+                label: "Catatan",
+                render: (e) => <span className="text-xs text-ink-muted">{e.note || "-"}</span>,
+              },
+              {
+                key: "date",
+                label: "Tanggal",
+                render: (e) => (
+                  <span className="text-xs text-ink-muted">
+                    {format(new Date(e.created_at), "dd MMM yyyy, HH:mm", { locale: localeId })}
+                  </span>
+                ),
+              },
+              {
+                key: "amount",
+                label: "Nominal",
+                align: "right",
+                render: (e) => <span className="text-sm font-bold text-ink">{fmtRp(e.amount)}</span>,
+              },
+              {
+                key: "actions",
+                label: "",
+                align: "right",
+                render: (e) => (
+                  <button
+                    type="button"
+                    onClick={() => setDeleteTarget(e)}
+                    aria-label="Hapus pengeluaran"
+                    className="flex size-8 items-center justify-center rounded-lg text-ink-muted hover:bg-canvas-soft"
+                  >
+                    <Trash className="size-4" />
+                  </button>
+                ),
+              },
+            ]}
+          />
+          <div className="divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-canvas lg:hidden">
           {expenses.map((e) => (
             <div key={e.id} className="flex items-center gap-3 p-3.5">
               <span className={cn("size-2.5 shrink-0 rounded-full", categoryColor(e.category))} />
@@ -275,7 +329,8 @@ export function ExpensesView() {
               </button>
             </div>
           ))}
-        </div>
+          </div>
+        </>
       )}
 
       <Drawer open={addOpen} onOpenChange={setAddOpen} showSwipeHandle>

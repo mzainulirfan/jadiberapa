@@ -74,6 +74,20 @@ const fmtShort = (n: number) => {
   return `${sign}${a}`
 }
 
+const dateTimeFormat = new Intl.DateTimeFormat("id-ID", {
+  day: "numeric",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+})
+
+const PAYMENT_LABEL: Record<string, string> = {
+  cash: "Tunai",
+  qris: "QRIS",
+  dana: "DANA",
+  utang: "Utang",
+}
+
 const PERIODS: { key: BxPeriod; label: string }[] = [
   { key: "today", label: "Hari Ini" },
   { key: "7d", label: "7 Hari" },
@@ -275,8 +289,8 @@ function DashboardContent({ data, role }: { data: BxDashboardSummary; role: User
   const many = data.trend.length > 7
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-2xl bg-ink p-4 text-white">
+    <div className="space-y-4 lg:grid lg:grid-cols-12 lg:items-start lg:gap-4 lg:space-y-0">
+      <div className="rounded-2xl bg-ink p-4 text-white lg:col-span-8">
         <div className="flex items-center justify-between gap-2">
           <p className="min-w-0 truncate text-sm font-medium text-white/60">
             Penjualan · {PERIOD_TITLE[period]}
@@ -303,9 +317,11 @@ function DashboardContent({ data, role }: { data: BxDashboardSummary; role: User
         </div>
       </div>
 
-      <QuickActions role={role} />
+      <div className="lg:col-span-4">
+        <QuickActions role={role} />
+      </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-2 lg:col-span-12 lg:grid-cols-4 lg:gap-3">
         <StatCard
           label="Laba kotor"
           value={fmtRp(data.grossProfit.value)}
@@ -335,7 +351,7 @@ function DashboardContent({ data, role }: { data: BxDashboardSummary; role: User
         />
       </div>
 
-      <div className="rounded-xl border border-hairline bg-canvas p-4">
+      <div className="rounded-xl border border-hairline bg-canvas p-4 lg:col-span-8">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-ink">Grafik Penjualan</h2>
           {!allZero && (
@@ -384,7 +400,7 @@ function DashboardContent({ data, role }: { data: BxDashboardSummary; role: User
       </div>
 
       {data.lowStock.length > 0 && (
-        <div className="rounded-xl border border-accent-orange/20 bg-accent-orange-deep/5 p-4">
+        <div className="rounded-xl border border-accent-orange/20 bg-accent-orange-deep/5 p-4 lg:col-span-4">
           <div className="mb-2 flex items-center justify-between">
             <h2 className="flex items-center gap-1.5 text-sm font-semibold text-ink">
               <AlertTriangle className="size-4 text-accent-orange" />
@@ -411,7 +427,7 @@ function DashboardContent({ data, role }: { data: BxDashboardSummary; role: User
         </div>
       )}
 
-      <div className="rounded-xl border border-hairline bg-canvas">
+      <div className="rounded-xl border border-hairline bg-canvas lg:col-span-12">
         <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
           <h2 className="text-sm font-semibold text-ink">Transaksi Terbaru</h2>
           <Link
@@ -425,36 +441,77 @@ function DashboardContent({ data, role }: { data: BxDashboardSummary; role: User
         {data.recent.length === 0 ? (
           <p className="px-4 pb-4 text-xs text-ink-faint">Belum ada transaksi</p>
         ) : (
-          <div>
-            {data.recent.map((tx) => (
-              <Link
-                key={tx.id}
-                href={`/transactions/${tx.id}`}
-                className="flex items-center justify-between border-t border-hairline px-4 py-3"
-              >
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-canvas-soft text-ink-muted">
-                    <Receipt className="size-4" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="font-mono text-xs font-medium text-ink">
-                      {tx.number ?? tx.id.slice(0, 8).toUpperCase()}
-                    </p>
-                    <p className="text-xs text-ink-muted">
-                      {tx.customers?.name
-                        ? `${tx.customers.name} · ${timeFormat.format(new Date(tx.created_at))}`
-                        : timeFormat.format(new Date(tx.created_at))}
-                    </p>
+          <>
+            <div className="hidden overflow-x-auto lg:block">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-hairline text-left text-xs font-semibold text-ink-muted">
+                    <th className="px-4 py-2.5">Nota</th>
+                    <th className="px-4 py-2.5">Waktu</th>
+                    <th className="px-4 py-2.5">Pembeli</th>
+                    <th className="px-4 py-2.5">Metode</th>
+                    <th className="px-4 py-2.5 text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.recent.map((tx) => (
+                    <tr key={tx.id} className="border-b border-hairline last:border-0 hover:bg-canvas-soft">
+                      <td className="px-4 py-2.5">
+                        <Link
+                          href={`/transactions/${tx.id}`}
+                          className="block font-mono text-xs font-medium text-ink"
+                        >
+                          {tx.number ?? tx.id.slice(0, 8).toUpperCase()}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-2.5 text-xs text-ink-muted">
+                        {dateTimeFormat.format(new Date(tx.created_at))}
+                      </td>
+                      <td className="px-4 py-2.5 text-xs text-ink-muted">
+                        {tx.customers?.name ?? "Umum"}
+                      </td>
+                      <td className="px-4 py-2.5 text-xs text-ink-muted">
+                        {PAYMENT_LABEL[tx.payment_method] ?? tx.payment_method}
+                      </td>
+                      <td className="px-4 py-2.5 text-right text-sm font-semibold text-ink">
+                        {fmtRp(tx.total)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="lg:hidden">
+              {data.recent.map((tx) => (
+                <Link
+                  key={tx.id}
+                  href={`/transactions/${tx.id}`}
+                  className="flex items-center justify-between border-t border-hairline px-4 py-3"
+                >
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-canvas-soft text-ink-muted">
+                      <Receipt className="size-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-mono text-xs font-medium text-ink">
+                        {tx.number ?? tx.id.slice(0, 8).toUpperCase()}
+                      </p>
+                      <p className="text-xs text-ink-muted">
+                        {tx.customers?.name
+                          ? `${tx.customers.name} · ${timeFormat.format(new Date(tx.created_at))}`
+                          : timeFormat.format(new Date(tx.created_at))}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <p className="text-sm font-semibold text-ink">{fmtRp(tx.total)}</p>
-              </Link>
-            ))}
-          </div>
+                  <p className="text-sm font-semibold text-ink">{fmtRp(tx.total)}</p>
+                </Link>
+              ))}
+            </div>
+          </>
         )}
       </div>
 
-      <div className="rounded-xl border border-hairline bg-canvas p-4">
+      <div className="rounded-xl border border-hairline bg-canvas p-4 lg:col-span-12">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-ink">Produk Terlaris</h2>
           <Link
@@ -468,7 +525,7 @@ function DashboardContent({ data, role }: { data: BxDashboardSummary; role: User
         {data.topProducts.length === 0 ? (
           <p className="text-xs text-ink-faint">Belum ada data</p>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-x-6 lg:space-y-0">
             {data.topProducts.map((p, i) => {
               const maxQty = Math.max(...data.topProducts.map((x) => x.qty), 1)
               return (

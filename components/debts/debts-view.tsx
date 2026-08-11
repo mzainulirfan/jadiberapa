@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { getDebts, getSettings, type BxDebt } from "@/lib/db/queries"
 import { Skeleton } from "@/components/ui/skeleton"
+import { DataTable } from "@/components/ui/data-table"
 import { Wallet, ChevronRight, Whatsapp } from "@/components/ui/icons"
 
 const fmtRp = (n: number) => `Rp${n.toLocaleString("id-ID")}`
@@ -31,6 +33,7 @@ type Group = {
 }
 
 export function DebtsView() {
+  const router = useRouter()
   const [debts, setDebts] = useState<BxDebt[] | null>(null)
   const [storeName, setStoreName] = useState("Toko")
 
@@ -110,6 +113,10 @@ export function DebtsView() {
     )
   }
 
+  const rows = groups.flatMap((g) =>
+    g.debts.map((d) => ({ g, d, remaining: Math.max(0, d.total - d.paid_amount) }))
+  )
+
   return (
     <div className="space-y-4 p-4">
       <div className="rounded-xl border border-hairline bg-canvas p-4">
@@ -136,6 +143,51 @@ export function DebtsView() {
         </p>
       </div>
 
+      <DataTable
+        className="mb-1"
+        rowKey={(r) => r.d.id}
+        rows={rows}
+        onRowClick={(r) => router.push(`/transactions/${r.d.id}`)}
+        columns={[
+          {
+            key: "customer",
+            label: "Pembeli",
+            render: (r) => <span className="font-medium text-ink">{r.g.name}</span>,
+          },
+          {
+            key: "number",
+            label: "Nota",
+            render: (r) => (
+              <span className="font-mono text-sm text-ink-muted">
+                {r.d.number ?? r.d.id.slice(0, 8).toUpperCase()}
+              </span>
+            ),
+          },
+          {
+            key: "date",
+            label: "Tanggal",
+            render: (r) => <span className="text-xs text-ink-muted">{fmtDate(r.d.created_at)}</span>,
+          },
+          {
+            key: "paid",
+            label: "Dibayar",
+            align: "right",
+            render: (r) => (
+              <span className="text-xs text-ink-muted">
+                {r.d.paid_amount > 0 ? fmtRp(r.d.paid_amount) : "-"}
+              </span>
+            ),
+          },
+          {
+            key: "remaining",
+            label: "Sisa",
+            align: "right",
+            render: (r) => <span className="text-sm font-semibold text-destructive">{fmtRp(r.remaining)}</span>,
+          },
+        ]}
+      />
+
+      <div className="lg:hidden">
       {groups.map((g) => {
         const gTotal = g.debts.reduce((s, d) => s + d.total, 0)
         const gPaidPct = gTotal > 0 ? ((gTotal - g.remaining) / gTotal) * 100 : 0
@@ -195,6 +247,7 @@ export function DebtsView() {
           </div>
         )
       })}
+      </div>
     </div>
   )
 }

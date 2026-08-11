@@ -475,8 +475,9 @@ function Content({
 
   return (
     <>
+      <div className="space-y-4 lg:grid lg:grid-cols-12 lg:items-start lg:gap-4 lg:space-y-0">
       {/* Hero — kartu terang beraksen */}
-      <div className="rounded-2xl border border-hairline bg-canvas p-4">
+      <div className="rounded-2xl border border-hairline bg-canvas p-4 lg:col-span-8">
         <div className="flex items-center gap-2">
           <span className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
             <Wallet className="size-4" />
@@ -504,8 +505,9 @@ function Content({
         </div>
       </div>
 
-      {/* Statistik sekunder */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="space-y-4 lg:col-span-4">
+        {/* Statistik sekunder */}
+        <div className="grid grid-cols-3 gap-2">
         <StatCard label="Transaksi" value={String(data.count)} />
         <StatCard label="Barang Terjual" value={String(data.totalItems)} />
         <StatCard label="Rata-rata/Transaksi" value={fmtRp(avg)} />
@@ -523,12 +525,15 @@ function Content({
           <p className="mt-1 truncate text-sm font-bold text-destructive">{fmtRp(data.purchases.outstandingDebt)}</p>
           <p className="mt-0.5 text-[11px] text-ink-faint">Belum lunas saat ini</p>
         </div>
+        </div>
+      </div>
       </div>
 
       {data.count === 0 ? (
         <p className="py-10 text-center text-sm text-ink-faint">Belum ada transaksi pada periode ini</p>
       ) : (
         <>
+          <div className="space-y-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 lg:space-y-0">
           {/* Tren omzet */}
           {trend.length > 0 && (
             <div className="rounded-xl border border-hairline bg-canvas p-3">
@@ -573,6 +578,7 @@ function Content({
                 )
               })}
             </div>
+          </div>
           </div>
 
           {/* Produk terlaris */}

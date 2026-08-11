@@ -7,6 +7,7 @@ import { QRCodeSVG } from "qrcode.react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
+import { DataTable } from "@/components/ui/data-table"
 import {
   Dialog,
   DialogContent,
@@ -308,7 +309,107 @@ export function StaffView() {
       ) : members.length === 0 ? (
         <p className="py-8 text-center text-sm text-ink-faint">Belum ada kasir</p>
       ) : (
-        <div className="space-y-2">
+        <>
+          <DataTable
+            className="mb-2"
+            rowKey={(m) => m.user_id}
+            rows={members}
+            columns={[
+              {
+                key: "user",
+                label: "Kasir",
+                render: (m) => (
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-ink text-sm font-bold text-white">
+                      {m.username.charAt(0).toUpperCase()}
+                    </span>
+                    <span className="font-medium text-ink">@{m.username}</span>
+                  </div>
+                ),
+              },
+              {
+                key: "status",
+                label: "Status",
+                render: (m) =>
+                  m.role === "owner" ? (
+                    <span className="rounded-full bg-canvas-soft px-2 py-0.5 text-[11px] text-ink-muted">
+                      Pemilik
+                    </span>
+                  ) : m.approved ? (
+                    <span className="rounded-full bg-canvas-soft px-2 py-0.5 text-[11px] text-ink-muted">
+                      Kasir
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                      Menunggu persetujuan
+                    </span>
+                  ),
+              },
+              {
+                key: "actions",
+                label: "",
+                align: "right",
+                render: (m) =>
+                  m.role !== "owner" ? (
+                    m.approved ? (
+                      <div className="flex justify-end gap-1">
+                        <button
+                          onClick={() => {
+                            setDelegateTarget(m)
+                            setOwnerPasscode("")
+                            setDelegateError(null)
+                          }}
+                          aria-label={`Masuk sebagai ${m.username}`}
+                          title="Masuk sebagai kasir"
+                          className="flex size-8 items-center justify-center rounded-lg text-primary hover:bg-primary/10"
+                        >
+                          <Eye className="size-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setResetTarget(m)
+                            setResetPasscode("")
+                            setResetError(null)
+                          }}
+                          aria-label={`Reset passcode ${m.username}`}
+                          className="flex size-8 items-center justify-center rounded-lg text-ink-muted hover:bg-canvas-soft"
+                        >
+                          <KeyRound className="size-4" />
+                        </button>
+                        <button
+                          onClick={() => setRemoveTarget(m)}
+                          aria-label={`Hapus ${m.username}`}
+                          className="flex size-8 items-center justify-center rounded-lg text-ink-muted hover:bg-canvas-soft"
+                        >
+                          <Trash className="size-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex justify-end gap-1">
+                        <button
+                          onClick={() => handleApprove(m)}
+                          disabled={approvingId === m.user_id}
+                          aria-label={`Setujui ${m.username}`}
+                          className="flex size-8 items-center justify-center rounded-lg text-primary hover:bg-primary/10 disabled:opacity-50"
+                        >
+                          <Check className="size-4" />
+                        </button>
+                        <button
+                          onClick={() => setRemoveTarget(m)}
+                          aria-label={`Tolak ${m.username}`}
+                          className="flex size-8 items-center justify-center rounded-lg text-ink-muted hover:bg-canvas-soft"
+                        >
+                          <Trash className="size-4" />
+                        </button>
+                      </div>
+                    )
+                  ) : (
+                    <span className="text-xs text-ink-faint">-</span>
+                  ),
+              },
+            ]}
+          />
+          <div className="space-y-2 lg:hidden">
           {members.map((m) => (
             <div
               key={m.user_id}
@@ -388,7 +489,8 @@ export function StaffView() {
                 ))}
             </div>
           ))}
-        </div>
+          </div>
+        </>
       )}
 
       <Dialog open={removeTarget !== null} onOpenChange={(o) => !o && setRemoveTarget(null)}>

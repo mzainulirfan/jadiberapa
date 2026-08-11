@@ -565,7 +565,7 @@ export function ProductList() {
 
       {loading ? (
         view === "grid" ? (
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-[repeat(auto-fill,minmax(170px,1fr))] lg:gap-3">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="overflow-hidden rounded-xl border border-hairline bg-canvas">
                 <Skeleton className="aspect-[4/3] w-full rounded-none" />
@@ -627,7 +627,7 @@ export function ProductList() {
           )}
         </div>
       ) : view === "grid" ? (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-[repeat(auto-fill,minmax(170px,1fr))] lg:gap-3">
           {products.map((p) => {
             const disc = discountOf(p)
             const net = p.price_sell - disc

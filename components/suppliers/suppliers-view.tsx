@@ -21,6 +21,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
+import { DataTable } from "@/components/ui/data-table"
 import { getSuppliers, getSupplierDebts, invalidateSuppliers, type BxSupplier } from "@/lib/db/queries"
 import { createSupplier, updateSupplier, deleteSupplier } from "@/lib/actions/purchases"
 import { Plus, Search, Trash, Pencil, X, Store } from "@/components/ui/icons"
@@ -187,7 +188,80 @@ export function SuppliersView() {
           )}
         </div>
       ) : (
-        <div className="divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-canvas">
+        <>
+          <DataTable
+            className="mb-2"
+            rowKey={(s) => s.id}
+            rows={filtered}
+            columns={[
+              {
+                key: "name",
+                label: "Supplier",
+                render: (s) => (
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-canvas-soft text-sm font-bold text-ink-muted">
+                      {s.name.charAt(0).toUpperCase()}
+                    </span>
+                    <span className="font-medium text-ink">{s.name}</span>
+                  </div>
+                ),
+              },
+              {
+                key: "contact",
+                label: "Kontak",
+                render: (s) => (
+                  <span className="text-xs text-ink-muted">
+                    {s.phone ? s.phone : s.note ? s.note : "Tidak ada kontak"}
+                  </span>
+                ),
+              },
+              {
+                key: "debt",
+                label: "Utang",
+                align: "right",
+                render: (s) => {
+                  const debt = debtBySupplier.get(s.id) ?? 0
+                  return debt > 0 ? (
+                    <span className="text-sm font-semibold text-destructive">{fmtRp(debt)}</span>
+                  ) : (
+                    <span className="text-xs text-ink-faint">-</span>
+                  )
+                },
+              },
+              {
+                key: "actions",
+                label: "",
+                align: "right",
+                render: (s) => (
+                  <div className="flex justify-end gap-1">
+                    <Link
+                      href={`/purchases?supplier=${s.id}`}
+                      className="shrink-0 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
+                    >
+                      Beli
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => openEdit(s)}
+                      aria-label="Ubah supplier"
+                      className="shrink-0 rounded-lg p-1.5 text-ink-muted hover:bg-canvas-soft"
+                    >
+                      <Pencil className="size-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteTarget(s)}
+                      aria-label="Hapus supplier"
+                      className="shrink-0 rounded-lg p-1.5 text-ink-muted hover:bg-canvas-soft"
+                    >
+                      <Trash className="size-4" />
+                    </button>
+                  </div>
+                ),
+              },
+            ]}
+          />
+          <div className="divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-canvas lg:hidden">
           {filtered.map((s) => {
             const debt = debtBySupplier.get(s.id) ?? 0
             return (
@@ -229,7 +303,8 @@ export function SuppliersView() {
               </div>
             )
           })}
-        </div>
+          </div>
+        </>
       )}
 
       <Drawer open={drawerOpen} onOpenChange={(o) => !saving && setDrawerOpen(o)} showSwipeHandle>

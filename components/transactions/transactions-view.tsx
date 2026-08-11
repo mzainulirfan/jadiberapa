@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -58,6 +59,13 @@ function dateFromFor(range: RangeKey): string | null {
 }
 
 const fmtRp = (n: number) => `Rp${n.toLocaleString("id-ID")}`
+
+const PAYMENT_LABEL: Record<string, string> = {
+  cash: "Tunai",
+  qris: "QRIS",
+  dana: "DANA",
+  utang: "Utang",
+}
 
 const dayHeaderFmt = new Intl.DateTimeFormat("id-ID", {
   weekday: "short",
@@ -147,6 +155,7 @@ function TxRow({ tx }: { tx: BxTransaction }) {
 }
 
 export function TransactionsView() {
+  const router = useRouter()
   const [transactions, setTransactions] = useState<BxTransaction[]>([])
   const [summary, setSummary] = useState<{ count: number; total: number } | null>(null)
   const [queuedTransactions, setQueuedTransactions] = useState<OfflineTransactionDraft[]>([])
@@ -377,7 +386,55 @@ export function TransactionsView() {
         </div>
       ) : (
         <>
-          <div className="space-y-4">
+          <div className="hidden overflow-x-auto lg:block">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-hairline text-left text-xs font-semibold text-ink-muted">
+                  <th className="px-4 py-2.5">Waktu</th>
+                  <th className="px-4 py-2.5">Nota</th>
+                  <th className="px-4 py-2.5">Pembeli</th>
+                  <th className="px-4 py-2.5 text-right">Item</th>
+                  <th className="px-4 py-2.5">Metode</th>
+                  <th className="px-4 py-2.5 text-right">Total</th>
+                  <th className="px-2 py-2.5" aria-hidden="true" />
+                </tr>
+              </thead>
+              <tbody>
+                {transactions.map((tx) => (
+                  <tr
+                    key={tx.id}
+                    onClick={() => router.push(`/transactions/${tx.id}`)}
+                    className="cursor-pointer border-b border-hairline last:border-0 hover:bg-canvas-soft"
+                  >
+                    <td className="px-4 py-2.5 text-xs whitespace-nowrap text-ink-muted">
+                      {dayLabel(new Date(tx.created_at))} · {timeFmt.format(new Date(tx.created_at))}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <Link
+                        href={`/transactions/${tx.id}`}
+                        className="font-mono text-xs font-medium text-ink"
+                      >
+                        {tx.number ?? tx.id.slice(0, 8).toUpperCase()}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-ink-muted">{tx.customer_name ?? "Umum"}</td>
+                    <td className="px-4 py-2.5 text-right text-xs text-ink-faint">{tx.item_count}</td>
+                    <td className="px-4 py-2.5 text-xs text-ink-muted">
+                      {PAYMENT_LABEL[tx.payment_method] ?? tx.payment_method}
+                    </td>
+                    <td className="px-4 py-2.5 text-right text-sm font-semibold text-ink">
+                      {fmtRp(tx.total)}
+                    </td>
+                    <td className="px-2 py-2.5">
+                      <ChevronRight className="size-4 text-ink-faint" />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="space-y-4 lg:hidden">
             {groups.map((g) => (
               <div key={g.key} className="space-y-2">
                 <p className="px-1 text-xs font-semibold tracking-wide text-ink-faint uppercase">

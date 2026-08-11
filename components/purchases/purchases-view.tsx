@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Skeleton } from "@/components/ui/skeleton"
+import { DataTable } from "@/components/ui/data-table"
 import { getPurchases, getPurchasesReport, type BxPurchase, type BxPurchasesReport } from "@/lib/db/queries"
 import { PurchaseForm } from "@/components/purchases/purchase-form"
 import { Plus, ChevronRight, Wallet, Package } from "@/components/ui/icons"
@@ -27,6 +29,7 @@ const FILTERS: { key: FilterKey; label: string }[] = [
 ]
 
 export function PurchasesView({ initialSupplierId }: { initialSupplierId?: string | null }) {
+  const router = useRouter()
   const [purchases, setPurchases] = useState<BxPurchase[] | null>(null)
   const [report, setReport] = useState<BxPurchasesReport | null>(null)
   const [filter, setFilter] = useState<FilterKey>("all")
@@ -137,7 +140,62 @@ export function PurchasesView({ initialSupplierId }: { initialSupplierId?: strin
           )}
         </div>
       ) : (
-        <div className="divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-canvas">
+        <>
+          <DataTable
+            className="mb-2"
+            rowKey={(p) => p.id}
+            rows={visible}
+            onRowClick={(p) => router.push(`/purchases/${p.id}`)}
+            columns={[
+              {
+                key: "number",
+                label: "Nota",
+                render: (p) => (
+                  <Link href={`/purchases/${p.id}`} className="font-mono text-sm font-medium text-ink">
+                    {p.number}
+                  </Link>
+                ),
+              },
+              {
+                key: "supplier",
+                label: "Supplier",
+                render: (p) => <span className="text-sm text-ink-muted">{p.supplier_name ?? "Supplier dihapus"}</span>,
+              },
+              {
+                key: "date",
+                label: "Tanggal",
+                render: (p) => <span className="text-xs text-ink-muted">{fmtDate(p.created_at)}</span>,
+              },
+              {
+                key: "status",
+                label: "Status",
+                render: (p) => (
+                  <span
+                    className={cn(
+                      "rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                      p.status === "utang" ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"
+                    )}
+                  >
+                    {p.status === "utang" ? "Belum Lunas" : "Lunas"}
+                  </span>
+                ),
+              },
+              {
+                key: "total",
+                label: "Nilai",
+                align: "right",
+                render: (p) => {
+                  const remaining = Math.max(0, p.total - p.paid_amount)
+                  return (
+                    <span className={cn("text-sm font-semibold", remaining > 0 ? "text-destructive" : "text-ink")}>
+                      {fmtRp(p.status === "utang" ? remaining : p.total)}
+                    </span>
+                  )
+                },
+              },
+            ]}
+          />
+          <div className="divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-canvas lg:hidden">
           {visible.map((p) => {
             const remaining = Math.max(0, p.total - p.paid_amount)
             return (
@@ -174,7 +232,8 @@ export function PurchasesView({ initialSupplierId }: { initialSupplierId?: strin
               </Link>
             )
           })}
-        </div>
+          </div>
+        </>
       )}
 
       <PurchaseForm

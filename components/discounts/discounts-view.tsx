@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { DataTable } from "@/components/ui/data-table"
 import {
   Dialog,
   DialogContent,
@@ -125,7 +126,107 @@ export function DiscountsView() {
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <>
+          <DataTable
+            className="mb-2"
+            rowKey={(d) => d.id}
+            rows={discounts}
+            columns={[
+              {
+                key: "name",
+                label: "Diskon",
+                render: (d) => (
+                  <span className="flex items-center gap-1.5 font-medium text-ink">
+                    <span className="truncate">{d.name}</span>
+                    <span
+                      className={cn(
+                        "flex size-3.5 shrink-0 items-center justify-center rounded-full",
+                        d.active ? "text-accent-green" : "text-ink-faint"
+                      )}
+                    >
+                      {d.active ? <CheckCircle className="size-3.5" /> : <XCircle className="size-3.5" />}
+                    </span>
+                  </span>
+                ),
+              },
+              {
+                key: "type",
+                label: "Tipe",
+                render: (d) => (
+                  <span className="rounded-full bg-canvas-soft px-2 py-0.5 text-[11px] text-ink-muted">
+                    {typeLabel[d.type]}
+                  </span>
+                ),
+              },
+              {
+                key: "value",
+                label: "Nilai",
+                render: (d) => (
+                  <span className="rounded-full border border-accent-orange/30 bg-accent-orange/10 px-2 py-0.5 text-[11px] font-medium text-accent-orange">
+                    {valueLabel(d)}
+                  </span>
+                ),
+              },
+              {
+                key: "scope",
+                label: "Cakupan",
+                render: (d) =>
+                  d.type === "global" ? (
+                    <span className="text-xs text-ink-muted">Semua barang</span>
+                  ) : (
+                    <span className="text-xs text-ink-muted">{d.product_ids.length} produk</span>
+                  ),
+              },
+              {
+                key: "status",
+                label: "Status",
+                align: "center",
+                render: (d) => (
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={d.active}
+                    onClick={() => handleToggle(d)}
+                    className={cn(
+                      "relative h-6 w-11 rounded-full transition-colors",
+                      d.active ? "bg-primary" : "bg-ink/20"
+                    )}
+                    aria-label={`${d.active ? "Nonaktifkan" : "Aktifkan"} ${d.name}`}
+                  >
+                    <span
+                      className={cn(
+                        "absolute left-0.5 top-0.5 size-5 rounded-full bg-white shadow transition-transform",
+                        d.active && "translate-x-5"
+                      )}
+                    />
+                  </button>
+                ),
+              },
+              {
+                key: "actions",
+                label: "",
+                align: "right",
+                render: (d) => (
+                  <div className="flex justify-end gap-1">
+                    <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => openEdit(d)}>
+                      <Pencil className="size-3.5" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="gap-1.5 text-destructive"
+                      onClick={() => setDeleteTarget(d)}
+                    >
+                      <Trash className="size-3.5" />
+                      Hapus
+                    </Button>
+                  </div>
+                ),
+              },
+            ]}
+          />
+          <div className="space-y-2 lg:hidden">
           {discounts.map((d) => (
             <div key={d.id} className="rounded-xl border border-hairline bg-canvas p-4">
               <div className="flex items-center gap-3">
@@ -187,7 +288,8 @@ export function DiscountsView() {
               </div>
             </div>
           ))}
-        </div>
+          </div>
+        </>
       )}
 
       <DiscountDialog

@@ -15,6 +15,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
+import { DataTable } from "@/components/ui/data-table"
 import { Search, Pencil, Trash, Plus, User, Phone, LocationPin, Whatsapp, X, Zap } from "@/components/ui/icons"
 import { createCustomer, updateCustomer, deleteCustomer } from "@/lib/actions/customers"
 import { getCustomers, getSettings } from "@/lib/db/queries"
@@ -210,8 +211,96 @@ export function CustomerList() {
           {search.trim() ? "Pembeli tidak ditemukan" : "Belum ada pembeli"}
         </div>
       ) : (
-        <div className="space-y-2">
-          {customers.map((c) => (
+        <>
+          <DataTable
+            className="mb-2"
+            rowKey={(c) => c.id}
+            rows={customers}
+            columns={[
+              {
+                key: "name",
+                label: "Pembeli",
+                render: (c) => (
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-canvas-soft text-sm font-semibold text-ink">
+                      {c.name.charAt(0).toUpperCase()}
+                    </span>
+                    <span className="font-medium text-ink">{c.name}</span>
+                  </div>
+                ),
+              },
+              {
+                key: "contact",
+                label: "Kontak",
+                render: (c) => (
+                  <span className="text-xs text-ink-muted">
+                    {[c.phone, c.address].filter(Boolean).join(" · ") || "Tanpa kontak"}
+                  </span>
+                ),
+              },
+              {
+                key: "points",
+                label: "Poin",
+                align: "right",
+                render: (c) =>
+                  c.points > 0 ? (
+                    <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                      <Zap className="size-3" /> {c.points}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-ink-faint">-</span>
+                  ),
+              },
+              {
+                key: "actions",
+                label: "",
+                align: "right",
+                render: (c) => (
+                  <div className="flex justify-end gap-0.5">
+                    {c.phone && (
+                      <>
+                        <a
+                          href={waLink(c.phone, promoText(c))}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={`WhatsApp ${c.name}`}
+                          className="flex size-8 items-center justify-center rounded-lg text-accent-green hover:bg-canvas-soft"
+                        >
+                          <Whatsapp className="size-4" />
+                        </a>
+                        <a
+                          href={`tel:${c.phone}`}
+                          aria-label={`Telepon ${c.name}`}
+                          className="flex size-8 items-center justify-center rounded-lg text-ink-muted hover:bg-canvas-soft"
+                        >
+                          <Phone className="size-4" />
+                        </a>
+                      </>
+                    )}
+                    <button
+                      onClick={() => {
+                        setEdit(c)
+                        setOpen(true)
+                      }}
+                      aria-label={`Edit ${c.name}`}
+                      className="flex size-8 items-center justify-center rounded-lg text-ink-muted hover:bg-canvas-soft"
+                    >
+                      <Pencil className="size-4" />
+                    </button>
+                    <button
+                      onClick={() => setDeleteTarget(c)}
+                      aria-label={`Hapus ${c.name}`}
+                      className="flex size-8 items-center justify-center rounded-lg text-ink-muted hover:bg-canvas-soft"
+                    >
+                      <Trash className="size-4" />
+                    </button>
+                  </div>
+                ),
+              },
+            ]}
+          />
+          <div className="space-y-2 lg:hidden">
+            {customers.map((c) => (
             <div
               key={c.id}
               className="flex items-center gap-3 rounded-xl border border-hairline bg-canvas p-3"
@@ -275,6 +364,7 @@ export function CustomerList() {
             </div>
           ))}
         </div>
+        </>
       )}
 
       <Dialog open={deleteTarget !== null} onOpenChange={(o) => !o && setDeleteTarget(null)}>
